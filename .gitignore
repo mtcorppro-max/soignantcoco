@@ -36,3 +36,7 @@ yarn-error.log*
 /public/sw.js.map
 /public/workbox-*.js
 /public/workbox-*.js.map
+
+# PWA — tous les fichiers générés
+/public/swe-worker-*.js
+/public/swe-worker-*.js.map
