@@ -42,7 +42,7 @@ export default function Landing() {
           {/* Photo de fond */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/photoaccueil.avif"
+            src="/photoaccueil.jpg"
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover object-center"
