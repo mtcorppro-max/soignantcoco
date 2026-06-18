@@ -9,7 +9,11 @@ export default function Landing() {
       {/* ── Header ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-rose-100 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          <Logo className="text-lg" />
+          {/* Desktop : logo complet — Mobile : cœur uniquement */}
+          <span className="inline-flex items-center gap-2 font-bold text-lg">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand text-white shrink-0">❤</span>
+            <span className="hidden md:inline text-brand">Soignant<span className="text-rose-400">Coco</span></span>
+          </span>
           <nav className="hidden gap-1 md:flex">
             {[
               ["Fonctionnalités", "#fonctionnalites"],
@@ -25,11 +29,11 @@ export default function Landing() {
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/login/patient" className="btn-secondary py-2 text-sm">
+          <div className="flex flex-1 items-center justify-end gap-2 md:flex-none">
+            <Link href="/login/patient" className="btn-secondary flex-1 py-2 text-center text-sm md:flex-none">
               Patient
             </Link>
-            <Link href="/login/pro" className="btn-primary py-2 text-sm">
+            <Link href="/login/pro" className="btn-primary flex-1 py-2 text-center text-sm md:flex-none">
               Équipe médicale
             </Link>
           </div>
@@ -90,7 +94,7 @@ export default function Landing() {
         </section>
 
         {/* ── Stats ───────────────────────────────────────────── */}
-        <section className="bg-brand py-14">
+        <section className="hidden bg-brand py-14 md:block">
           <StatsAnimees />
         </section>
 
