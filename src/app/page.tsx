@@ -26,7 +26,7 @@ export default function Landing() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/login/patient" className="btn-secondary hidden py-2 text-sm sm:inline-flex">
+            <Link href="/login/patient" className="btn-secondary py-2 text-sm">
               Patient
             </Link>
             <Link href="/login/pro" className="btn-primary py-2 text-sm">
@@ -82,8 +82,8 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Mockup téléphone */}
-            <div className="flex justify-center lg:justify-end">
+            {/* Mockup téléphone — desktop uniquement */}
+            <div className="hidden lg:flex lg:justify-end">
               <PhoneMockup />
             </div>
           </div>
