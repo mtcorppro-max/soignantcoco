@@ -1,18 +1,55 @@
-import { requirePro } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { useProSession } from "@/lib/hooks/useSession";
 import { ChatBox } from "@/components/ChatBox";
 import type { Message } from "@/lib/types";
-import Link from "next/link";
 
-export default async function MessageriePro({
-  searchParams,
-}: {
-  searchParams: { patient?: string };
-}) {
-  const pro = await requirePro();
+type PatientItem = { id: string; nom: string; statut: string };
 
-  // Délégué exclu du chat (RLS + règle métier)
-  if (pro.role === "delegue") {
+export default function MessageriePro() {
+  const pro = useProSession();
+  const searchParams = useSearchParams();
+  const patientId = searchParams.get("patient");
+
+  const [patients, setPatients] = useState<PatientItem[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [ready, setReady] = useState(false);
+  const [msgReady, setMsgReady] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("patient")
+      .select("id,nom,statut")
+      .eq("statut", "active")
+      .order("nom")
+      .then(({ data }) => {
+        setPatients((data ?? []) as PatientItem[]);
+        setReady(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!patientId) { setMessages([]); setMsgReady(true); return; }
+    setMsgReady(false);
+    const supabase = createClient();
+    supabase
+      .from("message")
+      .select("id,patient_id,auteur_user_id,contenu,horodatage")
+      .eq("patient_id", patientId)
+      .order("horodatage", { ascending: true })
+      .limit(100)
+      .then(({ data }) => {
+        setMessages((data ?? []) as Message[]);
+        setMsgReady(true);
+      });
+  }, [patientId]);
+
+  if (pro?.role === "delegue") {
     return (
       <div className="flex h-64 items-center justify-center">
         <p className="text-slate-400">Accès non autorisé pour ce rôle.</p>
@@ -20,59 +57,38 @@ export default async function MessageriePro({
     );
   }
 
-  const supabase = await createClient();
-
-  // Liste des patients du prestataire
-  const { data: patients } = await supabase
-    .from("patient")
-    .select("id, nom, statut")
-    .eq("statut", "active")
-    .order("nom");
-
-  const patientId = searchParams.patient ?? null;
-  const patientSelectionne = patients?.find((p) => p.id === patientId) ?? null;
-
-  // Messages du patient sélectionné
-  let messages: Message[] = [];
-  if (patientId) {
-    const { data } = await supabase
-      .from("message")
-      .select("*")
-      .eq("patient_id", patientId)
-      .order("horodatage");
-    messages = (data as Message[]) ?? [];
-  }
+  const patientSelectionne = patients.find((p) => p.id === patientId) ?? null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-
       {/* ── Liste patients ── */}
       <aside className="card h-fit">
-        <p className="mb-3 text-xs font-bold uppercase tracking-widest text-rose-400">
-          Patients actifs
-        </p>
-        {!patients?.length && (
+        <p className="mb-3 text-xs font-bold uppercase tracking-widest text-rose-400">Patients actifs</p>
+        {!ready ? (
+          <div className="grid gap-2 animate-pulse">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-10 rounded-xl bg-rose-50" />)}
+          </div>
+        ) : patients.length === 0 ? (
           <p className="text-sm text-slate-400">Aucun patient.</p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {patients.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/pro/messagerie?patient=${p.id}`}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                    p.id === patientId ? "bg-brand text-white" : "text-slate-600 hover:bg-rose-50 hover:text-brand"
+                  }`}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-brand">
+                    {p.nom.charAt(0).toUpperCase()}
+                  </span>
+                  {p.nom}
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
-        <ul className="flex flex-col gap-1">
-          {patients?.map((p) => (
-            <li key={p.id}>
-              <Link
-                href={`/pro/messagerie?patient=${p.id}`}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                  p.id === patientId
-                    ? "bg-brand text-white"
-                    : "text-slate-600 hover:bg-rose-50 hover:text-brand"
-                }`}
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-brand">
-                  {p.nom.charAt(0).toUpperCase()}
-                </span>
-                {p.nom}
-              </Link>
-            </li>
-          ))}
-        </ul>
       </aside>
 
       {/* ── Zone chat ── */}
@@ -82,6 +98,8 @@ export default async function MessageriePro({
             <span className="text-3xl">◇</span>
             <p className="text-sm">Sélectionnez un patient pour démarrer</p>
           </div>
+        ) : !msgReady || !pro ? (
+          <div className="animate-pulse h-40 rounded-xl bg-rose-50" />
         ) : (
           <>
             <div className="mb-4 flex items-center gap-3 border-b border-rose-100 pb-4">
@@ -102,7 +120,6 @@ export default async function MessageriePro({
           </>
         )}
       </div>
-
     </div>
   );
 }

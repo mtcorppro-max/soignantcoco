@@ -1,27 +1,32 @@
-import { requirePatient } from "@/lib/auth";
+"use client";
+
+import { useEffect, useState } from "react";
+import { usePatientSession } from "@/lib/hooks/useSession";
 import { ConseilCard } from "@/components/ConseilCard";
-import { conseilDuJour, conseilMeteo, tousLesConseils } from "@/lib/conseils";
+import { conseilDuJour, conseilMeteo, tousLesConseils, type ConseilMeteo } from "@/lib/conseils";
 
-export const dynamic = "force-dynamic";
-
-export default async function PageConseils() {
-  const patient = await requirePatient();
-  const [meteo] = await Promise.all([conseilMeteo(patient.code_postal)]);
+export default function PageConseils() {
+  const patient = usePatientSession();
+  const [meteo, setMeteo] = useState<ConseilMeteo | null>(null);
   const duJour = conseilDuJour();
   const autres = tousLesConseils().filter((c) => c.titre !== duJour.titre);
+
+  useEffect(() => {
+    if (patient?.code_postal) {
+      conseilMeteo(patient.code_postal).then(setMeteo);
+    }
+  }, [patient?.code_postal]);
 
   return (
     <div className="grid gap-5">
       <div>
         <h1 className="text-xl font-bold text-slate-800">Mes conseils</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Petits conseils du quotidien pour votre rétablissement.
-        </p>
+        <p className="mt-1 text-sm text-slate-500">Petits conseils du quotidien pour votre rétablissement.</p>
       </div>
 
       {meteo && (
         <section className="grid gap-2">
-          <h2 className="text-sm font-semibold text-slate-600">Aujourd'hui</h2>
+          <h2 className="text-sm font-semibold text-slate-600">Aujourd&apos;hui</h2>
           <ConseilCard conseil={meteo} highlight />
         </section>
       )}
@@ -41,7 +46,7 @@ export default async function PageConseils() {
       </section>
 
       <p className="text-center text-[11px] text-slate-400">
-        Ces conseils ne remplacent pas l'avis de votre équipe médicale.
+        Ces conseils ne remplacent pas l&apos;avis de votre équipe médicale.
       </p>
     </div>
   );
