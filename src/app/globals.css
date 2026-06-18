@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-rose-50 text-slate-800 antialiased;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2 disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-secondary {
+    @apply btn border border-rose-200 bg-white text-brand hover:bg-rose-50;
+  }
+  .btn-danger {
+    @apply btn bg-critique text-white hover:bg-red-700;
+  }
+  .card {
+    @apply rounded-2xl border border-rose-100 bg-white p-5 shadow-sm;
+  }
+  .input {
+    @apply w-full rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-rose-200;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-600;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+}
+
+/* ── AnimatedButton ──────────────────────────────────────────────── */
+.ui-anim-btn {
+  --highlight: hsl(var(--highlight-hue, 340deg), 100%, 70%);
+  --highlight-80: hsla(var(--highlight-hue, 340deg), 100%, 70%, 0.8);
+  --highlight-50: hsla(var(--highlight-hue, 340deg), 100%, 70%, 0.5);
+  --highlight-30: hsla(var(--highlight-hue, 340deg), 100%, 70%, 0.3);
+  --highlight-20: hsla(var(--highlight-hue, 340deg), 100%, 70%, 0.2);
+  --ui-anim-svg-fill: #e8e8e8;
+
+  background-color: rgba(255, 255, 255, 0.55);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 1);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.2),
+    inset 0 2px 2px rgba(255,255,255,0.15),
+    inset 0 4px 4px rgba(255,255,255,0.1),
+    0 4px 8px rgba(0,0,0,0.15);
+  transition: box-shadow 0.4s, border-color 0.4s, background-color 0.4s;
+}
+
+.ui-anim-btn::before {
+  content: "";
+  position: absolute;
+  top: -4px; left: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border-radius: 28px;
+  pointer-events: none;
+  background-image: linear-gradient(0deg, #0004, #000a);
+  z-index: -1;
+  transition: box-shadow 0.4s;
+  box-shadow:
+    0 -8px 8px -6px transparent inset,
+    1px 1px 1px rgba(255,255,255,0.13),
+    -1px -1px 1px rgba(0,0,0,0.13);
+}
+
+.ui-anim-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(0deg, #fff, var(--highlight), var(--highlight-50) 8%, transparent);
+  opacity: 0;
+  transition: opacity 0.4s, filter 0.4s;
+}
+
+/* SVG sparkle */
+.ui-anim-btn-svg {
+  fill: var(--ui-anim-svg-fill);
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.6));
+  animation: ui-flicker 2s linear infinite;
+  animation-delay: 0.5s;
+  transition: fill 0.4s, filter 0.4s;
+}
+
+/* Letters */
+.ui-anim-letter {
+  color: rgba(255, 255, 255, 0.6);
+  animation: ui-letter-anim 2s ease-in-out infinite;
+  transition: color 0.4s, text-shadow 0.4s;
+}
+
+@keyframes ui-letter-anim {
+  50% { text-shadow: 0 0 4px rgba(255,255,255,0.6); color: #fff; }
+}
+
+@keyframes ui-flicker {
+  50% { opacity: 0.3; }
+}
+
+/* Hover */
+.ui-anim-btn:hover {
+  border-color: hsla(var(--highlight-hue, 340deg), 100%, 80%, 0.45);
+}
+.ui-anim-btn:hover::before {
+  box-shadow:
+    0 -8px 8px -6px rgba(255,255,255,0.98) inset,
+    0 -16px 16px -8px var(--highlight-30) inset,
+    1px 1px 1px rgba(255,255,255,0.13),
+    -1px -1px 1px rgba(0,0,0,0.13);
+}
+.ui-anim-btn:hover::after {
+  opacity: 1;
+  -webkit-mask-image: linear-gradient(0deg, #fff, transparent);
+  mask-image: linear-gradient(0deg, #fff, transparent);
+}
+.ui-anim-btn:hover .ui-anim-btn-svg {
+  fill: #fff;
+  filter: drop-shadow(0 0 4px var(--highlight)) drop-shadow(0 -4px 6px rgba(0,0,0,0.55));
+  animation: none;
+}
+.ui-anim-btn:hover .ui-anim-letter {
+  color: #fff;
+  text-shadow: 0 0 4px rgba(255,255,255,0.5);
+}
+
+/* Active/click */
+.ui-anim-btn:active {
+  border-color: hsla(var(--highlight-hue, 340deg), 100%, 80%, 0.7);
+  background-color: hsla(var(--highlight-hue, 340deg), 50%, 20%, 0.5);
+}
+.ui-anim-btn:active::after {
+  opacity: 1;
+  -webkit-mask-image: linear-gradient(0deg, #fff, transparent);
+  mask-image: linear-gradient(0deg, #fff, transparent);
+  filter: brightness(200%);
+}
+.ui-anim-btn:active .ui-anim-letter {
+  text-shadow: 0 0 2px hsla(var(--highlight-hue, 340deg), 100%, 90%, 0.9);
+  animation: none;
+}
