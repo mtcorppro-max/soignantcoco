@@ -48,7 +48,8 @@ export default function Landing() {
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
           {/* Dégradé rose foncé de gauche vers transparent */}
-          <div className="absolute inset-0 bg-gradient-to-r from-rose-950/70 via-rose-900/40 to-transparent" />
+          <div className="absolute inset-0 bg-rose-950/60 md:bg-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-rose-950/90 via-rose-900/60 to-rose-950/30 md:from-rose-950/80 md:via-rose-900/50 md:to-transparent" />
 
           <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 py-24 lg:grid-cols-2 lg:py-36">
             {/* Texte */}
