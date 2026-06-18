@@ -213,24 +213,24 @@ export default function Landing() {
         </section>
 
         {/* ── CTA final ───────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-brand py-24 text-center text-white">
-          <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-white/5" />
-          <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-white/5" />
+        <section className="relative overflow-hidden bg-white py-24 text-center">
+          <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-rose-50" />
+          <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-rose-50" />
           <div className="relative mx-auto max-w-2xl px-6">
-            <h2 className="text-3xl font-bold md:text-4xl">Prêt à commencer ?</h2>
-            <p className="mt-3 text-rose-200">
+            <h2 className="text-3xl font-bold text-slate-800 md:text-4xl">Prêt à commencer ?</h2>
+            <p className="mt-3 text-slate-500">
               Accédez à votre espace en quelques secondes.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Link
                 href="/login/patient"
-                className="rounded-xl bg-white px-8 py-3 text-base font-semibold text-brand shadow hover:bg-rose-50"
+                className="rounded-xl bg-brand px-8 py-3 text-base font-semibold text-white shadow hover:bg-brand-dark"
               >
                 Espace patient
               </Link>
               <Link
                 href="/login/pro"
-                className="rounded-xl border border-rose-300 px-8 py-3 text-base font-semibold text-white hover:bg-brand-dark"
+                className="rounded-xl border border-rose-200 px-8 py-3 text-base font-semibold text-brand hover:bg-rose-50"
               >
                 Espace professionnel
               </Link>
