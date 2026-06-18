@@ -36,6 +36,7 @@ export default function PatientAccueil() {
     `patient:accueil:${patient?.id ?? ""}`,
     () => fetchAccueil(patient!.id),
     [patient?.id],
+    !!patient,
   );
   const [meteo, setMeteo] = useState<ConseilMeteo | null>(null);
   const duJour = useMemo(() => conseilDuJour(), []);

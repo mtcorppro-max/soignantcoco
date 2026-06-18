@@ -40,16 +40,18 @@ export function fetchOnce<T>(key: string, fetcher: Fetcher<T>): Promise<T> {
   return p;
 }
 
-/** Hook React qui consomme fetchOnce avec état local. */
-export function useData<T>(key: string, fetcher: Fetcher<T>, deps: unknown[] = []): T | null {
-  const [data, setData] = useState<T | null>(() => getCached<T>(key));
+/** Hook React qui consomme fetchOnce avec état local.
+ *  Si `enabled` est false, le fetch ne démarre pas (utile quand les deps ne sont pas encore prêtes). */
+export function useData<T>(key: string, fetcher: Fetcher<T>, deps: unknown[] = [], enabled = true): T | null {
+  const [data, setData] = useState<T | null>(() => enabled ? getCached<T>(key) : null);
 
   useEffect(() => {
+    if (!enabled) return;
     let alive = true;
     fetchOnce(key, fetcher).then((d) => { if (alive) setData(d); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, enabled]);
 
   return data;
 }

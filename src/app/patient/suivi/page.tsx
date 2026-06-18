@@ -37,6 +37,7 @@ export default function PageSuivi() {
     `patient:suivi:${patient?.id ?? ""}`,
     () => fetchSuivi(patient!.id),
     [patient?.id],
+    !!patient,
   );
 
   const { mesures, seuilParType } = useMemo(() => (
