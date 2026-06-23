@@ -45,6 +45,7 @@ export interface Patient {
   adresse: string | null;
   chirurgien: string | null;
   pharmacie: string | null;
+  pharmacie_tel: string | null;
   infirmiere_nom: string | null;
   infirmiere_tel: string | null;
   proche_nom: string | null;

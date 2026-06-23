@@ -81,6 +81,7 @@ export async function POST(request: Request) {
       adresse: body.adresse || null,
       chirurgien: body.chirurgien || null,
       pharmacie: body.pharmacie || null,
+      pharmacie_tel: body.pharmacie_tel || null,
       infirmiere_nom: body.infirmiere_nom || null,
       infirmiere_tel: body.infirmiere_tel || null,
       proche_nom: body.proche_nom || null,

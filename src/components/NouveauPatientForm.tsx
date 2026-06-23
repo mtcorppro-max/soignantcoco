@@ -17,6 +17,7 @@ const VIDE = {
   date_operation: "",
   chirurgien: "",
   pharmacie: "",
+  pharmacie_tel: "",
   infirmiere_nom: "",
   infirmiere_tel: "",
   proche_nom: "",
@@ -139,9 +140,15 @@ export function NouveauPatientForm() {
           <label className="label">Chirurgien (qui a opéré)</label>
           <input className="input" value={form.chirurgien} onChange={set("chirurgien")} placeholder="Dr…" />
         </div>
-        <div>
-          <label className="label">Pharmacie</label>
-          <input className="input" value={form.pharmacie} onChange={set("pharmacie")} placeholder="Nom / ville de la pharmacie" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Pharmacie</label>
+            <input className="input" value={form.pharmacie} onChange={set("pharmacie")} placeholder="Nom / ville de la pharmacie" />
+          </div>
+          <div>
+            <label className="label">Tél. pharmacie</label>
+            <input className="input" value={form.pharmacie_tel} onChange={set("pharmacie_tel")} placeholder="0…" inputMode="tel" />
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

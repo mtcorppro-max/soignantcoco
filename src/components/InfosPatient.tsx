@@ -8,7 +8,7 @@ import type { Patient } from "@/lib/types";
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
   "date_naissance", "telephone", "email", "adresse", "code_postal", "ville",
-  "operation", "date_operation", "chirurgien", "pharmacie", "infirmiere_nom", "infirmiere_tel",
+  "operation", "date_operation", "chirurgien", "pharmacie", "pharmacie_tel", "infirmiere_nom", "infirmiere_tel",
   "proche_nom", "proche_tel",
   "alerte_1_nom", "tel_alerte_1", "alerte_2_nom", "tel_alerte_2",
 ] as const;
@@ -109,7 +109,10 @@ export function InfosPatient({
             <Champ label="Date de l'opération" type="date" value={form.date_operation} onChange={set("date_operation")} />
           </div>
           <Champ label="Chirurgien" value={form.chirurgien} onChange={set("chirurgien")} />
-          <Champ label="Pharmacie" value={form.pharmacie} onChange={set("pharmacie")} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Champ label="Pharmacie" value={form.pharmacie} onChange={set("pharmacie")} />
+            <Champ label="Tél. pharmacie" value={form.pharmacie_tel} onChange={set("pharmacie_tel")} />
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Champ label="Infirmière libérale" value={form.infirmiere_nom} onChange={set("infirmiere_nom")} />
             <Champ label="Tél. infirmière" value={form.infirmiere_tel} onChange={set("infirmiere_tel")} />
@@ -182,7 +185,12 @@ export function InfosPatient({
               extra={vue.date_operation ? formatDate(vue.date_operation) : undefined}
             />
             <Ligne label="Chirurgien" value={vue.chirurgien} />
-            <Ligne label="Pharmacie" value={vue.pharmacie} />
+            <Ligne
+              label="Pharmacie"
+              value={vue.pharmacie}
+              extra={vue.pharmacie_tel}
+              href={vue.pharmacie_tel ? `tel:${vue.pharmacie_tel}` : undefined}
+            />
             <Ligne
               label="Infirmière libérale"
               value={vue.infirmiere_nom}
