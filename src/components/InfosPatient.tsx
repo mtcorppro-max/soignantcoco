@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 import type { Patient } from "@/lib/types";
 
 // Champs administratifs éditables de la fiche patient.
@@ -89,11 +90,12 @@ export function InfosPatient({
             <Champ label="Téléphone" value={form.telephone} onChange={set("telephone")} />
           </div>
           <Champ label="Adresse mail" value={form.email} onChange={set("email")} />
-          <Champ label="Adresse" value={form.adresse} onChange={set("adresse")} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Champ label="Code postal" value={form.code_postal} onChange={set("code_postal")} />
-            <Champ label="Ville" value={form.ville} onChange={set("ville")} />
-          </div>
+          <AdresseAutocomplete
+            adresse={form.adresse}
+            codePostal={form.code_postal}
+            ville={form.ville}
+            onChange={(v) => setForm((f) => ({ ...f, adresse: v.adresse, code_postal: v.code_postal, ville: v.ville }))}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <Champ label="Personne proche" value={form.proche_nom} onChange={set("proche_nom")} />
             <Champ label="Tél. personne proche" value={form.proche_tel} onChange={set("proche_tel")} />

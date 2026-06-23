@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 
 const VIDE = {
   prenom: "",
@@ -113,20 +114,12 @@ export function NouveauPatientForm() {
             <input className="input" value={form.email} onChange={set("email")} placeholder="nom@email.fr" inputMode="email" />
           </div>
         </div>
-        <div>
-          <label className="label">Adresse</label>
-          <input className="input" value={form.adresse} onChange={set("adresse")} placeholder="N°, rue" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">Ville</label>
-            <input className="input" value={form.ville} onChange={set("ville")} />
-          </div>
-          <div>
-            <label className="label">Code postal (conseils météo)</label>
-            <input className="input" value={form.code_postal} onChange={set("code_postal")} />
-          </div>
-        </div>
+        <AdresseAutocomplete
+          adresse={form.adresse}
+          codePostal={form.code_postal}
+          ville={form.ville}
+          onChange={(v) => setForm((f) => ({ ...f, adresse: v.adresse, code_postal: v.code_postal, ville: v.ville }))}
+        />
       </div>
 
       {/* ── Environnement de soins ── */}
