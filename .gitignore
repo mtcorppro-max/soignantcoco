@@ -40,3 +40,5 @@ yarn-error.log*
 # PWA — tous les fichiers générés
 /public/swe-worker-*.js
 /public/swe-worker-*.js.map
+
+.claude/settings.local.json
