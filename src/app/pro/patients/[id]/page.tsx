@@ -8,6 +8,7 @@ import { SeuilEditor } from "@/components/SeuilEditor";
 import { ChatBox } from "@/components/ChatBox";
 import { InfosPatient } from "@/components/InfosPatient";
 import { MarquerVisite } from "@/components/MarquerVisite";
+import { AlertesPatient } from "@/components/AlertesPatient";
 import { urlsSignees } from "@/lib/photos";
 import type { Mesure, Seuil, Photo, Message, Patient } from "@/lib/types";
 
@@ -217,6 +218,9 @@ export default async function FichePatient({ params }: { params: { id: string } 
       </div>
 
       <MarquerVisite patientId={patient.id} />
+
+      {/* ── Alertes en cours — clôturables ici ── */}
+      <AlertesPatient patientId={patient.id} />
 
       {/* ── Informations patient — instantané ── */}
       <InfosPatient patient={patient as Patient} modifiable={modifiableInfos} />
