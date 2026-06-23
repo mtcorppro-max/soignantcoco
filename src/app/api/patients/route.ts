@@ -85,6 +85,8 @@ export async function POST(request: Request) {
       date_naissance: body.date_naissance || null,
       operation: body.operation || null,
       date_operation: body.date_operation || null,
+      alerte_1_nom: body.alerte_1_nom || null,
+      alerte_2_nom: body.alerte_2_nom || null,
     })
     .select("id")
     .single();

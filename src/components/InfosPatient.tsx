@@ -8,7 +8,8 @@ import type { Patient } from "@/lib/types";
 const CHAMPS = [
   "date_naissance", "telephone", "email", "adresse", "code_postal", "ville",
   "operation", "date_operation", "chirurgien", "pharmacie", "infirmiere_nom", "infirmiere_tel",
-  "proche_nom", "proche_tel", "tel_alerte_1", "tel_alerte_2",
+  "proche_nom", "proche_tel",
+  "alerte_1_nom", "tel_alerte_1", "alerte_2_nom", "tel_alerte_2",
 ] as const;
 
 type Champ = (typeof CHAMPS)[number];
@@ -116,8 +117,12 @@ export function InfosPatient({
             <Champ label="Tél. personne proche" value={form.proche_tel} onChange={set("proche_tel")} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Champ label="N° alerte 1" value={form.tel_alerte_1} onChange={set("tel_alerte_1")} />
-            <Champ label="N° alerte 2" value={form.tel_alerte_2} onChange={set("tel_alerte_2")} />
+            <Champ label="Alerte 1 — nom" value={form.alerte_1_nom} onChange={set("alerte_1_nom")} />
+            <Champ label="Alerte 1 — n°" value={form.tel_alerte_1} onChange={set("tel_alerte_1")} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Champ label="Alerte 2 — nom" value={form.alerte_2_nom} onChange={set("alerte_2_nom")} />
+            <Champ label="Alerte 2 — n°" value={form.tel_alerte_2} onChange={set("tel_alerte_2")} />
           </div>
         </div>
 
@@ -189,8 +194,16 @@ export function InfosPatient({
               extra={vue.proche_nom ? vue.proche_tel : undefined}
               href={vue.proche_tel ? `tel:${vue.proche_tel}` : undefined}
             />
-            <Ligne label="N° alerte 1" value={vue.tel_alerte_1} href={vue.tel_alerte_1 ? `tel:${vue.tel_alerte_1}` : undefined} />
-            <Ligne label="N° alerte 2" value={vue.tel_alerte_2} href={vue.tel_alerte_2 ? `tel:${vue.tel_alerte_2}` : undefined} />
+            <Ligne
+              label={vue.alerte_1_nom ? `Alerte 1 · ${vue.alerte_1_nom}` : "N° alerte 1"}
+              value={vue.tel_alerte_1}
+              href={vue.tel_alerte_1 ? `tel:${vue.tel_alerte_1}` : undefined}
+            />
+            <Ligne
+              label={vue.alerte_2_nom ? `Alerte 2 · ${vue.alerte_2_nom}` : "N° alerte 2"}
+              value={vue.tel_alerte_2}
+              href={vue.tel_alerte_2 ? `tel:${vue.tel_alerte_2}` : undefined}
+            />
           </Bloc>
         </div>
       )}

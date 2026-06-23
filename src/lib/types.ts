@@ -53,6 +53,9 @@ export interface Patient {
   date_naissance: string | null;
   operation: string | null;
   date_operation: string | null;
+  // Noms des destinataires d'alerte (cf. migration 0005)
+  alerte_1_nom: string | null;
+  alerte_2_nom: string | null;
   created_at: string;
 }
 

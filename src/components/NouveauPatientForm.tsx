@@ -19,7 +19,9 @@ const VIDE = {
   infirmiere_tel: "",
   proche_nom: "",
   proche_tel: "",
+  alerte_1_nom: "",
   tel_alerte_1: "",
+  alerte_2_nom: "",
   tel_alerte_2: "",
 };
 
@@ -168,13 +170,23 @@ export function NouveauPatientForm() {
             <input className="input" value={form.proche_tel} onChange={set("proche_tel")} placeholder="06…" inputMode="tel" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label">N° alerte 1</label>
-            <input className="input" value={form.tel_alerte_1} onChange={set("tel_alerte_1")} placeholder="+33…" inputMode="tel" />
+            <label className="label">Alerte 1 — nom</label>
+            <input className="input" value={form.alerte_1_nom} onChange={set("alerte_1_nom")} placeholder="Nom du destinataire" />
           </div>
           <div>
-            <label className="label">N° alerte 2 (backup)</label>
+            <label className="label">Alerte 1 — n°</label>
+            <input className="input" value={form.tel_alerte_1} onChange={set("tel_alerte_1")} placeholder="+33…" inputMode="tel" />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label">Alerte 2 (backup) — nom</label>
+            <input className="input" value={form.alerte_2_nom} onChange={set("alerte_2_nom")} placeholder="Nom du destinataire" />
+          </div>
+          <div>
+            <label className="label">Alerte 2 (backup) — n°</label>
             <input className="input" value={form.tel_alerte_2} onChange={set("tel_alerte_2")} placeholder="+33…" inputMode="tel" />
           </div>
         </div>
