@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { LogoutButton } from "@/components/LogoutButton";
 import { usePatientSession } from "@/lib/hooks/useSession";
@@ -17,8 +18,9 @@ const NAV = [
 
 export default function PatientLayout({ children }: { children: React.ReactNode }) {
   const patient = usePatientSession();
+  const pathname = usePathname();
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 
   return (
     <div className="min-h-screen bg-rose-50">

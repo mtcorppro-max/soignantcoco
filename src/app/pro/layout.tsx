@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useProSession } from "@/lib/hooks/useSession";
@@ -9,10 +10,13 @@ import { LIBELLE_ROLE } from "@/lib/roles";
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
   const pro = useProSession();
+  const pathname = usePathname();
   const estCoord = pro?.role === "coordinatrice";
   const peutChatter = pro?.role === "coordinatrice" || pro?.role === "chirurgien";
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  // Remonte en haut à chaque changement de page (évite la restauration de
+  // scroll qui laissait la fiche patient en bas après un clic depuis le tableau).
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 
   return (
     <div className="min-h-screen">
