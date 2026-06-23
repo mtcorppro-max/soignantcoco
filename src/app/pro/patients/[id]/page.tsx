@@ -189,7 +189,10 @@ export default async function FichePatient({ params }: { params: { id: string } 
   });
 
   const alertesActives = alertes?.length ?? 0;
-  const modifiable = pro.role === "coordinatrice";
+  // Les seuils restent réservés à la coordinatrice (RLS seuil_write_coord).
+  const modifiableSeuils = pro.role === "coordinatrice";
+  // Les coordonnées/contacts sont modifiables par toute l'équipe (RLS patient_update_pro).
+  const modifiableInfos = true;
 
   return (
     <div className="grid gap-6">
@@ -213,7 +216,7 @@ export default async function FichePatient({ params }: { params: { id: string } 
       </div>
 
       {/* ── Informations patient — instantané ── */}
-      <InfosPatient patient={patient as Patient} modifiable={modifiable} />
+      <InfosPatient patient={patient as Patient} modifiable={modifiableInfos} />
 
       {/* ── Dernières valeurs — instantané ── */}
       <section>
@@ -234,7 +237,7 @@ export default async function FichePatient({ params }: { params: { id: string } 
 
       {/* ── Courbes — streamées ── */}
       <Suspense fallback={<SkeletonCourbes />}>
-        <SectionCourbes patientId={patient.id} modifiable={modifiable} />
+        <SectionCourbes patientId={patient.id} modifiable={modifiableSeuils} />
       </Suspense>
 
       {/* ── Chat — streamé ── */}
