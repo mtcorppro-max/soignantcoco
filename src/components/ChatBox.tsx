@@ -18,7 +18,7 @@ export function ChatBox({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [texte, setTexte] = useState("");
   const [envoi, setEnvoi] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listeRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync quand initialMessages arrive après le fetch asynchrone
@@ -26,9 +26,12 @@ export function ChatBox({
     if (initialMessages.length > 0) setMessages(initialMessages);
   }, [initialMessages]);
 
-  // Auto-scroll au dernier message
+  // Auto-scroll au dernier message — UNIQUEMENT dans la zone de messages.
+  // (scrollIntoView ferait défiler toute la page, ce qui ramenait la fiche
+  // patient tout en bas au chargement du chat.)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = listeRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Abonnement Realtime — nécessite que la table message soit dans la publication
@@ -94,7 +97,7 @@ export function ChatBox({
   return (
     <div className="flex flex-col gap-3">
       {/* Fil de messages */}
-      <div className="flex max-h-80 flex-col gap-2 overflow-y-auto rounded-xl bg-rose-50 p-3">
+      <div ref={listeRef} className="flex max-h-80 flex-col gap-2 overflow-y-auto rounded-xl bg-rose-50 p-3">
         {messages.length === 0 && (
           <p className="py-8 text-center text-sm text-slate-400">
             Démarrez la conversation…
@@ -134,7 +137,6 @@ export function ChatBox({
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
 
       {/* Zone de saisie */}
