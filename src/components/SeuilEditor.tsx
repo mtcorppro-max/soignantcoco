@@ -70,7 +70,12 @@ export function SeuilEditor({
         seuilMax={maxNum}
       />
 
-      {modifiable ? (
+      {meta.pertePoidsPct ? (
+        <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-slate-500">
+          Pas de seuil fixe. Une alerte se déclenche automatiquement dès une perte
+          ≥ {meta.pertePoidsPct} % par rapport au poids de référence (premier poids enregistré).
+        </p>
+      ) : modifiable ? (
         <div className="mt-4 grid gap-3">
           <div className={`grid gap-3 ${meta.sansSeuilMax ? "grid-cols-1" : "grid-cols-2"}`}>
             <label className="text-xs text-slate-500">

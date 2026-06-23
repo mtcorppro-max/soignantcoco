@@ -16,6 +16,7 @@ export const MESURES: Record<
     seuilDefautMin: number | null;
     seuilDefautMax: number | null;
     sansSeuilMax?: boolean; // mesure avec seuil minimum uniquement (ex. SpO₂)
+    pertePoidsPct?: number; // alerte sur perte relative (%) au lieu d'un seuil fixe (ex. poids)
   }
 > = {
   temperature: {
@@ -78,6 +79,7 @@ export const MESURES: Record<
     pas: 0.1,
     seuilDefautMin: null,
     seuilDefautMax: null,
+    pertePoidsPct: 5, // alerte si perte ≥ 5 % du poids de référence
   },
 };
 
