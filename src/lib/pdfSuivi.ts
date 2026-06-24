@@ -25,10 +25,10 @@ function age(iso: string | null): string {
   return `${a} ans`;
 }
 
-// Charge un logo optionnel depuis /logo-pdf.png (déposé dans public/).
+// Charge le logo Asdia depuis public/logoasdia.jpg.
 async function chargerLogo(): Promise<string | null> {
   try {
-    const res = await fetch("/logo-pdf.png");
+    const res = await fetch("/logoasdia.jpg");
     if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise<string>((resolve) => {
@@ -52,7 +52,7 @@ export async function genererPdfSuivi(patient: Patient, s: Suivi) {
   // ── En-tête ───────────────────────────────────────────────────────
   if (logo) {
     try {
-      doc.addImage(logo, "PNG", M, 9, 46, 17);
+      doc.addImage(logo, "JPEG", M, 9, 46, 17);
     } catch {
       /* format non supporté : on ignore */
     }
