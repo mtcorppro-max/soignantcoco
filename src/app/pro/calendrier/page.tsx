@@ -197,9 +197,9 @@ export default function CalendrierSoignant() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       {/* ── Colonne principale ── */}
-      <div className="grid gap-5">
+      <div className="grid min-w-0 gap-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Organisation</h1>
           <p className="mt-1 text-sm text-slate-500">
