@@ -214,7 +214,7 @@ export default function CalendrierSoignant() {
         )}
 
         {/* ── Calendrier mensuel ── */}
-        <div className="card">
+        <div className="card min-w-0 overflow-hidden">
           <div className="mb-3 flex items-center justify-between">
             <button onClick={() => changerMois(-1)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-brand">
               ←
