@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { LIBELLE_ROLE } from "@/lib/roles";
@@ -18,11 +18,26 @@ type AbsenceLigne = {
   remplacant: { nom: string; role: RolePro } | null;
 };
 
+// Palette : une couleur stable par soignant (selon son id).
+const PALETTE = [
+  "bg-rose-400", "bg-sky-400", "bg-emerald-400", "bg-amber-400",
+  "bg-violet-400", "bg-teal-500", "bg-orange-400", "bg-fuchsia-400",
+  "bg-indigo-400", "bg-lime-500",
+];
+function couleurPour(id: string) {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+
+function parseISO(s: string) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 function formatDate(iso: string) {
   const [a, m, j] = iso.split("-");
   return `${j}/${m}/${a}`;
 }
-
 function statutPeriode(debut: string, fin: string): "en_cours" | "a_venir" | "passe" {
   const today = new Date().toISOString().slice(0, 10);
   if (today < debut) return "a_venir";
@@ -35,6 +50,12 @@ export default function CalendrierSoignant() {
   const [absences, setAbsences] = useState<AbsenceLigne[]>([]);
   const [equipe, setEquipe] = useState<ProLite[]>([]);
   const [ready, setReady] = useState(false);
+
+  // Mois affiché dans le calendrier
+  const [mois, setMois] = useState(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
 
   // Formulaire
   const [debut, setDebut] = useState("");
@@ -84,10 +105,7 @@ export default function CalendrierSoignant() {
       setErreur("Enregistrement refusé. Réessayez.");
       return;
     }
-    setDebut("");
-    setFin("");
-    setRemplacant("");
-    setMotif("");
+    setDebut(""); setFin(""); setRemplacant(""); setMotif("");
     charger();
   }
 
@@ -97,42 +115,151 @@ export default function CalendrierSoignant() {
     if (!error) setAbsences((prev) => prev.filter((a) => a.id !== id));
   }
 
-  // Masque les absences déjà terminées de la liste principale
-  const aVenirEtEnCours = absences.filter((a) => statutPeriode(a.date_debut, a.date_fin) !== "passe");
+  // ── Calcul des barres du calendrier pour le mois affiché ──────────
+  const annee = mois.getFullYear();
+  const moisIdx = mois.getMonth();
+  const nbJours = new Date(annee, moisIdx + 1, 0).getDate();
+  const moisDebut = new Date(annee, moisIdx, 1);
+  const moisFin = new Date(annee, moisIdx, nbJours);
+
+  const lignes = useMemo(() => {
+    // Regroupe par soignant les absences qui chevauchent le mois affiché.
+    const parPersonne = new Map<
+      string,
+      { nom: string; couleur: string; barres: { start: number; end: number; abs: AbsenceLigne }[] }
+    >();
+    absences.forEach((a) => {
+      const d1 = parseISO(a.date_debut);
+      const d2 = parseISO(a.date_fin);
+      if (d2 < moisDebut || d1 > moisFin) return; // hors mois
+      const start = d1 < moisDebut ? 1 : d1.getDate();
+      const end = d2 > moisFin ? nbJours : d2.getDate();
+      const entry = parPersonne.get(a.professionnel_id) ?? {
+        nom: a.professionnel?.nom ?? "Soignant",
+        couleur: couleurPour(a.professionnel_id),
+        barres: [],
+      };
+      entry.barres.push({ start, end, abs: a });
+      parPersonne.set(a.professionnel_id, entry);
+    });
+    return [...parPersonne.values()].sort((a, b) => a.nom.localeCompare(b.nom));
+  }, [absences, annee, moisIdx, nbJours]);
+
+  const jours = Array.from({ length: nbJours }, (_, i) => i + 1);
+  const today = new Date();
+  const jourAujourdhui =
+    today.getFullYear() === annee && today.getMonth() === moisIdx ? today.getDate() : null;
+  const largeurMin = 110 + nbJours * 26;
+
   const autresPros = equipe.filter((p) => p.id !== pro?.id);
+  const aVenirEtEnCours = absences.filter((a) => statutPeriode(a.date_debut, a.date_fin) !== "passe");
+
+  function changerMois(delta: number) {
+    setMois(new Date(annee, moisIdx + delta, 1));
+  }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-      {/* ── Liste des congés ── */}
-      <div className="grid gap-4">
+    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      {/* ── Colonne principale ── */}
+      <div className="grid gap-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Congés & absences</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Organisation</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Calendrier de l&apos;équipe. Pendant une absence, le remplaçant prend le relais sur les patients.
+            Calendrier des congés de l&apos;équipe. Une couleur par soignant.
           </p>
         </div>
 
-        {!ready ? (
-          <div className="grid gap-3 animate-pulse">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-20 rounded-2xl border border-rose-100 bg-white" />
-            ))}
+        {/* ── Calendrier mensuel ── */}
+        <div className="card">
+          <div className="mb-3 flex items-center justify-between">
+            <button onClick={() => changerMois(-1)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-brand">
+              ←
+            </button>
+            <h2 className="text-sm font-semibold capitalize text-slate-700">
+              {mois.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+            </h2>
+            <button onClick={() => changerMois(1)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-brand">
+              →
+            </button>
           </div>
-        ) : aVenirEtEnCours.length === 0 ? (
-          <p className="card p-6 text-center text-slate-400">Aucune absence prévue. 🌿</p>
-        ) : (
-          <div className="grid gap-3">
-            {aVenirEtEnCours.map((a) => {
+
+          {!ready ? (
+            <div className="h-40 animate-pulse rounded-xl bg-rose-50" />
+          ) : (
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: largeurMin }}>
+                {/* En-tête : numéros des jours */}
+                <div className="flex items-end">
+                  <div className="w-[110px] shrink-0" />
+                  <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}>
+                    {jours.map((j) => (
+                      <div
+                        key={j}
+                        className={`py-1 text-center text-[10px] ${j === jourAujourdhui ? "font-bold text-brand" : "text-slate-400"}`}
+                      >
+                        {j}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lignes par soignant */}
+                {lignes.length === 0 ? (
+                  <p className="border-t border-rose-50 py-8 text-center text-sm text-slate-400">
+                    Aucun congé ce mois-ci.
+                  </p>
+                ) : (
+                  lignes.map((l) => (
+                    <div key={l.nom} className="flex items-center border-t border-rose-50">
+                      <div className="flex w-[110px] shrink-0 items-center gap-1.5 pr-2">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${l.couleur}`} />
+                        <span className="truncate text-xs font-medium text-slate-600">{l.nom}</span>
+                      </div>
+                      <div
+                        className="relative grid flex-1 py-1.5"
+                        style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}
+                      >
+                        {/* repère "aujourd'hui" */}
+                        {jourAujourdhui && (
+                          <div
+                            className="pointer-events-none row-start-1 self-stretch border-l-2 border-brand/30"
+                            style={{ gridColumn: `${jourAujourdhui} / ${jourAujourdhui + 1}` }}
+                          />
+                        )}
+                        {l.barres.map((b, i) => (
+                          <div
+                            key={i}
+                            style={{ gridColumn: `${b.start} / ${b.end + 1}` }}
+                            title={`${formatDate(b.abs.date_debut)} → ${formatDate(b.abs.date_fin)}${b.abs.motif ? ` · ${b.abs.motif}` : ""}`}
+                            className={`h-5 rounded-full ${l.couleur} opacity-90`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Liste détaillée ── */}
+        <section className="grid gap-3">
+          <h2 className="text-sm font-semibold text-slate-600">Absences à venir & en cours</h2>
+          {!ready ? (
+            <div className="h-20 animate-pulse rounded-2xl bg-white" />
+          ) : aVenirEtEnCours.length === 0 ? (
+            <p className="card p-4 text-sm text-slate-400">Aucune absence prévue. 🌿</p>
+          ) : (
+            aVenirEtEnCours.map((a) => {
               const periode = statutPeriode(a.date_debut, a.date_fin);
               const estMienne = a.professionnel_id === pro?.id;
               return (
-                <div
-                  key={a.id}
-                  className={`card border-l-4 ${periode === "en_cours" ? "border-l-attention" : "border-l-rose-300"}`}
-                >
+                <div key={a.id} className={`card border-l-4 ${periode === "en_cours" ? "border-l-attention" : "border-l-rose-300"}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${couleurPour(a.professionnel_id)}`} />
                         <span className="font-semibold text-slate-800">{a.professionnel?.nom ?? "Soignant"}</span>
                         {periode === "en_cours" ? (
                           <span className="badge bg-amber-100 text-attention">En congé</span>
@@ -140,9 +267,7 @@ export default function CalendrierSoignant() {
                           <span className="badge bg-rose-50 text-rose-400">À venir</span>
                         )}
                       </div>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Du {formatDate(a.date_debut)} au {formatDate(a.date_fin)}
-                      </p>
+                      <p className="mt-1 text-sm text-slate-600">Du {formatDate(a.date_debut)} au {formatDate(a.date_fin)}</p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         Remplacé(e) par :{" "}
                         {a.remplacant ? (
@@ -154,22 +279,19 @@ export default function CalendrierSoignant() {
                       {a.motif && <p className="mt-0.5 text-xs text-slate-400">« {a.motif} »</p>}
                     </div>
                     {estMienne && (
-                      <button
-                        onClick={() => supprimer(a.id)}
-                        className="text-xs font-medium text-slate-400 hover:text-critique"
-                      >
+                      <button onClick={() => supprimer(a.id)} className="text-xs font-medium text-slate-400 hover:text-critique">
                         Annuler
                       </button>
                     )}
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </section>
       </div>
 
-      {/* ── Formulaire de déclaration ── */}
+      {/* ── Formulaire ── */}
       <aside>
         <form onSubmit={declarer} className="card grid gap-4">
           <h2 className="text-sm font-semibold text-slate-700">Déclarer une absence</h2>
