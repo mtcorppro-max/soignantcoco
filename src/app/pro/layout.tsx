@@ -12,7 +12,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   const pro = useProSession();
   const pathname = usePathname();
   const estCoord = pro?.role === "coordinatrice";
-  const peutChatter = pro?.role === "coordinatrice" || pro?.role === "chirurgien";
 
   // Remonte en haut à chaque changement de page (évite la restauration de
   // scroll qui laissait la fiche patient en bas après un clic depuis le tableau).
@@ -27,7 +26,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
             <nav className="hidden gap-1 sm:flex">
               <Onglet href="/pro" label="Tableau de bord" />
               <Onglet href="/pro/alertes" label="Alertes" />
-              {peutChatter && <Onglet href="/pro/messagerie" label="Messagerie" />}
               <Onglet href="/pro/calendrier" label="Organisation" />
               {estCoord && (
                 <Link
@@ -58,7 +56,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-rose-100 bg-white sm:hidden">
         <NavItem href="/pro" icon="⊞" label="Tableau" />
         <NavItem href="/pro/alertes" icon="◎" label="Alertes" />
-        {peutChatter && <NavItem href="/pro/messagerie" icon="◇" label="Messagerie" />}
         <NavItem href="/pro/calendrier" icon="▦" label="Organisation" />
         {estCoord && <NavItem href="/pro/nouveau-patient" icon="＋" label="Nouveau" />}
       </nav>
