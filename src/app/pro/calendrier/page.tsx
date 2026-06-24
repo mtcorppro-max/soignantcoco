@@ -208,7 +208,7 @@ export default function CalendrierSoignant() {
         </div>
 
         {ready && astreintesIncompletes(new Set(astreintes.keys())) && (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-attention">
+          <p className="rounded-xl bg-rose-800 px-4 py-3 text-sm font-medium text-white">
             ⚠️ Astreintes non renseignées pour les 15 prochains jours. Merci de désigner les soignants d&apos;astreinte ci-dessous.
           </p>
         )}
@@ -312,7 +312,7 @@ export default function CalendrierSoignant() {
                     <label className="grid gap-1">
                       <span className="text-[11px] text-slate-400">Semaine (lun–ven)</span>
                       <select
-                        className={`input ${semaineVide ? "border-amber-300" : ""}`}
+                        className={`input ${semaineVide ? "border-rose-300" : ""}`}
                         value={astreintes.get(`${k}|semaine`) ?? ""}
                         onChange={(e) => definirAstreinte(k, "semaine", e.target.value)}
                       >
@@ -325,7 +325,7 @@ export default function CalendrierSoignant() {
                     <label className="grid gap-1">
                       <span className="text-[11px] text-slate-400">Week-end (sam–dim)</span>
                       <select
-                        className={`input ${weekendVide ? "border-amber-300" : ""}`}
+                        className={`input ${weekendVide ? "border-rose-300" : ""}`}
                         value={astreintes.get(`${k}|weekend`) ?? ""}
                         onChange={(e) => definirAstreinte(k, "weekend", e.target.value)}
                       >

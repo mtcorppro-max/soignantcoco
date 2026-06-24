@@ -27,7 +27,7 @@ export function AstreinteAlerte() {
   return (
     <Link
       href="/pro/calendrier"
-      className="block rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-attention transition hover:bg-amber-100"
+      className="block rounded-xl bg-rose-800 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-900"
     >
       ⚠️ Astreintes non renseignées pour les 15 prochains jours — cliquez pour désigner les soignants d&apos;astreinte.
     </Link>
