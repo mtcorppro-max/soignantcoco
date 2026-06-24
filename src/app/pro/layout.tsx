@@ -28,7 +28,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
               <Onglet href="/pro" label="Tableau de bord" />
               <Onglet href="/pro/alertes" label="Alertes" />
               {peutChatter && <Onglet href="/pro/messagerie" label="Messagerie" />}
-              <Onglet href="/pro/calendrier" label="Congés" />
+              <Onglet href="/pro/calendrier" label="Organisation" />
               {estCoord && <Onglet href="/pro/nouveau-patient" label="Nouveau patient" />}
             </nav>
           </div>
@@ -50,7 +50,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         <NavItem href="/pro" icon="⊞" label="Tableau" />
         <NavItem href="/pro/alertes" icon="◎" label="Alertes" />
         {peutChatter && <NavItem href="/pro/messagerie" icon="◇" label="Messagerie" />}
-        <NavItem href="/pro/calendrier" icon="🗓" label="Congés" />
+        <NavItem href="/pro/calendrier" icon="🗓" label="Organisation" />
         {estCoord && <NavItem href="/pro/nouveau-patient" icon="＋" label="Nouveau" />}
       </nav>
     </div>
