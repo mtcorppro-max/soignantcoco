@@ -112,7 +112,7 @@ export function SuiviPatient({
       {ouvert && (
         <div className="card grid gap-4">
           <p className="text-xs text-slate-500">
-            Fiche de suivi du {new Date().toLocaleDateString("fr-FR")}. Une fois enregistrée, le PDF est généré automatiquement.
+            Compte rendu du {new Date().toLocaleDateString("fr-FR")}. Une fois enregistré, le PDF est généré automatiquement.
           </p>
 
           <Bloc label="État général">
