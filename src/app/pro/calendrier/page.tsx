@@ -342,7 +342,44 @@ export default function CalendrierSoignant() {
           )}
         </section>
 
-        {/* ── Liste détaillée ── */}
+      </div>
+
+      {/* ── Colonne de droite : formulaire + absences ── */}
+      <aside className="grid content-start gap-5">
+        <form onSubmit={declarer} className="card grid gap-4">
+          <h2 className="text-sm font-semibold text-slate-700">Déclarer une absence</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">Du *</label>
+              <input type="date" className="input" value={debut} onChange={(e) => setDebut(e.target.value)} required />
+            </div>
+            <div>
+              <label className="label">Au *</label>
+              <input type="date" className="input" value={fin} onChange={(e) => setFin(e.target.value)} required />
+            </div>
+          </div>
+          <div>
+            <label className="label">Remplacé(e) par</label>
+            <select className="input" value={remplacant} onChange={(e) => setRemplacant(e.target.value)}>
+              <option value="">— Choisir un soignant —</option>
+              {autresPros.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nom} ({LIBELLE_ROLE[p.role]})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Motif (optionnel)</label>
+            <input className="input" value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Congés, astreinte…" />
+          </div>
+          {erreur && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{erreur}</p>}
+          <button className="btn-primary py-2.5" disabled={busy || !pro}>
+            {busy ? "Enregistrement…" : "Déclarer l'absence"}
+          </button>
+        </form>
+
+        {/* ── Absences à venir & en cours ── */}
         <section className="grid gap-3">
           <h2 className="text-sm font-semibold text-slate-600">Absences à venir & en cours</h2>
           {!ready ? (
@@ -388,42 +425,6 @@ export default function CalendrierSoignant() {
             })
           )}
         </section>
-      </div>
-
-      {/* ── Formulaire ── */}
-      <aside>
-        <form onSubmit={declarer} className="card grid gap-4">
-          <h2 className="text-sm font-semibold text-slate-700">Déclarer une absence</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label">Du *</label>
-              <input type="date" className="input" value={debut} onChange={(e) => setDebut(e.target.value)} required />
-            </div>
-            <div>
-              <label className="label">Au *</label>
-              <input type="date" className="input" value={fin} onChange={(e) => setFin(e.target.value)} required />
-            </div>
-          </div>
-          <div>
-            <label className="label">Remplacé(e) par</label>
-            <select className="input" value={remplacant} onChange={(e) => setRemplacant(e.target.value)}>
-              <option value="">— Choisir un soignant —</option>
-              {autresPros.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nom} ({LIBELLE_ROLE[p.role]})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Motif (optionnel)</label>
-            <input className="input" value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Congés, astreinte…" />
-          </div>
-          {erreur && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{erreur}</p>}
-          <button className="btn-primary py-2.5" disabled={busy || !pro}>
-            {busy ? "Enregistrement…" : "Déclarer l'absence"}
-          </button>
-        </form>
       </aside>
     </div>
   );
