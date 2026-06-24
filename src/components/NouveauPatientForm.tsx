@@ -122,6 +122,16 @@ export function NouveauPatientForm() {
           ville={form.ville}
           onChange={(v) => setForm((f) => ({ ...f, adresse: v.adresse, code_postal: v.code_postal, ville: v.ville }))}
         />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Personne proche à appeler</label>
+            <input className="input" value={form.proche_nom} onChange={set("proche_nom")} placeholder="Nom (conjoint, enfant…)" />
+          </div>
+          <div>
+            <label className="label">Tél. personne proche</label>
+            <input className="input" value={form.proche_tel} onChange={set("proche_tel")} placeholder="06…" inputMode="tel" />
+          </div>
+        </div>
       </div>
 
       {/* ── Environnement de soins ── */}
@@ -159,21 +169,6 @@ export function NouveauPatientForm() {
           <div>
             <label className="label">Tél. infirmière libérale *</label>
             <input className="input" value={form.infirmiere_tel} onChange={set("infirmiere_tel")} placeholder="06…" inputMode="tel" required />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Contacts d'urgence ── */}
-      <div className="grid gap-4 border-t border-rose-100 pt-4">
-        <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Contacts d&apos;urgence</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">Personne proche à appeler</label>
-            <input className="input" value={form.proche_nom} onChange={set("proche_nom")} placeholder="Nom (conjoint, enfant…)" />
-          </div>
-          <div>
-            <label className="label">Tél. personne proche</label>
-            <input className="input" value={form.proche_tel} onChange={set("proche_tel")} placeholder="06…" inputMode="tel" />
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
