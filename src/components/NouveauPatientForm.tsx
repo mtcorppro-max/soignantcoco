@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { LIBELLE_ROLE } from "@/lib/roles";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
+import type { RolePro } from "@/lib/types";
+
+type Soignant = { id: string; nom: string; role: RolePro };
 
 const VIDE = {
   prenom: "",
@@ -34,9 +39,20 @@ export function NouveauPatientForm() {
   const [patientId, setPatientId] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [soignants, setSoignants] = useState<Soignant[]>([]);
+
+  useEffect(() => {
+    createClient()
+      .from("professionnel")
+      .select("id,nom,role")
+      .order("nom")
+      .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
+  }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setVal = (k: keyof typeof form, v: string) =>
+    setForm((f) => ({ ...f, [k]: v }));
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -173,8 +189,16 @@ export function NouveauPatientForm() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label">Alerte 1 — nom</label>
-            <input className="input" value={form.alerte_1_nom} onChange={set("alerte_1_nom")} placeholder="Nom du destinataire" />
+            <label className="label">Alerte 1 — soignant</label>
+            <select className="input" value={form.alerte_1_nom} onChange={(e) => setVal("alerte_1_nom", e.target.value)}>
+              <option value="">— Choisir un compte —</option>
+              {soignants.map((s) => (
+                <option key={s.id} value={s.nom}>{s.nom} ({LIBELLE_ROLE[s.role]})</option>
+              ))}
+              {form.alerte_1_nom && !soignants.some((s) => s.nom === form.alerte_1_nom) && (
+                <option value={form.alerte_1_nom}>{form.alerte_1_nom}</option>
+              )}
+            </select>
           </div>
           <div>
             <label className="label">Alerte 1 — n°</label>
@@ -183,8 +207,16 @@ export function NouveauPatientForm() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label">Alerte 2 (backup) — nom</label>
-            <input className="input" value={form.alerte_2_nom} onChange={set("alerte_2_nom")} placeholder="Nom du destinataire" />
+            <label className="label">Alerte 2 (backup) — soignant</label>
+            <select className="input" value={form.alerte_2_nom} onChange={(e) => setVal("alerte_2_nom", e.target.value)}>
+              <option value="">— Choisir un compte —</option>
+              {soignants.map((s) => (
+                <option key={s.id} value={s.nom}>{s.nom} ({LIBELLE_ROLE[s.role]})</option>
+              ))}
+              {form.alerte_2_nom && !soignants.some((s) => s.nom === form.alerte_2_nom) && (
+                <option value={form.alerte_2_nom}>{form.alerte_2_nom}</option>
+              )}
+            </select>
           </div>
           <div>
             <label className="label">Alerte 2 (backup) — n°</label>

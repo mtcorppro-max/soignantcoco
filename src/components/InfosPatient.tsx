@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { LIBELLE_ROLE } from "@/lib/roles";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
-import type { Patient } from "@/lib/types";
+import type { Patient, RolePro } from "@/lib/types";
+
+type Soignant = { id: string; nom: string; role: RolePro };
 
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
@@ -52,9 +55,20 @@ export function InfosPatient({
   const [form, setForm] = useState<Form>(() => depuisPatient(patient));
   const [vue, setVue] = useState<Form>(() => depuisPatient(patient));
   const [busy, setBusy] = useState(false);
+  const [soignants, setSoignants] = useState<Soignant[]>([]);
+
+  useEffect(() => {
+    if (!edition || soignants.length) return;
+    createClient()
+      .from("professionnel")
+      .select("id,nom,role")
+      .order("nom")
+      .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
+  }, [edition, soignants.length]);
 
   const set = (k: Champ) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setVal = (k: Champ, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function enregistrer() {
     setBusy(true);
@@ -118,11 +132,11 @@ export function InfosPatient({
             <Champ label="Tél. infirmière" value={form.infirmiere_tel} onChange={set("infirmiere_tel")} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Champ label="Alerte 1 — nom" value={form.alerte_1_nom} onChange={set("alerte_1_nom")} />
+            <SelectSoignant label="Alerte 1 — soignant" value={form.alerte_1_nom} soignants={soignants} onChange={(v) => setVal("alerte_1_nom", v)} />
             <Champ label="Alerte 1 — n°" value={form.tel_alerte_1} onChange={set("tel_alerte_1")} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Champ label="Alerte 2 — nom" value={form.alerte_2_nom} onChange={set("alerte_2_nom")} />
+            <SelectSoignant label="Alerte 2 — soignant" value={form.alerte_2_nom} soignants={soignants} onChange={(v) => setVal("alerte_2_nom", v)} />
             <Champ label="Alerte 2 — n°" value={form.tel_alerte_2} onChange={set("tel_alerte_2")} />
           </div>
         </div>
@@ -276,6 +290,34 @@ function Champ({
     <div>
       <label className="label">{label}</label>
       <input type={type} className="input" value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+function SelectSoignant({
+  label,
+  value,
+  soignants,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  soignants: Soignant[];
+  onChange: (v: string) => void;
+}) {
+  const horsListe = value && !soignants.some((s) => s.nom === value);
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <select className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">— Choisir un compte —</option>
+        {soignants.map((s) => (
+          <option key={s.id} value={s.nom}>
+            {s.nom} ({LIBELLE_ROLE[s.role]})
+          </option>
+        ))}
+        {horsListe && <option value={value}>{value}</option>}
+      </select>
     </div>
   );
 }
