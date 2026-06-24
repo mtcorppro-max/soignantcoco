@@ -10,13 +10,19 @@ import { AstreinteAlerte } from "@/components/AstreinteAlerte";
 import type { Patient } from "@/lib/types";
 
 type AlerteInfo = { active: number; acquittees: number };
-type DashData = { patients: Patient[]; parPatient: Map<string, AlerteInfo>; totalActives: number };
+type DashData = {
+  patients: Patient[];
+  parPatient: Map<string, AlerteInfo>;
+  totalActives: number;
+  messages: Map<string, number>; // patient_id -> nb de messages patient en attente de réponse
+};
 
 async function fetchDashboard(): Promise<DashData> {
   const supabase = createClient();
-  const [{ data: pts }, { data: als }] = await Promise.all([
+  const [{ data: pts }, { data: als }, { data: msgs }] = await Promise.all([
     supabase.from("patient").select("id,nom,statut,code_postal,prestataire_id,user_id").order("nom"),
     supabase.from("alerte").select("id,patient_id,statut").in("statut", ["declenchee", "escaladee", "acquittee"]),
+    supabase.from("message").select("patient_id,auteur_user_id,horodatage").order("horodatage", { ascending: true }).limit(2000),
   ]);
   const parPatient = new Map<string, AlerteInfo>();
   (als ?? []).forEach((a) => {
@@ -25,10 +31,36 @@ async function fetchDashboard(): Promise<DashData> {
     if (a.statut === "acquittee") e.acquittees += 1;
     parPatient.set(a.patient_id, e);
   });
-  const score = (p: Patient) => (parPatient.get(p.id)?.active ?? 0) * 100 + (parPatient.get(p.id)?.acquittees ?? 0);
-  const patients = [...(pts ?? [])].sort((a, b) => score(b as Patient) - score(a as Patient)) as Patient[];
+
+  const patientsRaw = (pts ?? []) as Patient[];
+
+  // Messages en attente : nb de messages consécutifs envoyés par le patient
+  // après la dernière réponse d'un soignant.
+  const msgsParPatient = new Map<string, string[]>();
+  (msgs ?? []).forEach((m) => {
+    const arr = msgsParPatient.get(m.patient_id) ?? [];
+    arr.push(m.auteur_user_id);
+    msgsParPatient.set(m.patient_id, arr);
+  });
+  const messages = new Map<string, number>();
+  patientsRaw.forEach((p) => {
+    const arr = msgsParPatient.get(p.id);
+    if (!arr || !p.user_id) return;
+    let c = 0;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i] === p.user_id) c++;
+      else break;
+    }
+    if (c > 0) messages.set(p.id, c);
+  });
+
+  const score = (p: Patient) =>
+    (parPatient.get(p.id)?.active ?? 0) * 100 +
+    (messages.get(p.id) ?? 0) * 10 +
+    (parPatient.get(p.id)?.acquittees ?? 0);
+  const patients = [...patientsRaw].sort((a, b) => score(b) - score(a));
   const totalActives = [...parPatient.values()].reduce((s, e) => s + e.active, 0);
-  return { patients, parPatient, totalActives };
+  return { patients, parPatient, totalActives, messages };
 }
 
 export default function Dashboard() {
@@ -36,8 +68,8 @@ export default function Dashboard() {
   const router = useRouter();
   const data = useData<DashData>("pro:dashboard", fetchDashboard);
 
-  const { patients, parPatient, totalActives } = useMemo(() => (
-    data ?? { patients: [], parPatient: new Map(), totalActives: 0 }
+  const { patients, parPatient, totalActives, messages } = useMemo(() => (
+    data ?? { patients: [], parPatient: new Map(), totalActives: 0, messages: new Map() }
   ), [data]);
 
   return (
@@ -89,12 +121,18 @@ export default function Dashboard() {
                       <StatutSuivi statut={p.statut} />
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                     {critique ? (
                       <span className="badge bg-critique text-white">{e?.active} alerte(s)</span>
                     ) : (e?.acquittees ?? 0) > 0 ? (
                       <span className="badge bg-amber-100 text-attention">{e?.acquittees} acquittée(s)</span>
-                    ) : (
+                    ) : null}
+                    {(messages.get(p.id) ?? 0) > 0 && (
+                      <span className="badge bg-rose-800 text-white">
+                        {messages.get(p.id)} message{(messages.get(p.id) ?? 0) > 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {!critique && (e?.acquittees ?? 0) === 0 && (messages.get(p.id) ?? 0) === 0 && (
                       <span className="text-slate-300 text-sm">—</span>
                     )}
                     <span className="text-brand">→</span>
@@ -112,13 +150,14 @@ export default function Dashboard() {
                   <th className="px-4 py-3">Patient</th>
                   <th className="px-4 py-3">Statut suivi</th>
                   <th className="px-4 py-3">Alertes</th>
+                  <th className="px-4 py-3">Message</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rose-50">
                 {patients.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
                       Aucun patient. Créez-en un depuis « Nouveau patient ».
                     </td>
                   </tr>
@@ -139,6 +178,15 @@ export default function Dashboard() {
                           <span className="badge bg-critique text-white">{e?.active} active(s)</span>
                         ) : (e?.acquittees ?? 0) > 0 ? (
                           <span className="badge bg-amber-100 text-attention">{e?.acquittees} acquittée(s)</span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {(messages.get(p.id) ?? 0) > 0 ? (
+                          <span className="badge bg-rose-800 text-white">
+                            {messages.get(p.id)} message{(messages.get(p.id) ?? 0) > 1 ? "s" : ""}
+                          </span>
                         ) : (
                           <span className="text-slate-300">—</span>
                         )}
