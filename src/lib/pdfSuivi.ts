@@ -349,10 +349,13 @@ export async function genererPdfSuivi(
   ligne(colG, yG, "Adresse :", patient.adresse ?? "—"); yG += interligne;
   if (villeLigne) { ligne(colG, yG, "", villeLigne); yG += interligne; }
 
+  const avecTel = (valeur: string | null, tel: string | null) =>
+    [valeur, tel].filter(Boolean).join(" · ") || "—";
+
   let yD = y;
   ligne(colD, yD, "Chirurgien :", patient.chirurgien ?? "—"); yD += interligne;
-  ligne(colD, yD, "Pharmacie :", patient.pharmacie ?? "—"); yD += interligne;
-  ligne(colD, yD, "Infirmière :", patient.infirmiere_nom ?? "—"); yD += interligne;
+  ligne(colD, yD, "Pharmacie :", avecTel(patient.pharmacie, patient.pharmacie_tel)); yD += interligne;
+  ligne(colD, yD, "Infirmière :", avecTel(patient.infirmiere_nom, patient.infirmiere_tel)); yD += interligne;
   ligne(colD, yD, "Suivi par :", s.auteur_nom ?? "—"); yD += interligne;
 
   y = Math.max(yG, yD) + 4;
