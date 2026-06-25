@@ -13,6 +13,30 @@ const predef = (noms: string[]): Molecule[] =>
 const MOLECULES_INIT = (): Molecule[] => predef(["Acupan", "Primperan", "Spasfon"]);
 const MOLECULES_PER_OS_INIT = (): Molecule[] => predef(["Paracétamol", "Lovenox", "Topalgic"]);
 
+const SPECIALITES = [
+  "Chirurgien orthopédique",
+  "Chirurgien cardiaque",
+  "Chirurgien vasculaire",
+  "Chirurgien thoracique",
+  "Chirurgien viscéral / digestif",
+  "Chirurgien urologique",
+  "Chirurgien gynécologique",
+  "Chirurgien plasticien",
+  "Chirurgien maxillo-facial",
+  "Chirurgien ORL",
+  "Neurochirurgien",
+  "Ophtalmologue",
+  "Cardiologue",
+  "Pneumologue",
+  "Gastro-entérologue",
+  "Néphrologue",
+  "Endocrinologue",
+  "Rhumatologue",
+  "Dermatologue",
+  "Médecin généraliste",
+  "Autre",
+];
+
 // Un protocole = une intervention chirurgicale avec sa prise en charge propre.
 type Protocole = {
   intervention: string;
@@ -187,6 +211,17 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
           </select>
         </div>
         {estChirurgien && (
+          <div>
+            <label className="label">Spécialité</label>
+            <select className="select" value={form.specialite} onChange={set("specialite")}>
+              <option value="">— Choisir une spécialité —</option>
+              {SPECIALITES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {estChirurgien && (
           <>
             <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Médecin</p>
             <div className="flex gap-4">
@@ -249,15 +284,9 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
       {estChirurgien && (
         <>
           <div className="grid gap-4 border-t border-rose-100 pt-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="label">Spécialité</label>
-                <input className="input" value={form.specialite} onChange={set("specialite")} placeholder="ex. Chirurgien orthopédique" />
-              </div>
-              <div>
-                <label className="label">Téléphone (personnel)</label>
-                <input className="input" value={form.telephone} onChange={set("telephone")} placeholder="06…" inputMode="tel" />
-              </div>
+            <div>
+              <label className="label">Téléphone (personnel)</label>
+              <input className="input" value={form.telephone} onChange={set("telephone")} placeholder="06…" inputMode="tel" />
             </div>
             <div>
               <label className="label">Adresse du / des cabinets</label>
