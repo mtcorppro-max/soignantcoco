@@ -43,6 +43,16 @@ body {
   .label {
     @apply mb-1.5 block text-sm font-medium text-slate-600;
   }
+  /* Champs date : normalise le rendu natif iOS (hauteur cohérente, texte aligné
+     à gauche) — sinon ils s'affichent trop grands et « vides » sur iPhone. */
+  .input[type="date"] {
+    @apply min-h-[2.625rem] appearance-none;
+    -webkit-appearance: none;
+  }
+  .input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+  }
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
