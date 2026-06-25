@@ -5,11 +5,13 @@ import { useProSession } from "@/lib/hooks/useSession";
 
 export default function NouveauHub() {
   const pro = useProSession();
+  const peutPatient = pro?.role === "coordinatrice";
+  const peutSoignant = pro?.niveau === 1;
 
-  if (pro && pro.role !== "coordinatrice") {
+  if (pro && !peutPatient && !peutSoignant) {
     return (
       <div className="card text-sm text-slate-500">
-        La création est réservée à la coordinatrice.
+        La création est réservée à la coordinatrice et aux comptes de niveau 1.
       </div>
     );
   }
@@ -18,18 +20,22 @@ export default function NouveauHub() {
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-5 text-2xl font-bold text-slate-800">Créer…</h1>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Choix
-          href="/pro/nouveau-patient"
-          icon="＋"
-          titre="Nouveau patient"
-          desc="Créer un dossier patient et générer son code d'accès."
-        />
-        <Choix
-          href="/pro/nouveau-soignant"
-          icon="✚"
-          titre="Nouveau compte soignant"
-          desc="Créer un compte coordinatrice, chirurgien/médecin ou délégué."
-        />
+        {peutPatient && (
+          <Choix
+            href="/pro/nouveau-patient"
+            icon="＋"
+            titre="Nouveau patient"
+            desc="Créer un dossier patient et générer son code d'accès."
+          />
+        )}
+        {peutSoignant && (
+          <Choix
+            href="/pro/nouveau-soignant"
+            icon="✚"
+            titre="Nouveau compte soignant"
+            desc="Créer un compte coordinatrice, chirurgien/médecin ou délégué."
+          />
+        )}
       </div>
     </div>
   );

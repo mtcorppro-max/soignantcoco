@@ -6,11 +6,11 @@ import { SoignantForm } from "@/components/SoignantForm";
 export default function NouveauSoignant() {
   const pro = useProSession();
 
-  // Réservé à la coordinatrice
-  if (pro && pro.role !== "coordinatrice") {
+  // Réservé aux comptes de niveau 1
+  if (pro && pro.niveau !== 1) {
     return (
       <div className="card text-sm text-slate-500">
-        La création de comptes soignants est réservée à la coordinatrice.
+        La création de comptes soignants est réservée aux comptes de niveau 1.
       </div>
     );
   }

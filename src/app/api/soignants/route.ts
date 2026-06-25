@@ -37,10 +37,10 @@ export async function POST(request: Request) {
   const role = (body.role ?? "") as RolePro;
 
   // Autorisation : un admin (allowlist) peut créer dans n'importe quel
-  // prestataire ; une coordinatrice uniquement dans le sien.
+  // prestataire ; un compte de niveau 1 uniquement dans le sien.
   const { data: pro } = await supabase
     .from("professionnel")
-    .select("role, prestataire_id")
+    .select("niveau, prestataire_id")
     .eq("user_id", user.id)
     .maybeSingle();
   const admin_ = estEmailAdmin(user.email);
@@ -50,11 +50,11 @@ export async function POST(request: Request) {
     if (!prestataireId) {
       return NextResponse.json({ message: "Prestataire requis." }, { status: 400 });
     }
-  } else if (pro?.role === "coordinatrice") {
+  } else if (pro?.niveau === 1) {
     prestataireId = pro.prestataire_id;
   } else {
     return NextResponse.json(
-      { message: "Seuls un administrateur ou la coordinatrice peuvent créer un compte soignant." },
+      { message: "Seuls un administrateur ou un compte de niveau 1 peuvent créer un compte soignant." },
       { status: 403 }
     );
   }
