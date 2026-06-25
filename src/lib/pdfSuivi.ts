@@ -367,84 +367,19 @@ export async function genererPdfSuivi(
     y += wrapped.length * 5 + 4;
   };
 
-  // ── Surveillance clinique ─────────────────────────────────────────
-  bandeau("Surveillance clinique");
-  champ("État général", s.etat_general);
-
-  // Constantes sur une ligne
-  if (y > 275) { doc.addPage(); y = M; }
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(...ROSE);
-  doc.text("CONSTANTES", M, y);
-  y += 4.5;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(...NOIR);
-  const constantes = [
-    `TA : ${s.ta || "—"}`,
-    `Pouls : ${s.pouls || "—"}`,
-    `T° : ${s.temperature || "—"}`,
-    `SpO2 : ${s.spo2 || "—"}`,
-  ].join("      ");
-  doc.text(constantes, M, y);
-  y += 9;
-
-  champ("Douleurs (EN)", s.douleur_en);
-  champ("Alimentation", s.alimentation);
-  champ("Hydratation", s.hydratation);
-  champ("Transit", s.transit);
-  champ("Cicatrisation", s.cicatrisation);
-  champ("Mobilisation", s.mobilisation);
-  champ("Bilan sanguin", s.bilan_sanguin);
-
-  // ── Annexes (photo + courbes) ─────────────────────────────────────
-  // Récupération des données puis mise en page sur une page dédiée :
-  // bandeau + photo, puis les courbes juste en dessous (page suivante
-  // seulement si elles ne tiennent pas).
+  // Données des annexes, chargées en amont pour les intégrer dans le flux :
+  // courbes juste après les constantes, photo dans la section Cicatrisation.
   const photos = await chargerPhotosSuivi(s.id);
   const { parType, seuils } = await chargerMesures(patient.id);
   const aDesMesures = ["ta_systolique", "ta_diastolique", "spo2", "temperature", "bpm"].some(
     (t) => (parType[t]?.length ?? 0) > 0
   );
 
-  if (photos.length > 0 || aDesMesures) {
-    doc.addPage();
-    y = M;
-  }
-
-  // ── Photo(s) de la cicatrice ──────────────────────────────────────
-  if (photos.length > 0) {
-    bandeau("Photo(s) de la cicatrice");
-    photos.forEach((im) => {
-      let w = 100;
-      let h = (w * im.h) / im.w;
-      if (h > 75) { h = 75; w = (h * im.w) / im.h; }
-      if (y + h + 10 > 285) { doc.addPage(); y = M; }
-      const x = (210 - w) / 2; // centré
-      try {
-        doc.addImage(im.data, "JPEG", x, y, w, h);
-      } catch {
-        /* image illisible : on ignore */
-      }
-      y += h + 2;
-      if (im.legende) {
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(8);
-        doc.setTextColor(...GRIS);
-        doc.text(im.legende, 105, y + 3, { align: "center" });
-        y += 5;
-      }
-      y += 6;
-    });
-  }
-
-  // ── Courbes de surveillance ───────────────────────────────────────
-  if (aDesMesures) {
+  // Dessine les 4 courbes de surveillance (saut de page si besoin).
+  const dessinerCourbes = () => {
     const colW = (L - 8) / 2;
     const plotH = 38;
     const blockH = 56;
-    // Saut de page uniquement si les courbes ne tiennent pas sous la photo.
     const hauteurCourbes = 12 + 4 + 2 * blockH;
     if (y + hauteurCourbes > 285) { doc.addPage(); y = M; }
     bandeau("Courbes de surveillance");
@@ -486,7 +421,68 @@ export async function genererPdfSuivi(
       const oy = topGrille + row * blockH;
       dessinerCourbe(doc, ox, oy, colW, plotH, c.titre, c.unite, c.series, c.seuil);
     });
-  }
+    y = topGrille + 2 * blockH + 2;
+  };
+
+  // Dessine les photos de cicatrice (sous le texte de la section Cicatrisation).
+  const dessinerPhotos = () => {
+    photos.forEach((im) => {
+      let w = 80;
+      let h = (w * im.h) / im.w;
+      if (h > 60) { h = 60; w = (h * im.w) / im.h; }
+      if (y + h + 8 > 285) { doc.addPage(); y = M; }
+      try {
+        doc.addImage(im.data, "JPEG", M, y, w, h);
+      } catch {
+        /* image illisible : on ignore */
+      }
+      y += h + 2;
+      if (im.legende) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+        doc.setTextColor(...GRIS);
+        doc.text(im.legende, M, y + 3);
+        y += 5;
+      }
+      y += 4;
+    });
+  };
+
+  // ── Surveillance clinique ─────────────────────────────────────────
+  bandeau("Surveillance clinique");
+  champ("État général", s.etat_general);
+
+  // Constantes sur une ligne
+  if (y > 275) { doc.addPage(); y = M; }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...ROSE);
+  doc.text("CONSTANTES", M, y);
+  y += 4.5;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(...NOIR);
+  const constantes = [
+    `TA : ${s.ta || "—"}`,
+    `Pouls : ${s.pouls || "—"}`,
+    `T° : ${s.temperature || "—"}`,
+    `SpO2 : ${s.spo2 || "—"}`,
+  ].join("      ");
+  doc.text(constantes, M, y);
+  y += 9;
+
+  // Courbes de surveillance juste après les constantes
+  if (aDesMesures) dessinerCourbes();
+
+  champ("Douleurs (EN)", s.douleur_en);
+  champ("Alimentation", s.alimentation);
+  champ("Hydratation", s.hydratation);
+  champ("Transit", s.transit);
+  champ("Cicatrisation", s.cicatrisation);
+  // Photo(s) de la cicatrice dans la section Cicatrisation
+  if (photos.length > 0) dessinerPhotos();
+  champ("Mobilisation", s.mobilisation);
+  champ("Bilan sanguin", s.bilan_sanguin);
 
   // ── Pied de page ──────────────────────────────────────────────────
   const ph = doc.internal.pageSize.getHeight();
