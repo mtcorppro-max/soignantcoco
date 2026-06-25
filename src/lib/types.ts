@@ -58,6 +58,8 @@ export interface Patient {
   // Noms des destinataires d'alerte (cf. migration 0005)
   alerte_1_nom: string | null;
   alerte_2_nom: string | null;
+  // Durée totale de prise en charge en jours (cf. migration 0013)
+  duree_prise_en_charge: number | null;
   created_at: string;
 }
 
@@ -93,6 +95,7 @@ export interface Photo {
   auteur_user_id: string;
   chemin_stockage: string;
   legende: string | null;
+  suivi_id: string | null;
   horodatage: string;
 }
 

@@ -11,7 +11,7 @@ type Soignant = { id: string; nom: string; role: RolePro };
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
   "date_naissance", "telephone", "email", "adresse", "code_postal", "ville",
-  "operation", "date_operation", "chirurgien", "pharmacie", "pharmacie_tel", "infirmiere_nom", "infirmiere_tel",
+  "operation", "date_operation", "duree_prise_en_charge", "chirurgien", "pharmacie", "pharmacie_tel", "infirmiere_nom", "infirmiere_tel",
   "proche_nom", "proche_tel",
   "alerte_1_nom", "tel_alerte_1", "alerte_2_nom", "tel_alerte_2",
 ] as const;
@@ -21,7 +21,8 @@ type Form = Record<Champ, string>;
 
 function depuisPatient(p: Patient): Form {
   return CHAMPS.reduce((acc, c) => {
-    acc[c] = (p[c] as string | null) ?? "";
+    const v = p[c] as string | number | null;
+    acc[c] = v == null ? "" : String(v);
     return acc;
   }, {} as Form);
 }
@@ -31,6 +32,14 @@ function formatDate(iso: string): string {
   if (!iso) return "";
   const [a, m, j] = iso.split("-");
   return j && m && a ? `${j}/${m}/${a}` : iso;
+}
+
+// Ajoute n jours à une date "YYYY-MM-DD" et renvoie "JJ/MM/AAAA".
+function ajouterJours(iso: string, n: number): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function age(iso: string): number | null {
@@ -76,7 +85,11 @@ export function InfosPatient({
     const payload = CHAMPS.reduce((acc, c) => {
       acc[c] = form[c].trim() || null;
       return acc;
-    }, {} as Record<Champ, string | null>);
+    }, {} as Record<Champ, string | number | null>);
+    // La durée de prise en charge est un entier (colonne int).
+    payload.duree_prise_en_charge = form.duree_prise_en_charge.trim()
+      ? Number(form.duree_prise_en_charge) || null
+      : null;
 
     const { error } = await supabase.from("patient").update(payload).eq("id", patient.id);
     setBusy(false);
@@ -122,6 +135,7 @@ export function InfosPatient({
             <Champ label="Opération subie" value={form.operation} onChange={set("operation")} />
             <Champ label="Date de l'opération" type="date" value={form.date_operation} onChange={set("date_operation")} />
           </div>
+          <Champ label="Jours de prise en charge" value={form.duree_prise_en_charge} onChange={set("duree_prise_en_charge")} />
           <Champ label="Chirurgien" value={form.chirurgien} onChange={set("chirurgien")} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Champ label="Pharmacie" value={form.pharmacie} onChange={set("pharmacie")} />
@@ -157,6 +171,9 @@ export function InfosPatient({
   const aucune = CHAMPS.every((c) => !vue[c]);
   const ageAns = age(vue.date_naissance);
   const villeLigne = [vue.code_postal, vue.ville].filter(Boolean).join(" ");
+  const duree = vue.duree_prise_en_charge ? Number(vue.duree_prise_en_charge) : null;
+  const j1 = vue.date_operation ? ajouterJours(vue.date_operation, 1) : "";
+  const dernierJour = vue.date_operation && duree ? ajouterJours(vue.date_operation, duree) : "";
 
   return (
     <section className="card grid gap-4">
@@ -198,6 +215,9 @@ export function InfosPatient({
               value={vue.operation}
               extra={vue.date_operation ? formatDate(vue.date_operation) : undefined}
             />
+            <Ligne label="Prise en charge" value={duree ? `${duree} jours` : ""} />
+            {j1 && <Ligne label="Suivi J1" value={j1} />}
+            {dernierJour && <Ligne label="Suivi dernier jour" value={dernierJour} />}
             <Ligne label="Chirurgien" value={vue.chirurgien} />
             <Ligne
               label="Pharmacie"

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { useData } from "@/lib/hooks/useData";
 import { AstreinteAlerte } from "@/components/AstreinteAlerte";
+import { RappelsSuivi } from "@/components/RappelsSuivi";
 import type { Patient } from "@/lib/types";
 
 type AlerteInfo = { active: number; acquittees: number };
@@ -75,6 +76,7 @@ export default function Dashboard() {
   return (
     <div className="grid gap-5">
       <AstreinteAlerte />
+      <RappelsSuivi />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Tableau de bord</h1>
         {!data ? (
@@ -148,7 +150,7 @@ export default function Dashboard() {
               <thead className="bg-rose-50 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Patient</th>
-                  <th className="px-4 py-3">Statut suivi</th>
+                  <th className="px-4 py-3">Statut</th>
                   <th className="px-4 py-3">Alertes</th>
                   <th className="px-4 py-3">Message</th>
                   <th className="px-4 py-3"></th>

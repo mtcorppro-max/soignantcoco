@@ -92,6 +92,9 @@ export async function POST(request: Request) {
       date_operation: body.date_operation || null,
       alerte_1_nom: body.alerte_1_nom || null,
       alerte_2_nom: body.alerte_2_nom || null,
+      duree_prise_en_charge: body.duree_prise_en_charge
+        ? Number(body.duree_prise_en_charge) || null
+        : null,
     })
     .select("id")
     .single();

@@ -20,6 +20,7 @@ const VIDE = {
   adresse: "",
   operation: "",
   date_operation: "",
+  duree_prise_en_charge: "",
   chirurgien: "",
   pharmacie: "",
   pharmacie_tel: "",
@@ -162,6 +163,19 @@ export function NouveauPatientForm() {
             <label className="label">Date de l&apos;opération</label>
             <input type="date" className="input" value={form.date_operation} onChange={set("date_operation")} />
           </div>
+        </div>
+        <div>
+          <label className="label">Nombre total de jours de prise en charge</label>
+          <input
+            className="input"
+            value={form.duree_prise_en_charge}
+            onChange={set("duree_prise_en_charge")}
+            placeholder="ex. 30"
+            inputMode="numeric"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Permet de planifier un suivi à J1 et au dernier jour.
+          </p>
         </div>
         <div>
           <label className="label">Chirurgien (qui a opéré)</label>

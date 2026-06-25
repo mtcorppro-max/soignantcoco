@@ -1,8 +1,215 @@
+import { createClient } from "@/lib/supabase/client";
 import type { Patient, Suivi } from "@/lib/types";
 
 const ROSE: [number, number, number] = [190, 24, 93];
+const ROSE_CLAIR: [number, number, number] = [233, 128, 170];
 const GRIS: [number, number, number] = [90, 90, 90];
+const GRIS_CLAIR: [number, number, number] = [200, 200, 200];
+const ROUGE: [number, number, number] = [220, 70, 70];
 const NOIR: [number, number, number] = [40, 40, 40];
+
+type Pt = { t: number; v: number };
+type Serie = { label: string; couleur: [number, number, number]; points: Pt[] };
+type Seuil = { min: number | null; max: number | null };
+
+// Charge l'historique des mesures du patient, groupé par type, + les seuils actifs.
+async function chargerMesures(
+  patientId: string
+): Promise<{ parType: Record<string, Pt[]>; seuils: Record<string, Seuil> }> {
+  const supabase = createClient();
+  const [{ data: mesures }, { data: seuils }] = await Promise.all([
+    supabase
+      .from("mesure")
+      .select("type,valeur,horodatage")
+      .eq("patient_id", patientId)
+      .order("horodatage", { ascending: true })
+      .limit(1000),
+    supabase
+      .from("seuil")
+      .select("type_mesure,valeur_min,valeur_max,actif")
+      .eq("patient_id", patientId)
+      .eq("actif", true),
+  ]);
+  const parType: Record<string, Pt[]> = {};
+  (mesures ?? []).forEach((m) => {
+    const v = Number(m.valeur);
+    if (!isFinite(v)) return;
+    (parType[m.type as string] ??= []).push({ t: new Date(m.horodatage).getTime(), v });
+  });
+  const seuilMap: Record<string, Seuil> = {};
+  (seuils ?? []).forEach((s) => {
+    seuilMap[s.type_mesure as string] = { min: s.valeur_min, max: s.valeur_max };
+  });
+  return { parType, seuils: seuilMap };
+}
+
+// Charge une data-URL dans une image, la convertit en JPEG (gère png/webp) et
+// renvoie ses dimensions. Retourne null si le format est illisible (ex. HEIC).
+async function imageJpeg(dataUrl: string): Promise<{ data: string; w: number; h: number } | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const ctx = c.getContext("2d");
+      if (!ctx) return resolve(null);
+      ctx.drawImage(img, 0, 0);
+      try {
+        resolve({ data: c.toDataURL("image/jpeg", 0.85), w: img.naturalWidth, h: img.naturalHeight });
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+// Récupère les photos rattachées à un suivi, prêtes à insérer dans le PDF.
+async function chargerPhotosSuivi(
+  suiviId: string
+): Promise<{ data: string; w: number; h: number; legende: string | null }[]> {
+  const supabase = createClient();
+  const { data: rows } = await supabase
+    .from("photo")
+    .select("chemin_stockage,legende")
+    .eq("suivi_id", suiviId);
+  const photos = (rows ?? []) as { chemin_stockage: string; legende: string | null }[];
+  if (photos.length === 0) return [];
+
+  const res = await fetch("/api/photo-data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chemins: photos.map((p) => p.chemin_stockage) }),
+  });
+  const map: Record<string, string> = (await res.json().catch(() => ({ data: {} }))).data ?? {};
+
+  const out: { data: string; w: number; h: number; legende: string | null }[] = [];
+  for (const p of photos) {
+    const b64 = map[p.chemin_stockage];
+    if (!b64) continue;
+    const im = await imageJpeg(b64);
+    if (im) out.push({ ...im, legende: p.legende });
+  }
+  return out;
+}
+
+// Dessine un mini graphique en courbe (axes + polyligne) aux couleurs de l'app.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dessinerCourbe(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  doc: any,
+  ox: number,
+  oy: number,
+  w: number,
+  h: number,
+  titre: string,
+  unite: string,
+  series: Serie[],
+  seuil?: Seuil
+) {
+  const GOUT = 11; // gouttière gauche pour les libellés d'axe
+  const x0 = ox + GOUT;
+  const x1 = ox + w;
+  const y0 = oy; // haut du cadre
+  const y1 = oy + h; // bas du cadre
+
+  // Titre
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...ROSE);
+  doc.text(`${titre}  (${unite})`, ox, oy - 2.5);
+
+  // Cadre
+  doc.setDrawColor(...GRIS_CLAIR);
+  doc.setLineWidth(0.2);
+  doc.rect(x0, y0, x1 - x0, y1 - y0);
+
+  const tousV: number[] = [];
+  series.forEach((s) => s.points.forEach((p) => tousV.push(p.v)));
+  if (seuil?.min != null) tousV.push(seuil.min);
+  if (seuil?.max != null) tousV.push(seuil.max);
+
+  if (tousV.length === 0) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(...GRIS);
+    doc.text("Aucune donnée", (x0 + x1) / 2, (y0 + y1) / 2, { align: "center" });
+    return;
+  }
+
+  let vmin = Math.min(...tousV);
+  let vmax = Math.max(...tousV);
+  if (vmin === vmax) { vmin -= 1; vmax += 1; }
+  const pad = (vmax - vmin) * 0.12;
+  vmin -= pad; vmax += pad;
+
+  const tousT: number[] = [];
+  series.forEach((s) => s.points.forEach((p) => tousT.push(p.t)));
+  const tmin = Math.min(...tousT);
+  const tmax = Math.max(...tousT);
+
+  const xOf = (t: number) => (tmax === tmin ? (x0 + x1) / 2 : x0 + ((t - tmin) / (tmax - tmin)) * (x1 - x0));
+  const yOf = (v: number) => y1 - ((v - vmin) / (vmax - vmin)) * (y1 - y0);
+
+  const dec = vmax - vmin < 8 ? 1 : 0;
+
+  // Libellés d'axe Y (max en haut, min en bas)
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(...GRIS);
+  doc.text(vmax.toFixed(dec), x0 - 1.5, y0 + 2, { align: "right" });
+  doc.text(vmin.toFixed(dec), x0 - 1.5, y1, { align: "right" });
+
+  // Seuils (lignes pointillées rouges)
+  const ligneSeuil = (v: number | null | undefined) => {
+    if (v == null || v < vmin || v > vmax) return;
+    const yy = yOf(v);
+    doc.setDrawColor(...ROUGE);
+    doc.setLineWidth(0.3);
+    doc.setLineDashPattern([1, 1], 0);
+    doc.line(x0, yy, x1, yy);
+    doc.setLineDashPattern([], 0);
+  };
+  ligneSeuil(seuil?.min);
+  ligneSeuil(seuil?.max);
+
+  // Courbes
+  series.forEach((s) => {
+    if (s.points.length === 0) return;
+    doc.setDrawColor(...s.couleur);
+    doc.setFillColor(...s.couleur);
+    doc.setLineWidth(0.5);
+    for (let i = 1; i < s.points.length; i++) {
+      doc.line(xOf(s.points[i - 1].t), yOf(s.points[i - 1].v), xOf(s.points[i].t), yOf(s.points[i].v));
+    }
+    s.points.forEach((p) => doc.circle(xOf(p.t), yOf(p.v), 0.5, "F"));
+  });
+
+  // Libellés d'axe X (première / dernière date)
+  const fmtJour = (t: number) =>
+    new Date(t).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(...GRIS);
+  doc.text(fmtJour(tmin), x0, y1 + 3.5);
+  if (tmax !== tmin) doc.text(fmtJour(tmax), x1, y1 + 3.5, { align: "right" });
+
+  // Légende (si plusieurs séries) : en haut à droite, sur la ligne du titre
+  if (series.length > 1) {
+    let rx = x1;
+    doc.setFontSize(6.5);
+    [...series].reverse().forEach((s) => {
+      const tw = doc.getTextWidth(s.label);
+      doc.setTextColor(...GRIS);
+      doc.text(s.label, rx, oy - 2.5, { align: "right" });
+      doc.setFillColor(...s.couleur);
+      doc.circle(rx - tw - 2, oy - 3.2, 0.8, "F");
+      rx -= tw + 8;
+    });
+  }
+}
 
 function fdate(iso: string | null): string {
   if (!iso) return "—";
@@ -186,6 +393,96 @@ export async function genererPdfSuivi(patient: Patient, s: Suivi) {
   champ("Cicatrisation", s.cicatrisation);
   champ("Mobilisation", s.mobilisation);
   champ("Bilan sanguin", s.bilan_sanguin);
+
+  // ── Annexes (photo + courbes) ─────────────────────────────────────
+  // Récupération des données puis mise en page sur une page dédiée :
+  // bandeau + photo, puis les courbes juste en dessous (page suivante
+  // seulement si elles ne tiennent pas).
+  const photos = await chargerPhotosSuivi(s.id);
+  const { parType, seuils } = await chargerMesures(patient.id);
+  const aDesMesures = ["ta_systolique", "ta_diastolique", "spo2", "temperature", "bpm"].some(
+    (t) => (parType[t]?.length ?? 0) > 0
+  );
+
+  if (photos.length > 0 || aDesMesures) {
+    doc.addPage();
+    y = M;
+  }
+
+  // ── Photo(s) de la cicatrice ──────────────────────────────────────
+  if (photos.length > 0) {
+    bandeau("Photo(s) de la cicatrice");
+    photos.forEach((im) => {
+      let w = 100;
+      let h = (w * im.h) / im.w;
+      if (h > 75) { h = 75; w = (h * im.w) / im.h; }
+      if (y + h + 10 > 285) { doc.addPage(); y = M; }
+      const x = (210 - w) / 2; // centré
+      try {
+        doc.addImage(im.data, "JPEG", x, y, w, h);
+      } catch {
+        /* image illisible : on ignore */
+      }
+      y += h + 2;
+      if (im.legende) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+        doc.setTextColor(...GRIS);
+        doc.text(im.legende, 105, y + 3, { align: "center" });
+        y += 5;
+      }
+      y += 6;
+    });
+  }
+
+  // ── Courbes de surveillance ───────────────────────────────────────
+  if (aDesMesures) {
+    const colW = (L - 8) / 2;
+    const plotH = 38;
+    const blockH = 56;
+    // Saut de page uniquement si les courbes ne tiennent pas sous la photo.
+    const hauteurCourbes = 12 + 4 + 2 * blockH;
+    if (y + hauteurCourbes > 285) { doc.addPage(); y = M; }
+    bandeau("Courbes de surveillance");
+
+    const charts: { titre: string; unite: string; series: Serie[]; seuil?: Seuil }[] = [
+      {
+        titre: "Tension artérielle",
+        unite: "mmHg",
+        series: [
+          { label: "Systolique", couleur: ROSE, points: parType["ta_systolique"] ?? [] },
+          { label: "Diastolique", couleur: ROSE_CLAIR, points: parType["ta_diastolique"] ?? [] },
+        ],
+      },
+      {
+        titre: "Saturation (SpO₂)",
+        unite: "%",
+        series: [{ label: "SpO₂", couleur: ROSE, points: parType["spo2"] ?? [] }],
+        seuil: seuils["spo2"],
+      },
+      {
+        titre: "Température",
+        unite: "°C",
+        series: [{ label: "T°", couleur: ROSE, points: parType["temperature"] ?? [] }],
+        seuil: seuils["temperature"],
+      },
+      {
+        titre: "Pouls",
+        unite: "bpm",
+        series: [{ label: "Pouls", couleur: ROSE, points: parType["bpm"] ?? [] }],
+        seuil: seuils["bpm"],
+      },
+    ];
+
+    const topGrille = y + 4;
+    charts.forEach((c, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const ox = M + col * (colW + 8);
+      const oy = topGrille + row * blockH;
+      dessinerCourbe(doc, ox, oy, colW, plotH, c.titre, c.unite, c.series, c.seuil);
+    });
+  }
 
   // ── Pied de page ──────────────────────────────────────────────────
   const ph = doc.internal.pageSize.getHeight();
