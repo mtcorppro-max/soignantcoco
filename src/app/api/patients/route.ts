@@ -95,6 +95,7 @@ export async function POST(request: Request) {
       duree_prise_en_charge: body.duree_prise_en_charge
         ? Number(body.duree_prise_en_charge) || null
         : null,
+      jours_suivi: Array.isArray(body.jours_suivi) && body.jours_suivi.length > 0 ? body.jours_suivi : null,
     })
     .select("id")
     .single();

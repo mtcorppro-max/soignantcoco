@@ -103,6 +103,8 @@ export interface Patient {
   alerte_2_nom: string | null;
   // Durée totale de prise en charge en jours (cf. migration 0013)
   duree_prise_en_charge: number | null;
+  // Jours de suivi programmés ex. [1,3,5] (cf. migration 0026)
+  jours_suivi: number[] | null;
   created_at: string;
 }
 

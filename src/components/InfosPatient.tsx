@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { LIBELLE_ROLE } from "@/lib/roles";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
-import type { Patient, RolePro } from "@/lib/types";
+import type { Patient, RolePro, ProtocoleConsigne } from "@/lib/types";
 
-type Soignant = { id: string; nom: string; role: RolePro; telephone: string | null };
+type Soignant = { id: string; nom: string; role: RolePro; telephone: string | null; protocoles: ProtocoleConsigne[] | null };
 
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
@@ -65,12 +65,13 @@ export function InfosPatient({
   const [vue, setVue] = useState<Form>(() => depuisPatient(patient));
   const [busy, setBusy] = useState(false);
   const [soignants, setSoignants] = useState<Soignant[]>([]);
+  const [joursSuivi, setJoursSuivi] = useState<number[]>(patient.jours_suivi ?? []);
 
   useEffect(() => {
     if (!edition || soignants.length) return;
     createClient()
       .from("professionnel")
-      .select("id,nom,role,telephone")
+      .select("id,nom,role,telephone,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
   }, [edition, soignants.length]);
@@ -88,6 +89,15 @@ export function InfosPatient({
     setForm((f) => ({ ...f, [champNom]: v, [champTel]: c?.telephone ?? "" }));
   };
 
+  // Protocoles du chirurgien choisi + application d'une intervention.
+  const protocolesChir = chirurgiens.find((s) => s.nom === form.chirurgien)?.protocoles ?? [];
+  const appliquerProtocole = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const p = protocolesChir[Number(e.target.value)];
+    if (!p) return;
+    setForm((f) => ({ ...f, operation: p.intervention || f.operation, duree_prise_en_charge: p.duree || "" }));
+    setJoursSuivi(p.jours ?? []);
+  };
+
   async function enregistrer() {
     setBusy(true);
     const supabase = createClient();
@@ -99,6 +109,7 @@ export function InfosPatient({
     payload.duree_prise_en_charge = form.duree_prise_en_charge.trim()
       ? Number(form.duree_prise_en_charge) || null
       : null;
+    (payload as Record<string, unknown>).jours_suivi = joursSuivi.length ? joursSuivi : null;
 
     const { error } = await supabase.from("patient").update(payload).eq("id", patient.id);
     if (error) {
@@ -159,6 +170,22 @@ export function InfosPatient({
           </div>
           <Champ label="Jours de prise en charge" value={form.duree_prise_en_charge} onChange={set("duree_prise_en_charge")} />
           <SelectSoignant label="Chirurgien (compte existant)" value={form.chirurgien} soignants={chirurgiens} onChange={(v) => setVal("chirurgien", v)} />
+          {protocolesChir.length > 0 && (
+            <div>
+              <label className="label">Protocole / intervention appliqué</label>
+              <select className="select" onChange={appliquerProtocole} defaultValue="">
+                <option value="">— Choisir un protocole du chirurgien —</option>
+                {protocolesChir.map((p, i) => (
+                  <option key={i} value={i}>
+                    {p.intervention || `Protocole ${i + 1}`}{p.duree ? ` — ${p.duree} j` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {joursSuivi.length > 0 && (
+            <p className="text-xs text-brand">Jours de suivi : {joursSuivi.map((j) => `J${j}`).join(", ")}</p>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Champ label="Pharmacie" value={form.pharmacie} onChange={set("pharmacie")} />
             <Champ label="Tél. pharmacie" value={form.pharmacie_tel} onChange={set("pharmacie_tel")} />

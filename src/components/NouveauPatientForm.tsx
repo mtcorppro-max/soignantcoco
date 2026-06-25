@@ -4,9 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
-import type { RolePro } from "@/lib/types";
+import type { RolePro, ProtocoleConsigne } from "@/lib/types";
 
-type Soignant = { id: string; nom: string; role: RolePro; niveau: number; telephone: string | null };
+type Soignant = {
+  id: string;
+  nom: string;
+  role: RolePro;
+  niveau: number;
+  telephone: string | null;
+  protocoles: ProtocoleConsigne[] | null;
+};
 
 const VIDE = {
   prenom: "",
@@ -40,17 +47,29 @@ export function NouveauPatientForm() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [soignants, setSoignants] = useState<Soignant[]>([]);
+  const [joursSuivi, setJoursSuivi] = useState<number[]>([]);
 
   useEffect(() => {
     createClient()
       .from("professionnel")
-      .select("id,nom,role,niveau,telephone")
+      .select("id,nom,role,niveau,telephone,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
   }, []);
 
   const coordinatrices = soignants.filter((s) => s.role === "coordinatrice");
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
+
+  // Protocoles du chirurgien sélectionné (pour appliquer une intervention).
+  const protocolesChir = chirurgiens.find((s) => s.nom === form.chirurgien)?.protocoles ?? [];
+
+  // Applique un protocole : remplit opération, durée et jours de suivi.
+  const appliquerProtocole = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const p = protocolesChir[Number(e.target.value)];
+    if (!p) return;
+    setForm((f) => ({ ...f, operation: p.intervention || f.operation, duree_prise_en_charge: p.duree || "" }));
+    setJoursSuivi(p.jours ?? []);
+  };
 
   // Le rattachement est déduit du chirurgien + des coordinatrices d'alerte choisis.
   const rattachementsAuto = () => {
@@ -79,7 +98,7 @@ export function NouveauPatientForm() {
       const res = await fetch("/api/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, rattachements: rattachementsAuto() }),
+        body: JSON.stringify({ ...form, jours_suivi: joursSuivi, rattachements: rattachementsAuto() }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.message ?? "Erreur.");
@@ -110,6 +129,7 @@ export function NouveauPatientForm() {
             onClick={() => {
               setCode(null);
               setForm({ ...VIDE });
+              setJoursSuivi([]);
             }}
             className="btn-secondary flex-1"
           >
@@ -202,6 +222,27 @@ export function NouveauPatientForm() {
             )}
           </select>
         </div>
+        {protocolesChir.length > 0 && (
+          <div>
+            <label className="label">Protocole / intervention appliqué</label>
+            <select className="select" onChange={appliquerProtocole} defaultValue="">
+              <option value="">— Choisir un protocole du chirurgien —</option>
+              {protocolesChir.map((p, i) => (
+                <option key={i} value={i}>
+                  {p.intervention || `Protocole ${i + 1}`}{p.duree ? ` — ${p.duree} j` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Remplit automatiquement l&apos;opération, la durée et les jours de suivi.
+            </p>
+          </div>
+        )}
+        {joursSuivi.length > 0 && (
+          <p className="text-xs text-brand">
+            Jours de suivi programmés : {joursSuivi.map((j) => `J${j}`).join(", ")}
+          </p>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label">Pharmacie</label>

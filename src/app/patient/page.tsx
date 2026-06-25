@@ -8,6 +8,7 @@ import { useData } from "@/lib/hooks/useData";
 import { MESURES, TYPES_MESURE } from "@/lib/constants";
 import { conseilDuJour, conseilMeteo, type ConseilMeteo } from "@/lib/conseils";
 import { ConseilCard } from "@/components/ConseilCard";
+import { CalendrierSuivi } from "@/components/CalendrierSuivi";
 import type { Mesure } from "@/lib/types";
 
 type AccueilData = { dernieres: Map<string, Mesure>; aujourdhui: number };
@@ -66,6 +67,8 @@ export default function PatientAccueil() {
         </div>
 
         {meteo && <ConseilCard conseil={meteo} highlight />}
+
+        <CalendrierSuivi patientId={patient.id} />
 
         <Link href="/patient/mesure" className="btn-primary py-4 text-center text-base">
           ＋ Saisir une mesure
