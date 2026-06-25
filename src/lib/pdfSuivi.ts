@@ -410,9 +410,9 @@ export async function genererPdfSuivi(
         ],
       },
       {
-        titre: "Saturation (SpO₂)",
+        titre: "Saturation (SpO2)",
         unite: "%",
-        series: [{ label: "SpO₂", couleur: ROSE, points: parType["spo2"] ?? [] }],
+        series: [{ label: "SpO2", couleur: ROSE, points: parType["spo2"] ?? [] }],
         seuil: seuils["spo2"],
       },
       {
