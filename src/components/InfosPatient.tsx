@@ -6,7 +6,7 @@ import { LIBELLE_ROLE } from "@/lib/roles";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 import type { Patient, RolePro } from "@/lib/types";
 
-type Soignant = { id: string; nom: string; role: RolePro };
+type Soignant = { id: string; nom: string; role: RolePro; telephone: string | null };
 
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
@@ -70,7 +70,7 @@ export function InfosPatient({
     if (!edition || soignants.length) return;
     createClient()
       .from("professionnel")
-      .select("id,nom,role")
+      .select("id,nom,role,telephone")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
   }, [edition, soignants.length]);
@@ -78,6 +78,15 @@ export function InfosPatient({
   const set = (k: Champ) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
   const setVal = (k: Champ, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const coordinatrices = soignants.filter((s) => s.role === "coordinatrice");
+  const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
+
+  // Choix d'une coordinatrice pour une alerte : enregistre nom + téléphone du compte.
+  const choisirAlerte = (champNom: Champ, champTel: Champ) => (v: string) => {
+    const c = coordinatrices.find((s) => s.nom === v);
+    setForm((f) => ({ ...f, [champNom]: v, [champTel]: c?.telephone ?? "" }));
+  };
 
   async function enregistrer() {
     setBusy(true);
@@ -136,7 +145,7 @@ export function InfosPatient({
             <Champ label="Date de l'opération" type="date" value={form.date_operation} onChange={set("date_operation")} />
           </div>
           <Champ label="Jours de prise en charge" value={form.duree_prise_en_charge} onChange={set("duree_prise_en_charge")} />
-          <Champ label="Chirurgien" value={form.chirurgien} onChange={set("chirurgien")} />
+          <SelectSoignant label="Chirurgien (compte existant)" value={form.chirurgien} soignants={chirurgiens} onChange={(v) => setVal("chirurgien", v)} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Champ label="Pharmacie" value={form.pharmacie} onChange={set("pharmacie")} />
             <Champ label="Tél. pharmacie" value={form.pharmacie_tel} onChange={set("pharmacie_tel")} />
@@ -145,14 +154,8 @@ export function InfosPatient({
             <Champ label="Infirmière libérale" value={form.infirmiere_nom} onChange={set("infirmiere_nom")} />
             <Champ label="Tél. infirmière" value={form.infirmiere_tel} onChange={set("infirmiere_tel")} />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SelectSoignant label="Alerte 1 — soignant" value={form.alerte_1_nom} soignants={soignants} onChange={(v) => setVal("alerte_1_nom", v)} />
-            <Champ label="Alerte 1 — n°" value={form.tel_alerte_1} onChange={set("tel_alerte_1")} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SelectSoignant label="Alerte 2 — soignant" value={form.alerte_2_nom} soignants={soignants} onChange={(v) => setVal("alerte_2_nom", v)} />
-            <Champ label="Alerte 2 — n°" value={form.tel_alerte_2} onChange={set("tel_alerte_2")} />
-          </div>
+          <SelectSoignant label="Alerte 1 — infirmière coordinatrice" value={form.alerte_1_nom} soignants={coordinatrices} onChange={choisirAlerte("alerte_1_nom", "tel_alerte_1")} />
+          <SelectSoignant label="Alerte 2 — infirmière coordinatrice" value={form.alerte_2_nom} soignants={coordinatrices} onChange={choisirAlerte("alerte_2_nom", "tel_alerte_2")} />
         </div>
 
         <div className="flex gap-2">
