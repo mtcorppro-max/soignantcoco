@@ -265,7 +265,7 @@ const FEATURES = [
     icon: "∿",
     titre: "Suivi des constantes",
     description:
-      "Température, tension artérielle, saturation en oxygène et poids, avec courbes, ligne de seuil rouge et tableau simplifié.",
+      "Température, tension artérielle, saturation en oxygène, fréquence cardiaque et poids, avec courbes, ligne de seuil rouge et tableau simplifié.",
   },
   {
     icon: "◎",
@@ -284,6 +284,24 @@ const FEATURES = [
     titre: "Photos de cicatrice",
     description:
       "Le patient envoie des photos depuis son téléphone (accès caméra direct). Stockage privé, URLs signées côté pro.",
+  },
+  {
+    icon: "▤",
+    titre: "Comptes rendus PDF",
+    description:
+      "Fiche de suivi structurée (état général, constantes, douleur, alimentation, cicatrisation…) générant un compte rendu PDF avec courbes de surveillance et photos de la cicatrice.",
+  },
+  {
+    icon: "◷",
+    titre: "Planification des suivis",
+    description:
+      "Durée de prise en charge par patient, suivi prévu à J1 et au dernier jour, et rappels d'actions à réaliser directement dans le tableau de bord.",
+  },
+  {
+    icon: "▦",
+    titre: "Organisation de l'équipe",
+    description:
+      "Calendrier des congés des soignants et gestion des astreintes (semaine / week-end), avec alerte si elles ne sont pas renseignées à l'avance.",
   },
   {
     icon: "✦",
