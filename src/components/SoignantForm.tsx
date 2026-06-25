@@ -386,7 +386,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
                 rows={5}
                 value={form.protocole}
                 onChange={set("protocole")}
-                placeholder={"Suivi (ex. appel J1 obligatoire)\nDébits, surveillance, autres consignes…"}
+                placeholder={"Allo docteur si urgence\nJour de consultation du médecin…"}
               />
             </div>
           </div>
