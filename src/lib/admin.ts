@@ -3,7 +3,7 @@
 // des virgules). Par défaut : le compte propriétaire.
 // Pour ajouter le cousin : définir ADMIN_EMAILS="bymrts.pro@gmail.com,cousin@email.fr".
 export function emailsAdmin(): string[] {
-  const raw = process.env.ADMIN_EMAILS ?? "bymrts.pro@gmail.com";
+  const raw = process.env.ADMIN_EMAILS ?? "bymrts.pro@gmail.com,biotcorentin93@gmail.com";
   return raw
     .split(",")
     .map((e) => e.trim().toLowerCase())
