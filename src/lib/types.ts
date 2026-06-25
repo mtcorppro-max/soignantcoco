@@ -46,7 +46,7 @@ export interface Professionnel {
   cryotherapie_machine: string | null;
   envoi_ordo: string[] | null;
   pharmacie_per_os: boolean | null;
-  pharmacie_per_os_detail: string | null;
+  medicaments_per_os: { nom: string; posologie: string }[] | null;
   materiel_paramedical: string | null;
   created_at: string;
 }
