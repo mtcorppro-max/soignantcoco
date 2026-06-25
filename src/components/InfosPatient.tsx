@@ -6,7 +6,10 @@ import { LIBELLE_ROLE } from "@/lib/roles";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 import type { Patient, RolePro, ProtocoleConsigne } from "@/lib/types";
 
-type Soignant = { id: string; nom: string; role: RolePro; telephone: string | null; protocoles: ProtocoleConsigne[] | null };
+type Soignant = { id: string; nom: string; prenom: string | null; titre: string | null; role: RolePro; telephone: string | null; protocoles: ProtocoleConsigne[] | null };
+
+// Nom complet affiché et stocké : « [Titre] Prénom Nom ».
+const nomComplet = (s: Soignant) => [s.titre, s.prenom, s.nom].filter(Boolean).join(" ");
 
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
@@ -71,7 +74,7 @@ export function InfosPatient({
     if (!edition || soignants.length) return;
     createClient()
       .from("professionnel")
-      .select("id,nom,role,telephone,protocoles")
+      .select("id,nom,prenom,titre,role,telephone,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
   }, [edition, soignants.length]);
@@ -85,12 +88,12 @@ export function InfosPatient({
 
   // Choix d'une coordinatrice pour une alerte : enregistre nom + téléphone du compte.
   const choisirAlerte = (champNom: Champ, champTel: Champ) => (v: string) => {
-    const c = coordinatrices.find((s) => s.nom === v);
+    const c = coordinatrices.find((s) => nomComplet(s) === v);
     setForm((f) => ({ ...f, [champNom]: v, [champTel]: c?.telephone ?? "" }));
   };
 
   // Protocoles du chirurgien choisi + application d'une intervention.
-  const protocolesChir = chirurgiens.find((s) => s.nom === form.chirurgien)?.protocoles ?? [];
+  const protocolesChir = chirurgiens.find((s) => nomComplet(s) === form.chirurgien)?.protocoles ?? [];
   const appliquerProtocole = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const p = protocolesChir[Number(e.target.value)];
     if (!p) return;
@@ -120,7 +123,7 @@ export function InfosPatient({
 
     // Rattachement déduit du chirurgien + des coordinatrices d'alerte choisis.
     const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom].filter(Boolean);
-    const ids = [...new Set(soignants.filter((s) => noms.includes(s.nom)).map((s) => s.id))];
+    const ids = [...new Set(soignants.filter((s) => noms.includes(nomComplet(s))).map((s) => s.id))];
     // On resynchronise : suppression puis réinsertion (droits coordinatrice/niveau 1).
     await supabase.from("patient_soignant").delete().eq("patient_id", patient.id);
     if (ids.length) {
@@ -368,15 +371,15 @@ function SelectSoignant({
   soignants: Soignant[];
   onChange: (v: string) => void;
 }) {
-  const horsListe = value && !soignants.some((s) => s.nom === value);
+  const horsListe = value && !soignants.some((s) => nomComplet(s) === value);
   return (
     <div>
       <label className="label">{label}</label>
       <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">— Choisir un compte —</option>
         {soignants.map((s) => (
-          <option key={s.id} value={s.nom}>
-            {s.nom} ({LIBELLE_ROLE[s.role]})
+          <option key={s.id} value={nomComplet(s)}>
+            {nomComplet(s)} ({LIBELLE_ROLE[s.role]})
           </option>
         ))}
         {horsListe && <option value={value}>{value}</option>}

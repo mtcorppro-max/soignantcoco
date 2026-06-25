@@ -9,11 +9,16 @@ import type { RolePro, ProtocoleConsigne } from "@/lib/types";
 type Soignant = {
   id: string;
   nom: string;
+  prenom: string | null;
+  titre: string | null;
   role: RolePro;
   niveau: number;
   telephone: string | null;
   protocoles: ProtocoleConsigne[] | null;
 };
+
+// Nom complet affiché et stocké : « [Titre] Prénom Nom ».
+const nomComplet = (s: Soignant) => [s.titre, s.prenom, s.nom].filter(Boolean).join(" ");
 
 const VIDE = {
   prenom: "",
@@ -52,7 +57,7 @@ export function NouveauPatientForm() {
   useEffect(() => {
     createClient()
       .from("professionnel")
-      .select("id,nom,role,niveau,telephone,protocoles")
+      .select("id,nom,prenom,titre,role,niveau,telephone,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
   }, []);
@@ -61,7 +66,7 @@ export function NouveauPatientForm() {
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
 
   // Protocoles du chirurgien sélectionné (pour appliquer une intervention).
-  const protocolesChir = chirurgiens.find((s) => s.nom === form.chirurgien)?.protocoles ?? [];
+  const protocolesChir = chirurgiens.find((s) => nomComplet(s) === form.chirurgien)?.protocoles ?? [];
 
   // Applique un protocole : remplit opération, durée et jours de suivi.
   const appliquerProtocole = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -74,7 +79,7 @@ export function NouveauPatientForm() {
   // Le rattachement est déduit du chirurgien + des coordinatrices d'alerte choisis.
   const rattachementsAuto = () => {
     const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom].filter(Boolean);
-    const ids = soignants.filter((s) => noms.includes(s.nom)).map((s) => s.id);
+    const ids = soignants.filter((s) => noms.includes(nomComplet(s))).map((s) => s.id);
     return [...new Set(ids)];
   };
 
@@ -82,7 +87,7 @@ export function NouveauPatientForm() {
   // téléphone (déjà saisi à la création de son compte).
   const choisirAlerte = (champNom: "alerte_1_nom" | "alerte_2_nom", champTel: "tel_alerte_1" | "tel_alerte_2") =>
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const c = coordinatrices.find((s) => s.nom === e.target.value);
+      const c = coordinatrices.find((s) => nomComplet(s) === e.target.value);
       setForm((f) => ({ ...f, [champNom]: e.target.value, [champTel]: c?.telephone ?? "" }));
     };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -215,9 +220,9 @@ export function NouveauPatientForm() {
           <select className="select" value={form.chirurgien} onChange={(e) => setVal("chirurgien", e.target.value)}>
             <option value="">— Choisir un chirurgien / médecin —</option>
             {chirurgiens.map((s) => (
-              <option key={s.id} value={s.nom}>{s.nom}</option>
+              <option key={s.id} value={nomComplet(s)}>{nomComplet(s)}</option>
             ))}
-            {form.chirurgien && !chirurgiens.some((s) => s.nom === form.chirurgien) && (
+            {form.chirurgien && !chirurgiens.some((s) => nomComplet(s) === form.chirurgien) && (
               <option value={form.chirurgien}>{form.chirurgien}</option>
             )}
           </select>
@@ -268,9 +273,9 @@ export function NouveauPatientForm() {
           <select className="select" value={form.alerte_1_nom} onChange={choisirAlerte("alerte_1_nom", "tel_alerte_1")}>
             <option value="">— Choisir une infirmière coordinatrice —</option>
             {coordinatrices.map((s) => (
-              <option key={s.id} value={s.nom}>{s.nom}</option>
+              <option key={s.id} value={nomComplet(s)}>{nomComplet(s)}</option>
             ))}
-            {form.alerte_1_nom && !coordinatrices.some((s) => s.nom === form.alerte_1_nom) && (
+            {form.alerte_1_nom && !coordinatrices.some((s) => nomComplet(s) === form.alerte_1_nom) && (
               <option value={form.alerte_1_nom}>{form.alerte_1_nom}</option>
             )}
           </select>
@@ -280,9 +285,9 @@ export function NouveauPatientForm() {
           <select className="select" value={form.alerte_2_nom} onChange={choisirAlerte("alerte_2_nom", "tel_alerte_2")}>
             <option value="">— Choisir une infirmière coordinatrice —</option>
             {coordinatrices.map((s) => (
-              <option key={s.id} value={s.nom}>{s.nom}</option>
+              <option key={s.id} value={nomComplet(s)}>{nomComplet(s)}</option>
             ))}
-            {form.alerte_2_nom && !coordinatrices.some((s) => s.nom === form.alerte_2_nom) && (
+            {form.alerte_2_nom && !coordinatrices.some((s) => nomComplet(s) === form.alerte_2_nom) && (
               <option value={form.alerte_2_nom}>{form.alerte_2_nom}</option>
             )}
           </select>
