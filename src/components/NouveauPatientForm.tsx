@@ -216,7 +216,7 @@ export function NouveauPatientForm() {
           />
         </div>
         <div>
-          <label className="label">Chirurgien (qui a opéré)</label>
+          <label className="label">Chirurgien / Médecin</label>
           <select className="select" value={form.chirurgien} onChange={(e) => setVal("chirurgien", e.target.value)}>
             <option value="">— Choisir un chirurgien / médecin —</option>
             {chirurgiens.map((s) => (
