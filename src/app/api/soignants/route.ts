@@ -116,7 +116,7 @@ export async function POST(request: Request) {
             body.pharmacie_per_os === true && Array.isArray(body.medicaments_per_os) && body.medicaments_per_os.length > 0
               ? body.medicaments_per_os
               : null,
-          materiel_paramedical: texteOuNull(body.materiel_paramedical),
+          materiel_paramedical: body.materiel === true ? texteOuNull(body.materiel_paramedical) : null,
         }
       : {
           prenom: texteOuNull(body.prenom),

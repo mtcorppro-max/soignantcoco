@@ -33,6 +33,7 @@ const VIDE = {
   cryotherapie_duree: "",
   cryotherapie_machine: "",
   pharmacie_per_os: false,
+  materiel: false,
   materiel_paramedical: "",
   protocole: "",
 };
@@ -362,15 +363,20 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             </div>
 
             {/* Matériel paramédical */}
-            <div>
-              <label className="label">Matériel paramédical à commander</label>
-              <textarea
-                className="input"
-                rows={3}
-                value={form.materiel_paramedical}
-                onChange={set("materiel_paramedical")}
-                placeholder="ex. Attelle de genou, bas de contention…"
-              />
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="label mb-0">Matériel paramédical à commander</label>
+                <OuiNon valeur={form.materiel} onChange={(v) => setForm((f) => ({ ...f, materiel: v }))} nom="materiel" />
+              </div>
+              {form.materiel && (
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={form.materiel_paramedical}
+                  onChange={set("materiel_paramedical")}
+                  placeholder="ex. Attelle de genou, bas de contention…"
+                />
+              )}
             </div>
 
             <div>
