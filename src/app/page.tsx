@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { EtapesAnimees } from "@/components/EtapesAnimees";
-import { StatsAnimees } from "@/components/StatsAnimees";
 
 export default function Landing() {
   return (
@@ -91,11 +90,6 @@ export default function Landing() {
               <PhoneMockup />
             </div>
           </div>
-        </section>
-
-        {/* ── Stats ───────────────────────────────────────────── */}
-        <section className="hidden bg-brand py-14 md:block">
-          <StatsAnimees />
         </section>
 
         {/* ── Comment ça marche ───────────────────────────────── */}
