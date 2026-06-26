@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { Select } from "@/components/Select";
+import { RetourNouveau } from "@/components/RetourNouveau";
 
 type Prestataire = { id: string; nom: string };
 type Region = { id: string; nom: string; prestataire_id: string };
@@ -77,7 +78,10 @@ export default function StructurePage() {
 
   return (
     <div className="mx-auto max-w-3xl grid gap-6">
-      <h1 className="text-2xl font-bold text-slate-800">Structure — régions & agences</h1>
+      <div>
+        <RetourNouveau />
+        <h1 className="text-2xl font-bold text-slate-800">Structure — régions & agences</h1>
+      </div>
 
       {/* Création de région (niveau 0) */}
       {estN0 && (

@@ -2,6 +2,7 @@
 
 import { useProSession } from "@/lib/hooks/useSession";
 import { SoignantForm } from "@/components/SoignantForm";
+import { RetourNouveau } from "@/components/RetourNouveau";
 
 export default function NouveauSoignant() {
   const pro = useProSession();
@@ -18,6 +19,7 @@ export default function NouveauSoignant() {
 
   return (
     <div className="mx-auto max-w-2xl">
+      <RetourNouveau />
       <h1 className="mb-5 text-2xl font-bold text-slate-800">Nouveau compte soignant</h1>
       <SoignantForm />
     </div>

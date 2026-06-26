@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { Select } from "@/components/Select";
 import { ProtocoleEditor, protocoleVide, protocolePropre, type Protocole } from "@/components/protocole";
+import { RetourNouveau } from "@/components/RetourNouveau";
 
 const SPECIALITES = [
   "Chirurgien orthopédique", "Chirurgien cardiaque", "Chirurgien vasculaire", "Chirurgien thoracique",
@@ -85,6 +86,7 @@ export default function NouveauSoignantExterne() {
   return (
     <div className="mx-auto max-w-2xl grid gap-5">
       <div>
+        <RetourNouveau />
         <h1 className="text-2xl font-bold text-slate-800">Nouveau soignant externe</h1>
         <p className="mt-1 text-sm text-slate-500">
           Soignant hors entreprise, sans compte AS2CŒUR (médecin, chirurgien ou infirmière libérale).
