@@ -190,7 +190,11 @@ function EditeurSoignant({
       body: JSON.stringify({ niveau: Number(niveau), agence_id: niveau === "0" ? null : (agenceId || null) }),
     });
     setBusy(false);
-    if (!res.ok) { setErr((await res.json().catch(() => ({}))).message ?? "Échec."); return; }
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      setErr(j?.message ?? `Échec (HTTP ${res.status}).`);
+      return;
+    }
     onSaved();
   }
 
