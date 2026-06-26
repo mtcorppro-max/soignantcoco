@@ -28,7 +28,14 @@ export default function LoginPro() {
       setChargement(false);
       return;
     }
-    router.push("/pro");
+    // Un admin (allowlist, sans fiche soignant) est redirigé vers /admin.
+    const ctx = await fetch("/api/admin/context").then((r) => r.json()).catch(() => null);
+    const proExiste = await supabase
+      .from("professionnel")
+      .select("id")
+      .maybeSingle()
+      .then(({ data }) => !!data);
+    router.push(ctx?.isAdmin && !proExiste ? "/admin" : "/pro");
     router.refresh();
   }
 
