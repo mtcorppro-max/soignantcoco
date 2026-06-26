@@ -14,6 +14,7 @@ type PatientLite = {
   date_operation: string | null;
   jours_suivi: number[] | null;
   chirurgien: string | null;
+  alerte_1_nom: string | null;
 };
 
 type Suivi = {
@@ -22,11 +23,8 @@ type Suivi = {
   jour: number;
   date: Date;
   chirurgien: string | null;
-  responsables: string[];
+  responsable: string | null;
 };
-
-const nomPro = (p: { titre: string | null; prenom: string | null; nom: string }) =>
-  [p.titre, p.prenom, p.nom].filter(Boolean).join(" ");
 
 function minuit(d: Date): Date {
   const x = new Date(d);
@@ -52,33 +50,16 @@ function libelleJour(d: Date, today: Date): string {
 export default function SuivisPage() {
   const pro = useProSession();
   const [patients, setPatients] = useState<PatientLite[]>([]);
-  const [responsablesParPatient, setResponsablesParPatient] = useState<Map<string, string[]>>(new Map());
   const [pret, setPret] = useState(false);
   const [filtreChir, setFiltreChir] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
+    createClient()
       .from("patient")
-      .select("id,nom,statut,date_operation,jours_suivi,chirurgien")
+      .select("id,nom,statut,date_operation,jours_suivi,chirurgien,alerte_1_nom")
       .then(({ data }) => {
         setPatients((data ?? []) as PatientLite[]);
         setPret(true);
-      });
-    // Soignants rattachés (qui réalisent le suivi) : coordinatrices & infirmières.
-    supabase
-      .from("patient_soignant")
-      .select("patient_id, professionnel:professionnel_id(titre,prenom,nom,role)")
-      .then(({ data }) => {
-        type Pro = { titre: string | null; prenom: string | null; nom: string; role: string };
-        const m = new Map<string, string[]>();
-        ((data ?? []) as unknown as { patient_id: string; professionnel: Pro | Pro[] | null }[]).forEach((l) => {
-          const p = Array.isArray(l.professionnel) ? l.professionnel[0] : l.professionnel;
-          if (!p || p.role === "chirurgien") return;
-          if (!m.has(l.patient_id)) m.set(l.patient_id, []);
-          m.get(l.patient_id)!.push(nomPro(p));
-        });
-        setResponsablesParPatient(m);
       });
   }, []);
 
@@ -104,7 +85,7 @@ export default function SuivisPage() {
           jour: j,
           date: ajoute(base, j),
           chirurgien: p.chirurgien,
-          responsables: responsablesParPatient.get(p.id) ?? [],
+          responsable: p.alerte_1_nom,
         });
       });
     });
@@ -120,7 +101,7 @@ export default function SuivisPage() {
       map.get(k)!.items.push(s);
     });
     return [...map.values()];
-  }, [patients, filtreChir, today, responsablesParPatient]);
+  }, [patients, filtreChir, today]);
 
   if (pro && !estCoordOuManager(pro.role) && pro.niveau !== 0) {
     return (
@@ -178,7 +159,7 @@ export default function SuivisPage() {
                         <p className="mt-0.5 text-xs">
                           <span className="text-slate-400">À réaliser par : </span>
                           <span className="font-medium text-slate-600">
-                            {s.responsables.length ? s.responsables.join(", ") : "Non attribué"}
+                            {s.responsable || "Non attribué"}
                           </span>
                         </p>
                       </div>
