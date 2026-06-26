@@ -216,17 +216,6 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             ]}
           />
         </div>
-        <div>
-          <label className="label">Niveau d&apos;accès *</label>
-          <Select
-            value={form.niveau}
-            onChange={(v) => setForm((f) => ({ ...f, niveau: v }))}
-            options={[
-              { value: "1", label: "Niveau 1 — accès à tous les patients" },
-              { value: "2", label: "Niveau 2 — uniquement les patients rattachés" },
-            ]}
-          />
-        </div>
         {estChirurgien && (
           <div>
             <label className="label">Spécialité</label>
@@ -238,6 +227,17 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             />
           </div>
         )}
+        <div>
+          <label className="label">Niveau d&apos;accès *</label>
+          <Select
+            value={form.niveau}
+            onChange={(v) => setForm((f) => ({ ...f, niveau: v }))}
+            options={[
+              { value: "1", label: "Niveau 1 — accès à tous les patients" },
+              { value: "2", label: "Niveau 2 — uniquement les patients rattachés" },
+            ]}
+          />
+        </div>
         {estChirurgien && (
           <>
             <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Médecin</p>
