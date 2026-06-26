@@ -104,7 +104,7 @@ export default function PecPage() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-bold text-slate-800">Prises en charge (PEC)</h1>
+      <h1 className="text-2xl font-bold text-slate-800">Prises en charge</h1>
 
       {/* Chiffres clés — cliquables */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
