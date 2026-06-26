@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 
@@ -47,34 +47,48 @@ function diffDays(a: string, b: string) {
   return Math.round((new Date(pb.y, pb.m, pb.d).getTime() - new Date(pa.y, pa.m, pa.d).getTime()) / 86_400_000);
 }
 
+const NB_JOURS = 45; // fenêtre glissante (~1,5 mois)
+
 export default function OrganisationPage() {
   const pro = useProSession();
-  const [mois, setMois] = useState(() => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() }; });
+  const todayStr = useMemo(() => { const n = new Date(); return ymd(n.getFullYear(), n.getMonth(), n.getDate()); }, []);
+  const [start, setStart] = useState(() => addDays(todayStr, -1)); // démarre à J-1
   const [coords, setCoords] = useState<ProLite[]>([]);
   const [events, setEvents] = useState<Evt[]>([]);
   const [editing, setEditing] = useState<Evt | null>(null);
 
   const interdit = pro && pro.role !== "coordinatrice";
+  const fin = addDays(start, NB_JOURS - 1);
 
   const charger = useCallback(async () => {
     const supabase = createClient();
-    const debutMois = ymd(mois.y, mois.m, 1);
-    const finMois = ymd(mois.y, mois.m, new Date(mois.y, mois.m + 1, 0).getDate());
     const [{ data: pros }, { data: evts }] = await Promise.all([
       supabase.from("professionnel").select("id,nom,prenom,titre,role").eq("role", "coordinatrice").order("nom"),
       supabase.from("evenement_planning").select("id,professionnel_id,type,date_debut,date_fin,remplacant_id,note")
-        .lte("date_debut", finMois).gte("date_fin", debutMois),
+        .lte("date_debut", fin).gte("date_fin", start),
     ]);
     setCoords((pros ?? []) as ProLite[]);
     setEvents((evts ?? []) as Evt[]);
-  }, [mois]);
+  }, [start, fin]);
 
   useEffect(() => { charger(); }, [charger]);
 
-  const nbJours = new Date(mois.y, mois.m + 1, 0).getDate();
-  const jours = Array.from({ length: nbJours }, (_, i) => i + 1);
-  const today = new Date();
-  const moisLabel = new Date(mois.y, mois.m, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  // Jours de la fenêtre (à partir de J-1)
+  const jours = useMemo(() => Array.from({ length: NB_JOURS }, (_, i) => {
+    const ds = addDays(start, i);
+    const p = parse(ds);
+    const dt = new Date(p.y, p.m, p.d);
+    const dow = dt.getDay();
+    return {
+      i, ds, jour: p.d, dow,
+      we: dow === 0 || dow === 6,
+      premier: p.d === 1,
+      estAuj: ds === todayStr,
+      moisAbbr: dt.toLocaleDateString("fr-FR", { month: "short" }),
+    };
+  }), [start, todayStr]);
+
+  const fmtHumain = (ds: string) => { const p = parse(ds); return new Date(p.y, p.m, p.d).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }); };
 
   // ── Drag (déplacer / étendre) ───────────────────────────────────────
   const drag = useRef<{ id: string; kind: "move" | "resize-l" | "resize-r"; left: number; dayW: number; lastIdx: number } | null>(null);
@@ -82,21 +96,18 @@ export default function OrganisationPage() {
   const onPointerMove = useCallback((e: PointerEvent) => {
     const d = drag.current;
     if (!d) return;
-    const idx = Math.max(0, Math.min(nbJours - 1, Math.floor((e.clientX - d.left) / d.dayW)));
+    const idx = Math.max(0, Math.min(NB_JOURS - 1, Math.floor((e.clientX - d.left) / d.dayW)));
     if (idx === d.lastIdx) return;
     const delta = idx - d.lastIdx;
     d.lastIdx = idx;
     setEvents((arr) => arr.map((ev) => {
       if (ev.id !== d.id) return ev;
       if (d.kind === "move") return { ...ev, date_debut: addDays(ev.date_debut, delta), date_fin: addDays(ev.date_fin, delta) };
-      if (d.kind === "resize-r") {
-        const nf = ymd(mois.y, mois.m, idx + 1);
-        return diffDays(ev.date_debut, nf) >= 0 ? { ...ev, date_fin: nf } : ev;
-      }
-      const nd = ymd(mois.y, mois.m, idx + 1);
-      return diffDays(nd, ev.date_fin) >= 0 ? { ...ev, date_debut: nd } : ev;
+      const date = addDays(start, idx);
+      if (d.kind === "resize-r") return diffDays(ev.date_debut, date) >= 0 ? { ...ev, date_fin: date } : ev;
+      return diffDays(date, ev.date_fin) >= 0 ? { ...ev, date_debut: date } : ev;
     }));
-  }, [nbJours, mois]);
+  }, [start]);
 
   const onPointerUp = useCallback(() => {
     const d = drag.current;
@@ -122,15 +133,14 @@ export default function OrganisationPage() {
     const zone = (e.currentTarget as HTMLElement).closest("[data-zone]") as HTMLElement | null;
     if (!zone) return;
     const rect = zone.getBoundingClientRect();
-    drag.current = { id: ev.id, kind, left: rect.left, dayW: rect.width / nbJours, lastIdx: idxDepuisXInit(e.clientX, rect.left, rect.width / nbJours, nbJours) };
+    drag.current = { id: ev.id, kind, left: rect.left, dayW: rect.width / NB_JOURS, lastIdx: idxDepuisXInit(e.clientX, rect.left, rect.width / NB_JOURS, NB_JOURS) };
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
   }
 
   // ── Création par clic sur une cellule ───────────────────────────────
-  function creer(proId: string, jour: number) {
-    const date = ymd(mois.y, mois.m, jour);
-    setEditing({ id: "", professionnel_id: proId, type: "conges", date_debut: date, date_fin: date, remplacant_id: null, note: null });
+  function creer(proId: string, ds: string) {
+    setEditing({ id: "", professionnel_id: proId, type: "conges", date_debut: ds, date_fin: ds, remplacant_id: null, note: null });
   }
 
   async function sauver(ev: Evt) {
@@ -162,11 +172,12 @@ export default function OrganisationPage() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold capitalize text-slate-800">{moisLabel}</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Organisation</h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => setMois((s) => ({ y: s.m === 0 ? s.y - 1 : s.y, m: s.m === 0 ? 11 : s.m - 1 }))} className="btn-secondary px-3 py-1.5">←</button>
-          <button onClick={() => { const n = new Date(); setMois({ y: n.getFullYear(), m: n.getMonth() }); }} className="btn-secondary px-3 py-1.5 text-sm">Aujourd&apos;hui</button>
-          <button onClick={() => setMois((s) => ({ y: s.m === 11 ? s.y + 1 : s.y, m: s.m === 11 ? 0 : s.m + 1 }))} className="btn-secondary px-3 py-1.5">→</button>
+          <span className="mr-1 text-sm capitalize text-slate-500">{fmtHumain(start)} – {fmtHumain(fin)}</span>
+          <button onClick={() => setStart((s) => addDays(s, -30))} className="btn-secondary px-3 py-1.5">←</button>
+          <button onClick={() => setStart(addDays(todayStr, -1))} className="btn-secondary px-3 py-1.5 text-sm">Aujourd&apos;hui</button>
+          <button onClick={() => setStart((s) => addDays(s, 30))} className="btn-secondary px-3 py-1.5">→</button>
         </div>
       </div>
 
@@ -182,21 +193,20 @@ export default function OrganisationPage() {
 
       {/* Calendrier */}
       <div className="overflow-x-auto rounded-2xl border border-rose-100 bg-white">
-        <div className="min-w-[760px]">
+        <div className="min-w-[1100px]">
           {/* En-tête jours */}
           <div className="flex border-b border-rose-100">
             <div className="w-40 shrink-0 px-3 py-2 text-xs font-semibold text-slate-400">Coordinatrice</div>
-            <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}>
-              {jours.map((j) => {
-                const estAuj = today.getFullYear() === mois.y && today.getMonth() === mois.m && today.getDate() === j;
-                const dow = new Date(mois.y, mois.m, j).getDay();
-                const we = dow === 0 || dow === 6;
-                return (
-                  <div key={j} className={`border-l border-rose-50 py-1 text-center text-[10px] ${we ? "bg-rose-50/50" : ""} ${estAuj ? "font-bold text-brand" : "text-slate-400"}`}>
-                    {j}
-                  </div>
-                );
-              })}
+            <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${NB_JOURS}, minmax(0,1fr))` }}>
+              {jours.map((j) => (
+                <div
+                  key={j.ds}
+                  className={`py-1 text-center text-[10px] leading-tight ${j.premier && j.i > 0 ? "border-l-2 border-slate-300" : "border-l border-rose-50"} ${j.we ? "bg-rose-50/50" : ""} ${j.estAuj ? "font-bold text-brand" : "text-slate-400"}`}
+                >
+                  {j.premier && <span className="block text-[8px] font-semibold capitalize text-slate-500">{j.moisAbbr}</span>}
+                  {j.jour}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -216,18 +226,20 @@ export default function OrganisationPage() {
                   </div>
                   <div data-zone className="relative flex-1" style={{ height: hauteur }}>
                     {/* cellules cliquables */}
-                    <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}>
-                      {jours.map((j) => {
-                        const dow = new Date(mois.y, mois.m, j).getDay();
-                        const we = dow === 0 || dow === 6;
-                        return <button key={j} onClick={() => creer(c.id, j)} className={`border-l border-rose-50 ${we ? "bg-rose-50/40" : ""} hover:bg-rose-100/50`} />;
-                      })}
+                    <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${NB_JOURS}, minmax(0,1fr))` }}>
+                      {jours.map((j) => (
+                        <button
+                          key={j.ds}
+                          onClick={() => creer(c.id, j.ds)}
+                          className={`${j.premier && j.i > 0 ? "border-l-2 border-slate-300" : "border-l border-rose-50"} ${j.we ? "bg-rose-50/40" : ""} hover:bg-rose-100/50`}
+                        />
+                      ))}
                     </div>
                     {/* barres */}
                     {evs.map((ev) => {
-                      const s = Math.max(0, diffDays(ymd(mois.y, mois.m, 1), ev.date_debut));
-                      const e = Math.min(nbJours - 1, diffDays(ymd(mois.y, mois.m, 1), ev.date_fin));
-                      if (e < 0 || s > nbJours - 1) return null;
+                      const s = Math.max(0, diffDays(start, ev.date_debut));
+                      const e = Math.min(NB_JOURS - 1, diffDays(start, ev.date_fin));
+                      if (e < 0 || s > NB_JOURS - 1) return null;
                       const lane = lanes.get(ev.id) ?? 1;
                       return (
                         <div
@@ -236,8 +248,8 @@ export default function OrganisationPage() {
                           onClick={(p) => { p.stopPropagation(); setEditing(ev); }}
                           className={`absolute flex cursor-grab items-center rounded-md px-1.5 text-[10px] font-medium text-white ${TYPES[ev.type].bar} active:cursor-grabbing`}
                           style={{
-                            left: `${(s / nbJours) * 100}%`,
-                            width: `${((e - s + 1) / nbJours) * 100}%`,
+                            left: `${(s / NB_JOURS) * 100}%`,
+                            width: `${((e - s + 1) / NB_JOURS) * 100}%`,
                             top: (lane - 1) * 26 + 5,
                             height: 22,
                           }}
