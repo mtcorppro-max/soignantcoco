@@ -6,7 +6,7 @@ import { useProSession } from "@/lib/hooks/useSession";
 import { Select } from "@/components/Select";
 
 type RolePro = "coordinatrice" | "chirurgien" | "delegue";
-type ProLite = { id: string; nom: string; prenom: string | null; titre: string | null; role: RolePro };
+type ProLite = { id: string; nom: string; prenom: string | null; titre: string | null; role: RolePro; agence_id: string | null };
 type TypeEvt = "astreinte" | "conges" | "arret_maladie" | "formation" | "autre";
 type Evt = {
   id: string;
@@ -59,22 +59,53 @@ export default function OrganisationPage() {
   const [coords, setCoords] = useState<ProLite[]>([]);
   const [events, setEvents] = useState<Evt[]>([]);
   const [editing, setEditing] = useState<Evt | null>(null);
+  const [agenceNom, setAgenceNom] = useState<Map<string, string>>(new Map());
+  const [agenceRegion, setAgenceRegion] = useState<Map<string, string>>(new Map());
+  const [moi, setMoi] = useState<{ niveau: number; agence_id: string | null } | null>(null);
+  const [filtreAgence, setFiltreAgence] = useState("");
 
   const interdit = pro && pro.role !== "coordinatrice" && pro.niveau !== 0;
   const fin = addDays(start, NB_JOURS - 1);
 
   const charger = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: pros }, { data: evts }] = await Promise.all([
-      supabase.from("professionnel").select("id,nom,prenom,titre,role").eq("role", "coordinatrice").order("nom"),
+    const { data: { user } } = await supabase.auth.getUser();
+    const [{ data: pros }, { data: evts }, { data: ags }, { data: me }] = await Promise.all([
+      supabase.from("professionnel").select("id,nom,prenom,titre,role,agence_id").eq("role", "coordinatrice").order("nom"),
       supabase.from("evenement_planning").select("id,professionnel_id,type,date_debut,date_fin,heure_debut,heure_fin,remplacant_id,note")
         .lte("date_debut", fin).gte("date_fin", start),
+      supabase.from("agence").select("id,nom,region_id"),
+      user ? supabase.from("professionnel").select("niveau,agence_id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
     setCoords((pros ?? []) as ProLite[]);
     setEvents((evts ?? []) as Evt[]);
+    setAgenceNom(new Map((ags ?? []).map((a) => [a.id as string, a.nom as string])));
+    setAgenceRegion(new Map((ags ?? []).map((a) => [a.id as string, a.region_id as string])));
+    setMoi((me ?? null) as { niveau: number; agence_id: string | null } | null);
   }, [start, fin]);
 
   useEffect(() => { charger(); }, [charger]);
+
+  // Cloisonnement par agence : chaque agence voit son organisation.
+  // Niveau 0 = toutes ; niveau 1 = les agences de sa région ; niveau 2 = son agence.
+  const niveauMoi = moi?.niveau ?? pro?.niveau ?? 3;
+  const maRegion = moi?.agence_id ? agenceRegion.get(moi.agence_id) : undefined;
+  const regionDe = (agId: string | null) => (agId ? agenceRegion.get(agId) : undefined);
+  // Une agence est-elle dans le périmètre du compte connecté ?
+  const agenceDansPerimetre = (agId: string) => {
+    if (niveauMoi === 0) return true;
+    if (niveauMoi === 1) return agenceRegion.get(agId) === maRegion;
+    return agId === moi?.agence_id; // niveau 2
+  };
+  // Agences sélectionnables (pour basculer d'un calendrier d'agence à l'autre).
+  const agencesPerimetre = [...agenceNom.entries()]
+    .filter(([id]) => agenceDansPerimetre(id))
+    .map(([id, nom]) => ({ value: id, label: nom }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Agence affichée : celle choisie, sinon la première du périmètre.
+  const agenceCourante = filtreAgence || agencesPerimetre[0]?.value || "";
+  const coordsVisibles = coords.filter((c) => c.agence_id === agenceCourante);
 
   // Jours de la fenêtre (à partir de J-1)
   const jours = useMemo(() => Array.from({ length: NB_JOURS }, (_, i) => {
@@ -177,7 +208,18 @@ export default function OrganisationPage() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-800">Organisation</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-800">Organisation</h1>
+          {agencesPerimetre.length > 1 && (
+            <div className="w-56">
+              <Select
+                value={agenceCourante}
+                onChange={setFiltreAgence}
+                options={agencesPerimetre}
+              />
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span className="mr-1 text-sm capitalize text-slate-500">{fmtHumain(start)} – {fmtHumain(fin)}</span>
           <button onClick={() => setStart((s) => addDays(s, -30))} className="btn-secondary px-3 py-1.5">←</button>
@@ -216,10 +258,10 @@ export default function OrganisationPage() {
           </div>
 
           {/* Lignes coordinatrices */}
-          {coords.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-slate-400">Aucune infirmière coordinatrice.</p>
+          {coordsVisibles.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-slate-400">Aucune infirmière coordinatrice dans votre périmètre.</p>
           ) : (
-            coords.map((c) => {
+            coordsVisibles.map((c) => {
               const evs = events.filter((e) => e.professionnel_id === c.id);
               const lanes = assignerLanes(evs);
               const nbLanes = Math.max(1, ...lanes.values());
@@ -282,7 +324,7 @@ export default function OrganisationPage() {
       {editing && (
         <EditeurEvenement
           ev={editing}
-          coords={coords}
+          coords={coordsVisibles}
           onClose={() => setEditing(null)}
           onSave={sauver}
           onDelete={supprimer}
