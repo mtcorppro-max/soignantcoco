@@ -102,6 +102,7 @@ export async function POST(request: Request) {
       jours_suivi: Array.isArray(body.jours_suivi) && body.jours_suivi.length > 0 ? body.jours_suivi : null,
       traitement: body.traitement || null,
       date_sortie: body.date_sortie || null,
+      delegue_nom: body.delegue_nom || null,
       // Agence : celle choisie, sinon l'agence du créateur (pour la visibilité niveau 1/2)
       agence_id: (typeof body.agence_id === "string" && body.agence_id) || pro.agence_id || null,
     })

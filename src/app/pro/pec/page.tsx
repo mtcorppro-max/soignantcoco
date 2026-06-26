@@ -11,6 +11,7 @@ type Patient = {
   date_operation: string | null;
   duree_prise_en_charge: number | null;
   chirurgien: string | null;
+  delegue_nom: string | null;
   agence_id: string | null;
   statut: string;
 };
@@ -39,7 +40,7 @@ export default function PecPage() {
   useEffect(() => {
     const supabase = createClient();
     Promise.all([
-      supabase.from("patient").select("id,nom,date_operation,duree_prise_en_charge,chirurgien,agence_id,statut"),
+      supabase.from("patient").select("id,nom,date_operation,duree_prise_en_charge,chirurgien,delegue_nom,agence_id,statut"),
       supabase.from("professionnel").select("id,nom,prenom,titre,agence_id").eq("role", "coordinatrice"),
       supabase.from("patient_soignant").select("patient_id,professionnel_id"),
       supabase.from("agence").select("id,nom"),
@@ -73,6 +74,7 @@ export default function PecPage() {
     };
 
     const parMedecin = grouper((p) => p.chirurgien?.trim() || "Non renseigné");
+    const parDelegue = grouper((p) => p.delegue_nom?.trim() || "Non renseigné");
     const parAgence = grouper((p) => (p.agence_id ? (agenceNom.get(p.agence_id) ?? "Agence ?") : "Non rattaché"));
 
     const patientsParId = new Map(patients.map((p) => [p.id, p]));
@@ -90,6 +92,7 @@ export default function PecPage() {
       mois: periode(moisDebut),
       annee: periode(anneeDebut),
       parMedecin,
+      parDelegue,
       parAgence,
       parCoord,
     };
@@ -119,6 +122,7 @@ export default function PecPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Bloc titre="PEC par agence" lignes={stats.parAgence} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} />
         <Bloc titre="PEC par médecin" lignes={stats.parMedecin} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} />
+        <Bloc titre="PEC par délégué" lignes={stats.parDelegue} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} />
       </div>
 
       <section className="card grid gap-3">

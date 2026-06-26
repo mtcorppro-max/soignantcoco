@@ -115,6 +115,8 @@ export interface Patient {
   // Traitement à suivre + jour de sortie (cf. migration 0039)
   traitement: string | null;
   date_sortie: string | null;
+  // Délégué médical rattaché (cf. migration 0046)
+  delegue_nom: string | null;
   created_at: string;
 }
 

@@ -17,7 +17,7 @@ const nomComplet = (s: { titre: string | null; prenom: string | null; nom: strin
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
   "date_naissance", "telephone", "email", "adresse", "code_postal", "ville",
-  "operation", "date_operation", "duree_prise_en_charge", "chirurgien", "pharmacie", "pharmacie_tel", "infirmiere_nom", "infirmiere_tel",
+  "operation", "date_operation", "duree_prise_en_charge", "chirurgien", "delegue_nom", "pharmacie", "pharmacie_tel", "infirmiere_nom", "infirmiere_tel",
   "proche_nom", "proche_tel",
   "alerte_1_nom", "tel_alerte_1", "alerte_2_nom", "tel_alerte_2",
 ] as const;
@@ -105,6 +105,7 @@ export function InfosPatient({
   const coordinatrices = soignants.filter(
     (s) => s.role === "coordinatrice" && (!agenceId || s.agence_id === agenceId)
   );
+  const delegues = soignants.filter((s) => s.role === "delegue");
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
   const infirmieres = soignants.filter((s) => s.role === "infirmiere_liberale");
   const externesMed = externes.filter((e) => e.type === "medecin");
@@ -252,6 +253,7 @@ export function InfosPatient({
             <Champ label="Tél. pharmacie" value={form.pharmacie_tel} onChange={set("pharmacie_tel")} />
           </div>
           <SelectSoignant label="Infirmière libérale (compte rattaché)" value={form.infirmiere_nom} soignants={infirmieres} onChange={choisirInfirmiere} />
+          <SelectSoignant label="Délégué médical (rattaché)" value={form.delegue_nom} soignants={delegues} onChange={(v) => setVal("delegue_nom", v)} />
           <SelectSoignant label="Alerte 1 — infirmière coordinatrice" value={form.alerte_1_nom} soignants={coordinatrices} onChange={choisirAlerte("alerte_1_nom", "tel_alerte_1")} />
           <SelectSoignant label="Alerte 2 — infirmière coordinatrice" value={form.alerte_2_nom} soignants={coordinatrices} onChange={choisirAlerte("alerte_2_nom", "tel_alerte_2")} />
         </div>

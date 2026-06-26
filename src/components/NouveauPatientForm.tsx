@@ -67,6 +67,7 @@ const VIDE = {
   date_sortie: "",
   duree_prise_en_charge: "",
   chirurgien: "",
+  delegue_nom: "",
   traitement: "",
   traitement_autre: "",
   pharmacie: "",
@@ -122,6 +123,7 @@ export function NouveauPatientForm() {
   const coordinatrices = soignants.filter(
     (s) => s.role === "coordinatrice" && (!agenceId || s.agence_id === agenceId)
   );
+  const delegues = soignants.filter((s) => s.role === "delegue");
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
   const infirmieres = soignants.filter((s) => s.role === "infirmiere_liberale");
   const externesMed = externes.filter((e) => e.type === "medecin");
@@ -161,9 +163,10 @@ export function NouveauPatientForm() {
     setSeuilsProto(p.surveiller_constantes ? (p.constantes ?? []) : []);
   };
 
-  // Le rattachement est déduit du chirurgien + des coordinatrices d'alerte choisis.
+  // Le rattachement est déduit du chirurgien, des coordinatrices d'alerte,
+  // de l'infirmière et du délégué médical choisis.
   const rattachementsAuto = () => {
-    const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom, form.infirmiere_nom].filter(Boolean);
+    const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom, form.infirmiere_nom, form.delegue_nom].filter(Boolean);
     const ids = soignants.filter((s) => noms.includes(nomComplet(s))).map((s) => s.id);
     return [...new Set(ids)];
   };
@@ -388,6 +391,20 @@ export function NouveauPatientForm() {
             ]}
           />
           <p className="mt-1 text-xs text-slate-400">Un compte rattaché pourra voir ce patient et saisir ses constantes ; une infirmière externe est indiquée à titre de référence.</p>
+        </div>
+        <div>
+          <label className="label">Délégué médical (rattaché)</label>
+          <Select
+            value={form.delegue_nom}
+            onChange={(v) => setForm((f) => ({ ...f, delegue_nom: v }))}
+            placeholder={delegues.length ? "— Choisir un délégué médical —" : "Aucun délégué médical"}
+            options={[
+              ...delegues.map((s) => ({ value: nomComplet(s), label: nomComplet(s) })),
+              ...(form.delegue_nom && !delegues.some((s) => nomComplet(s) === form.delegue_nom)
+                ? [{ value: form.delegue_nom, label: form.delegue_nom }]
+                : []),
+            ]}
+          />
         </div>
         <div>
           <label className="label">Alerte 1 — infirmière coordinatrice</label>
