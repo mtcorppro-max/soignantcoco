@@ -74,7 +74,7 @@ export default function NouveauSoignantExterne() {
 
   if (ok) {
     return (
-      <div className="mx-auto max-w-lg card grid gap-4 text-center">
+      <div className="mx-auto max-w-2xl card grid gap-4 text-center">
         <p className="text-sm text-slate-600">Soignant externe enregistré ✓</p>
         <p className="text-xs text-slate-400">Il est désormais sélectionnable lors de la création d&apos;un patient.</p>
         <button onClick={() => { setF({ ...VIDE }); setProtocoles([protocoleVide()]); setOk(false); }} className="btn-secondary">Enregistrer un autre</button>
@@ -83,7 +83,7 @@ export default function NouveauSoignantExterne() {
   }
 
   return (
-    <div className="mx-auto max-w-lg grid gap-5">
+    <div className="mx-auto max-w-2xl grid gap-5">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Nouveau soignant externe</h1>
         <p className="mt-1 text-sm text-slate-500">
