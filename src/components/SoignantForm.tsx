@@ -131,12 +131,14 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   const [form, setForm] = useState({ ...VIDE });
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
   const [agenceId, setAgenceId] = useState("");
+  const [regionId, setRegionId] = useState("");
   const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
+  const [regions, setRegions] = useState<{ value: string; label: string }[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cree, setCree] = useState<{ email: string; motDePasse: string } | null>(null);
 
-  // Agences disponibles (région · agence), pour rattacher le nouveau compte.
+  // Régions (pour niveau 1) et agences (pour niveau 2/3) de rattachement.
   useEffect(() => {
     const supabase = createClient();
     Promise.all([
@@ -144,6 +146,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
       supabase.from("agence").select("id,nom,region_id"),
     ]).then(([{ data: regs }, { data: ags }]) => {
       const nomRegion = new Map((regs ?? []).map((r) => [r.id as string, r.nom as string]));
+      setRegions((regs ?? []).map((r) => ({ value: r.id as string, label: r.nom as string })));
       setAgences(
         (ags ?? []).map((a) => ({
           value: a.id as string,
@@ -160,6 +163,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
     setForm({ ...VIDE });
     setProtocoles([protocoleVide()]);
     setAgenceId("");
+    setRegionId("");
   };
 
   const majProtocole = (i: number, patch: Partial<Protocole>) =>
@@ -186,8 +190,12 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErreur(null);
-    if (form.niveau !== "0" && !agenceId) {
-      setErreur("Choisissez une agence de rattachement (ou créez-en une dans Structure).");
+    if (form.niveau === "1" && !regionId) {
+      setErreur("Choisissez une région de rattachement (ou créez-en une).");
+      return;
+    }
+    if ((form.niveau === "2" || form.niveau === "3") && !agenceId) {
+      setErreur("Choisissez une agence de rattachement (ou créez-en une).");
       return;
     }
     setBusy(true);
@@ -197,7 +205,8 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          agence_id: form.niveau === "0" ? null : agenceId,
+          agence_id: (form.niveau === "2" || form.niveau === "3") ? agenceId : null,
+          region_id: form.niveau === "1" ? regionId : null,
           protocoles: estChirurgien ? protocoles.map(protocolePropre) : [],
         }),
       });
@@ -272,13 +281,24 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             />
           </div>
         )}
-        {form.niveau !== "0" && (
+        {form.niveau === "1" && (
           <div>
-            <label className="label">Agence de rattachement {form.niveau !== "0" ? "*" : ""}</label>
+            <label className="label">Région de rattachement *</label>
+            <Select
+              value={regionId}
+              onChange={setRegionId}
+              placeholder={regions.length ? "— Choisir une région —" : "Aucune région (créez-en une)"}
+              options={regions}
+            />
+          </div>
+        )}
+        {(form.niveau === "2" || form.niveau === "3") && (
+          <div>
+            <label className="label">Agence de rattachement *</label>
             <Select
               value={agenceId}
               onChange={setAgenceId}
-              placeholder={agences.length ? "— Choisir une agence —" : "Aucune agence (créez-en dans Structure)"}
+              placeholder={agences.length ? "— Choisir une agence —" : "Aucune agence (créez-en une)"}
               options={agences}
             />
           </div>

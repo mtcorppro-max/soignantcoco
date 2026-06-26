@@ -30,6 +30,7 @@ export interface Professionnel {
   role: RolePro;
   niveau: number;
   agence_id: string | null;
+  region_id: string | null;
   // Consignes médecin / chirurgien (cf. migration 0015)
   specialite: string | null;
   cabinets: string | null;

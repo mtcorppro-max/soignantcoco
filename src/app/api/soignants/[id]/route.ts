@@ -83,7 +83,7 @@ export async function PATCH(
 
   const { data: moi } = await supabase
     .from("professionnel")
-    .select("id, niveau, prestataire_id, agence_id")
+    .select("id, niveau, prestataire_id, agence_id, region_id")
     .eq("user_id", user.id)
     .maybeSingle();
   const admin_ = estEmailAdmin(user.email);
@@ -110,7 +110,7 @@ export async function PATCH(
   }
 
   const body = await request.json().catch(() => ({}));
-  const maj: { niveau?: number; agence_id?: string | null } = {};
+  const maj: { niveau?: number; agence_id?: string | null; region_id?: string | null } = {};
 
   // Nouveau niveau (optionnel)
   if (body.niveau !== undefined && body.niveau !== null) {
@@ -136,12 +136,22 @@ export async function PATCH(
       const agPresta = (ag?.region as { prestataire_id?: string } | null)?.prestataire_id;
       let ok = !!ag && (admin_ || agPresta === moi?.prestataire_id);
       if (ok && !admin_ && niveauMoi === 1) {
-        const { data: monAg } = await admin.from("agence").select("region_id").eq("id", moi?.agence_id ?? "").maybeSingle();
-        ok = ag!.region_id === monAg?.region_id;
+        ok = ag!.region_id === (moi?.region_id ?? null);
       }
       if (!ok) return NextResponse.json({ message: "Agence hors de votre périmètre." }, { status: 403 });
     }
     maj.agence_id = agId;
+  }
+
+  // Nouvelle région (pour un manager niveau 1) — validée selon le prestataire
+  if (body.region_id !== undefined) {
+    const regId: string | null = body.region_id || null;
+    if (regId) {
+      const { data: reg } = await admin.from("region").select("id, prestataire_id").eq("id", regId).maybeSingle();
+      const ok = !!reg && (admin_ || reg.prestataire_id === moi?.prestataire_id);
+      if (!ok) return NextResponse.json({ message: "Région hors de votre périmètre." }, { status: 403 });
+    }
+    maj.region_id = regId;
   }
 
   if (Object.keys(maj).length === 0) {

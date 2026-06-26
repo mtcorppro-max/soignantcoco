@@ -13,9 +13,10 @@ type Soignant = {
   nom: string;
   prenom: string | null;
   titre: string | null;
-  role: "coordinatrice" | "chirurgien" | "delegue";
+  role: "coordinatrice" | "chirurgien" | "delegue" | "manager";
   niveau: number;
   agence_id: string | null;
+  region_id: string | null;
   email: string | null;
   telephone: string | null;
   specialite: string | null;
@@ -27,12 +28,14 @@ type Soignant = {
 };
 
 const COLS =
-  "id,nom,prenom,titre,role,niveau,agence_id,email,telephone,specialite,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles";
+  "id,nom,prenom,titre,role,niveau,agence_id,region_id,email,telephone,specialite,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles";
 
 export default function EquipePage() {
   const pro = useProSession();
   const [soignants, setSoignants] = useState<Soignant[]>([]);
   const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
+  const [regions, setRegions] = useState<{ value: string; label: string }[]>([]);
+  const [regionNom, setRegionNom] = useState<Map<string, string>>(new Map());
   const [agenceRegion, setAgenceRegion] = useState<Map<string, string>>(new Map());
   const [chargement, setChargement] = useState(true);
   const [suppression, setSuppression] = useState<string | null>(null);
@@ -46,6 +49,8 @@ export default function EquipePage() {
       supabase.from("agence").select("id,nom,region_id"),
     ]);
     const nomRegion = new Map((regs ?? []).map((r) => [r.id as string, r.nom as string]));
+    setRegionNom(nomRegion);
+    setRegions((regs ?? []).map((r) => ({ value: r.id as string, label: r.nom as string })));
     setAgences((ags ?? []).map((a) => ({ value: a.id as string, label: `${nomRegion.get(a.region_id as string) ?? "?"} · ${a.nom}` })));
     setAgenceRegion(new Map((ags ?? []).map((a) => [a.id as string, a.region_id as string])));
     setSoignants((pros ?? []) as Soignant[]);
@@ -131,8 +136,10 @@ export default function EquipePage() {
                       <span className={`badge ${s.niveau <= 1 ? "bg-green-100 text-ok" : s.niveau === 2 ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-attention"}`}>
                         {NIVEAU_LABEL[s.niveau] ?? `Niveau ${s.niveau}`}
                       </span>
-                      {labelAgence(s.agence_id) && (
-                        <span className="badge bg-slate-100 text-slate-600">{labelAgence(s.agence_id)}</span>
+                      {(labelAgence(s.agence_id) || (s.region_id && regionNom.get(s.region_id))) && (
+                        <span className="badge bg-slate-100 text-slate-600">
+                          {labelAgence(s.agence_id) ?? regionNom.get(s.region_id!)}
+                        </span>
                       )}
                     </div>
                     {s.specialite && <p className="mt-0.5 text-sm text-slate-500">{s.specialite}</p>}
@@ -178,6 +185,7 @@ export default function EquipePage() {
         <EditeurSoignant
           soignant={edite}
           agences={agences}
+          regions={regions}
           niveauMoi={niveauMoi}
           onClose={() => setEdite(null)}
           onSaved={() => { setEdite(null); charger(); }}
@@ -188,16 +196,18 @@ export default function EquipePage() {
 }
 
 function EditeurSoignant({
-  soignant, agences, niveauMoi, onClose, onSaved,
+  soignant, agences, regions, niveauMoi, onClose, onSaved,
 }: {
   soignant: Soignant;
   agences: { value: string; label: string }[];
+  regions: { value: string; label: string }[];
   niveauMoi: number;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [niveau, setNiveau] = useState(String(soignant.niveau));
   const [agenceId, setAgenceId] = useState(soignant.agence_id ?? "");
+  const [regionId, setRegionId] = useState(soignant.region_id ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const nomAffiche = [soignant.titre, soignant.prenom, soignant.nom].filter(Boolean).join(" ");
@@ -207,7 +217,11 @@ function EditeurSoignant({
     const res = await fetch(`/api/soignants/${soignant.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ niveau: Number(niveau), agence_id: niveau === "0" ? null : (agenceId || null) }),
+      body: JSON.stringify({
+        niveau: Number(niveau),
+        agence_id: (niveau === "2" || niveau === "3") ? (agenceId || null) : null,
+        region_id: niveau === "1" ? (regionId || null) : null,
+      }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -228,7 +242,18 @@ function EditeurSoignant({
           <Select value={niveau} onChange={setNiveau} options={optionsNiveau(niveauMoi)} />
         </div>
 
-        {niveau !== "0" && (
+        {niveau === "1" && (
+          <div>
+            <label className="label">Région de rattachement</label>
+            <Select
+              value={regionId}
+              onChange={setRegionId}
+              placeholder={regions.length ? "— Choisir une région —" : "Aucune région créée"}
+              options={regions}
+            />
+          </div>
+        )}
+        {(niveau === "2" || niveau === "3") && (
           <div>
             <label className="label">Agence de rattachement</label>
             <Select

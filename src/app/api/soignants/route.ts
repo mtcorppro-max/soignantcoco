@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   // hors chirurgien) dans son propre prestataire.
   const { data: pro } = await supabase
     .from("professionnel")
-    .select("niveau, role, prestataire_id, agence_id")
+    .select("niveau, role, prestataire_id, agence_id, region_id")
     .eq("user_id", user.id)
     .maybeSingle();
   const admin_ = estEmailAdmin(user.email);
@@ -119,9 +119,22 @@ export async function POST(request: Request) {
           telephone: texteOuNull(body.telephone),
         };
 
-  // Agence de rattachement (requise sauf niveau 0) + contrôle de périmètre.
+  // Rattachement : niveau 1 -> région ; niveau 2/3 -> agence ; niveau 0 -> aucun.
   let agenceId: string | null = null;
-  if (niveauDemande !== 0) {
+  let regionId: string | null = null;
+
+  if (niveauDemande === 1) {
+    regionId = texteOuNull(body.region_id);
+    if (!regionId) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return NextResponse.json({ message: "Région de rattachement requise." }, { status: 400 });
+    }
+    const { data: reg } = await admin.from("region").select("id, prestataire_id").eq("id", regionId).maybeSingle();
+    if (!reg || reg.prestataire_id !== prestataireId) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return NextResponse.json({ message: "Région hors de votre périmètre." }, { status: 403 });
+    }
+  } else if (niveauDemande === 2 || niveauDemande === 3) {
     agenceId = texteOuNull(body.agence_id);
     if (!agenceId) {
       await admin.auth.admin.deleteUser(created.user.id);
@@ -138,9 +151,7 @@ export async function POST(request: Request) {
       if (pro?.niveau === 2) {
         okPerimetre = ag!.id === pro.agence_id;
       } else if (pro?.niveau === 1) {
-        const { data: monAg } = await admin
-          .from("agence").select("region_id").eq("id", pro.agence_id ?? "").maybeSingle();
-        okPerimetre = ag!.region_id === monAg?.region_id;
+        okPerimetre = ag!.region_id === (pro.region_id ?? null);
       }
     }
     if (!okPerimetre) {
@@ -157,6 +168,7 @@ export async function POST(request: Request) {
     role,
     niveau: niveauDemande,
     agence_id: agenceId,
+    region_id: regionId,
     ...extras,
   });
 
