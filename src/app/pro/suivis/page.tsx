@@ -77,6 +77,7 @@ export default function SuivisPage() {
   useEffect(() => { charger(); }, [charger]);
 
   const today = useMemo(() => minuit(new Date()), []);
+  const monNom = pro ? [pro.titre, pro.prenom, pro.nom].filter(Boolean).join(" ") : "";
 
   const chirurgiens = useMemo(
     () => [...new Set(patients.map((p) => p.chirurgien).filter(Boolean) as string[])].sort(),
@@ -177,6 +178,10 @@ export default function SuivisPage() {
                 <div className="grid gap-2">
                   {g.items.map((s) => {
                     const occupe = busy === `${s.patientId}|${s.echeance}`;
+                    // Actions possibles uniquement si le suivi est échu (retard) ou du jour,
+                    // et seulement par la coordinatrice en alerte 1 ou la manager.
+                    const echu = s.date.getTime() <= today.getTime();
+                    const peutAgir = pro?.role === "manager" || pro?.niveau === 0 || (!!s.responsable && s.responsable === monNom);
                     return (
                       <div key={`${s.patientId}|${s.echeance}`} className="card flex flex-wrap items-center justify-between gap-3 py-3">
                         <Link href={`/pro/patients/${s.patientId}`} className="min-w-0 flex-1 transition hover:opacity-80">
@@ -190,22 +195,24 @@ export default function SuivisPage() {
                             <span className="font-medium text-slate-600">{s.responsable || "Non attribué"}</span>
                           </p>
                         </Link>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <button
-                            onClick={() => valider(s)}
-                            disabled={occupe}
-                            className="rounded-lg bg-ok px-3 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                          >
-                            ✓ Valider
-                          </button>
-                          <button
-                            onClick={() => supprimer(s)}
-                            disabled={occupe}
-                            className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-critique transition hover:bg-red-50 disabled:opacity-50"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
+                        {echu && peutAgir && (
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              onClick={() => valider(s)}
+                              disabled={occupe}
+                              className="rounded-lg bg-rose-800 px-3 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                            >
+                              ✓ Valider
+                            </button>
+                            <button
+                              onClick={() => supprimer(s)}
+                              disabled={occupe}
+                              className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-critique transition hover:bg-red-50 disabled:opacity-50"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
