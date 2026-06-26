@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { genererPdfConsignes } from "@/lib/pdfConsignes";
 import { Select } from "@/components/Select";
+import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { optionsNiveau } from "@/lib/niveaux";
 
@@ -129,9 +130,28 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
 
   const [form, setForm] = useState({ ...VIDE });
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
+  const [agenceId, setAgenceId] = useState("");
+  const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cree, setCree] = useState<{ email: string; motDePasse: string } | null>(null);
+
+  // Agences disponibles (région · agence), pour rattacher le nouveau compte.
+  useEffect(() => {
+    const supabase = createClient();
+    Promise.all([
+      supabase.from("region").select("id,nom"),
+      supabase.from("agence").select("id,nom,region_id"),
+    ]).then(([{ data: regs }, { data: ags }]) => {
+      const nomRegion = new Map((regs ?? []).map((r) => [r.id as string, r.nom as string]));
+      setAgences(
+        (ags ?? []).map((a) => ({
+          value: a.id as string,
+          label: `${nomRegion.get(a.region_id as string) ?? "?"} · ${a.nom}`,
+        }))
+      );
+    });
+  }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -139,6 +159,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   const reset = () => {
     setForm({ ...VIDE });
     setProtocoles([protocoleVide()]);
+    setAgenceId("");
   };
 
   const majProtocole = (i: number, patch: Partial<Protocole>) =>
@@ -165,6 +186,10 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErreur(null);
+    if (form.niveau !== "0" && !agenceId) {
+      setErreur("Choisissez une agence de rattachement (ou créez-en une dans Structure).");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/soignants", {
@@ -172,6 +197,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          agence_id: form.niveau === "0" ? null : agenceId,
           protocoles: estChirurgien ? protocoles.map(protocolePropre) : [],
         }),
       });
@@ -243,6 +269,17 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             options={niveauxDispo}
           />
         </div>
+        {form.niveau !== "0" && (
+          <div>
+            <label className="label">Agence de rattachement {form.niveau !== "0" ? "*" : ""}</label>
+            <Select
+              value={agenceId}
+              onChange={setAgenceId}
+              placeholder={agences.length ? "— Choisir une agence —" : "Aucune agence (créez-en dans Structure)"}
+              options={agences}
+            />
+          </div>
+        )}
         {estChirurgien && (
           <>
             <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Médecin</p>

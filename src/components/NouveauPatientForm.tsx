@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useProSession } from "@/lib/hooks/useSession";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 import { Select } from "@/components/Select";
 import type { RolePro, ProtocoleConsigne } from "@/lib/types";
@@ -54,6 +55,9 @@ export function NouveauPatientForm() {
   const [busy, setBusy] = useState(false);
   const [soignants, setSoignants] = useState<Soignant[]>([]);
   const [joursSuivi, setJoursSuivi] = useState<number[]>([]);
+  const pro = useProSession();
+  const [agenceId, setAgenceId] = useState("");
+  const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     createClient()
@@ -61,7 +65,17 @@ export function NouveauPatientForm() {
       .select("id,nom,prenom,titre,role,niveau,telephone,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
+    Promise.all([
+      createClient().from("region").select("id,nom"),
+      createClient().from("agence").select("id,nom,region_id"),
+    ]).then(([{ data: regs }, { data: ags }]) => {
+      const nomRegion = new Map((regs ?? []).map((r) => [r.id as string, r.nom as string]));
+      setAgences((ags ?? []).map((a) => ({ value: a.id as string, label: `${nomRegion.get(a.region_id as string) ?? "?"} · ${a.nom}` })));
+    });
   }, []);
+
+  // Par défaut, le patient est rattaché à l'agence du créateur.
+  useEffect(() => { if (pro?.agence_id) setAgenceId((v) => v || pro.agence_id!); }, [pro?.agence_id]);
 
   const coordinatrices = soignants.filter((s) => s.role === "coordinatrice");
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
@@ -104,7 +118,7 @@ export function NouveauPatientForm() {
       const res = await fetch("/api/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, jours_suivi: joursSuivi, rattachements: rattachementsAuto() }),
+        body: JSON.stringify({ ...form, jours_suivi: joursSuivi, agence_id: agenceId || null, rattachements: rattachementsAuto() }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.message ?? "Erreur.");
@@ -196,6 +210,17 @@ export function NouveauPatientForm() {
       {/* ── Environnement de soins ── */}
       <div className="grid gap-4 border-t border-rose-100 pt-4">
         <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Environnement de soins</p>
+        {agences.length > 0 && (
+          <div>
+            <label className="label">Agence</label>
+            <Select
+              value={agenceId}
+              onChange={setAgenceId}
+              placeholder="— Choisir une agence —"
+              options={agences}
+            />
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label">Opération subie</label>

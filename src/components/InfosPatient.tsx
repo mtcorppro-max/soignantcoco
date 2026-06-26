@@ -70,6 +70,8 @@ export function InfosPatient({
   const [busy, setBusy] = useState(false);
   const [soignants, setSoignants] = useState<Soignant[]>([]);
   const [joursSuivi, setJoursSuivi] = useState<number[]>(patient.jours_suivi ?? []);
+  const [agenceId, setAgenceId] = useState(patient.agence_id ?? "");
+  const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     if (!edition || soignants.length) return;
@@ -78,6 +80,13 @@ export function InfosPatient({
       .select("id,nom,prenom,titre,role,telephone,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
+    Promise.all([
+      createClient().from("region").select("id,nom"),
+      createClient().from("agence").select("id,nom,region_id"),
+    ]).then(([{ data: regs }, { data: ags }]) => {
+      const nomRegion = new Map((regs ?? []).map((r) => [r.id as string, r.nom as string]));
+      setAgences((ags ?? []).map((a) => ({ value: a.id as string, label: `${nomRegion.get(a.region_id as string) ?? "?"} · ${a.nom}` })));
+    });
   }, [edition, soignants.length]);
 
   const set = (k: Champ) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -114,6 +123,7 @@ export function InfosPatient({
       ? Number(form.duree_prise_en_charge) || null
       : null;
     (payload as Record<string, unknown>).jours_suivi = joursSuivi.length ? joursSuivi : null;
+    (payload as Record<string, unknown>).agence_id = agenceId || null;
 
     const { error } = await supabase.from("patient").update(payload).eq("id", patient.id);
     if (error) {
@@ -168,6 +178,12 @@ export function InfosPatient({
 
         <div className="grid gap-4 border-t border-rose-100 pt-4">
           <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Environnement de soins</p>
+          {agences.length > 0 && (
+            <div>
+              <label className="label">Agence</label>
+              <Select value={agenceId} onChange={setAgenceId} placeholder="— Choisir une agence —" options={agences} />
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Champ label="Opération subie" value={form.operation} onChange={set("operation")} />
             <Champ label="Date de l'opération" type="date" value={form.date_operation} onChange={set("date_operation")} />

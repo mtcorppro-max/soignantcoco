@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   // hors chirurgien) dans son propre prestataire.
   const { data: pro } = await supabase
     .from("professionnel")
-    .select("niveau, role, prestataire_id")
+    .select("niveau, role, prestataire_id, agence_id")
     .eq("user_id", user.id)
     .maybeSingle();
   const admin_ = estEmailAdmin(user.email);
@@ -116,6 +116,36 @@ export async function POST(request: Request) {
           telephone: texteOuNull(body.telephone),
         };
 
+  // Agence de rattachement (requise sauf niveau 0) + contrôle de périmètre.
+  let agenceId: string | null = null;
+  if (niveauDemande !== 0) {
+    agenceId = texteOuNull(body.agence_id);
+    if (!agenceId) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return NextResponse.json({ message: "Agence de rattachement requise." }, { status: 400 });
+    }
+    const { data: ag } = await admin
+      .from("agence")
+      .select("id, region_id, region:region_id(prestataire_id)")
+      .eq("id", agenceId)
+      .maybeSingle();
+    const agPrestataire = (ag?.region as { prestataire_id?: string } | null)?.prestataire_id;
+    let okPerimetre = !!ag && agPrestataire === prestataireId;
+    if (okPerimetre && !admin_ && niveauCreateur !== 0) {
+      if (pro?.niveau === 2) {
+        okPerimetre = ag!.id === pro.agence_id;
+      } else if (pro?.niveau === 1) {
+        const { data: monAg } = await admin
+          .from("agence").select("region_id").eq("id", pro.agence_id ?? "").maybeSingle();
+        okPerimetre = ag!.region_id === monAg?.region_id;
+      }
+    }
+    if (!okPerimetre) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return NextResponse.json({ message: "Agence hors de votre périmètre." }, { status: 403 });
+    }
+  }
+
   const { error: errPro } = await admin.from("professionnel").insert({
     user_id: created.user.id,
     prestataire_id: prestataireId,
@@ -123,6 +153,7 @@ export async function POST(request: Request) {
     email,
     role,
     niveau: niveauDemande,
+    agence_id: agenceId,
     ...extras,
   });
 

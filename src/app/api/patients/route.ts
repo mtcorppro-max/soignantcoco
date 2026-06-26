@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   const { data: pro } = await supabase
     .from("professionnel")
-    .select("id, role, prestataire_id")
+    .select("id, role, prestataire_id, agence_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -96,6 +96,8 @@ export async function POST(request: Request) {
         ? Number(body.duree_prise_en_charge) || null
         : null,
       jours_suivi: Array.isArray(body.jours_suivi) && body.jours_suivi.length > 0 ? body.jours_suivi : null,
+      // Agence : celle choisie, sinon l'agence du créateur (pour la visibilité niveau 1/2)
+      agence_id: (typeof body.agence_id === "string" && body.agence_id) || pro.agence_id || null,
     })
     .select("id")
     .single();
