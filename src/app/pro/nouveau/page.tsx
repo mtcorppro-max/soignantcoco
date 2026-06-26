@@ -7,8 +7,10 @@ export default function NouveauHub() {
   const pro = useProSession();
   const peutPatient = pro?.role === "coordinatrice" || pro?.role === "chirurgien";
   const peutSoignant = !!pro && pro.niveau <= 2 && pro.role !== "chirurgien";
+  const peutRegion = pro?.niveau === 0;            // créer une région
+  const peutAgence = !!pro && pro.niveau <= 1;     // créer une agence
 
-  if (pro && !peutPatient && !peutSoignant) {
+  if (pro && !peutPatient && !peutSoignant && !peutAgence) {
     return (
       <div className="card text-sm text-slate-500">
         La création n&apos;est pas accessible à ce compte.
@@ -34,6 +36,22 @@ export default function NouveauHub() {
             icon="✚"
             titre="Nouveau compte soignant"
             desc="Créer un compte coordinatrice, chirurgien/médecin ou délégué."
+          />
+        )}
+        {peutRegion && (
+          <Choix
+            href="/pro/structure"
+            icon="🗺"
+            titre="Nouvelle région"
+            desc="Créer une région et y organiser les agences."
+          />
+        )}
+        {peutAgence && (
+          <Choix
+            href="/pro/structure"
+            icon="🏢"
+            titre="Nouvelle agence"
+            desc="Ajouter une agence à une région existante."
           />
         )}
       </div>
