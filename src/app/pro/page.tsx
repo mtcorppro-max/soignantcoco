@@ -11,7 +11,7 @@ import { CentreAlertes } from "@/components/CentreAlertes";
 import type { Patient } from "@/lib/types";
 
 type AlerteInfo = { active: number; acquittees: number };
-type ActionItem = { type: "J1" | "dernier"; echeance: string; retard: boolean };
+type ActionItem = { jour: number; echeance: string; retard: boolean };
 type DashData = {
   patients: Patient[];
   parPatient: Map<string, AlerteInfo>;
@@ -38,13 +38,13 @@ function jourLocal(ts: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function libelleAction(a: ActionItem): string {
-  return `Suivi ${a.type === "J1" ? "J1" : "dernier jour"}${a.retard ? " (en retard)" : " (aujourd'hui)"}`;
+  return `Suivi J${a.jour}${a.retard ? " (en retard)" : " (aujourd'hui)"}`;
 }
 
 async function fetchDashboard(): Promise<DashData> {
   const supabase = createClient();
   const [{ data: pts }, { data: als }, { data: msgs }, { data: svs }, { data: rps }] = await Promise.all([
-    supabase.from("patient").select("id,nom,statut,code_postal,prestataire_id,user_id,date_operation,duree_prise_en_charge").order("nom"),
+    supabase.from("patient").select("id,nom,statut,code_postal,prestataire_id,user_id,date_operation,duree_prise_en_charge,jours_suivi").order("nom"),
     supabase.from("alerte").select("id,patient_id,statut").in("statut", ["declenchee", "escaladee", "acquittee"]),
     supabase.from("message").select("patient_id,auteur_user_id,horodatage").order("horodatage", { ascending: true }).limit(2000),
     supabase.from("suivi").select("patient_id,created_at"),
@@ -84,18 +84,18 @@ async function fetchDashboard(): Promise<DashData> {
   // sont ni faits (suivi ce jour-là) ni validés manuellement.
   const today = todayIso();
   const suivisJours = new Set((svs ?? []).map((s) => `${s.patient_id}|${jourLocal(s.created_at)}`));
-  const valides = new Set((rps ?? []).map((r) => `${r.patient_id}|${r.type}|${r.echeance}`));
+  const valides = new Set((rps ?? []).map((r) => `${r.patient_id}|${r.echeance}`));
   const actions = new Map<string, ActionItem[]>();
   patientsRaw.forEach((p) => {
     if (!p.date_operation || p.statut === "terminee") return;
     const items: ActionItem[] = [];
-    const ajoute = (type: ActionItem["type"], echeance: string) => {
+    // Tous les jours de suivi programmés échus et non réalisés.
+    (p.jours_suivi ?? []).forEach((j) => {
+      const echeance = addDays(p.date_operation!, j);
       if (!echeance || echeance > today) return;
-      if (suivisJours.has(`${p.id}|${echeance}`) || valides.has(`${p.id}|${type}|${echeance}`)) return;
-      items.push({ type, echeance, retard: echeance < today });
-    };
-    ajoute("J1", addDays(p.date_operation, 1));
-    if (p.duree_prise_en_charge) ajoute("dernier", addDays(p.date_operation, p.duree_prise_en_charge));
+      if (suivisJours.has(`${p.id}|${echeance}`) || valides.has(`${p.id}|${echeance}`)) return;
+      items.push({ jour: j, echeance, retard: echeance < today });
+    });
     if (items.length) actions.set(p.id, items);
   });
 
@@ -128,7 +128,7 @@ export default function Dashboard() {
   // Actions encore en attente (en retirant celles validées localement à l'instant).
   function actionsDe(patientId: string): ActionItem[] {
     return (actions.get(patientId) ?? []).filter(
-      (it) => !validesLocal.has(`${patientId}|${it.type}|${it.echeance}`)
+      (it) => !validesLocal.has(`${patientId}|${it.echeance}`)
     );
   }
 
@@ -136,12 +136,12 @@ export default function Dashboard() {
     if (items.length === 0) return;
     setValidesLocal((prev) => {
       const n = new Set(prev);
-      items.forEach((it) => n.add(`${patientId}|${it.type}|${it.echeance}`));
+      items.forEach((it) => n.add(`${patientId}|${it.echeance}`));
       return n;
     });
     const supabase = createClient();
     await supabase.from("rappel_suivi_valide").insert(
-      items.map((it) => ({ patient_id: patientId, type: it.type, echeance: it.echeance, validee_par: pro?.nom ?? null }))
+      items.map((it) => ({ patient_id: patientId, type: `J${it.jour}`, echeance: it.echeance, validee_par: pro?.nom ?? null }))
     );
     invalidate("pro:dashboard");
   }
