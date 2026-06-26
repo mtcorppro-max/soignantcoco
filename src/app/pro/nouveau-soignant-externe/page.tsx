@@ -161,7 +161,7 @@ export default function NouveauSoignantExterne() {
         {estMedecin && (
           <>
             <div className="border-t border-rose-100 pt-4">
-              <label className="label">Adresse du / des cabinets</label>
+              <label className="label">Adresse du lieu d&apos;exercice</label>
               <input className="input" value={f.cabinets} onChange={set("cabinets")} placeholder="Clinique du Parc à Castelnau-le-Lez / …" />
             </div>
 

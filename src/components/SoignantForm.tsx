@@ -325,7 +325,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
               <input className="input" value={form.telephone} onChange={set("telephone")} placeholder="06…" inputMode="tel" />
             </div>
             <div>
-              <label className="label">Adresse du / des cabinets</label>
+              <label className="label">Adresse du lieu d&apos;exercice</label>
               <input className="input" value={form.cabinets} onChange={set("cabinets")} placeholder="Clinique du Parc à Castelnau-le-Lez / …" />
             </div>
           </div>
