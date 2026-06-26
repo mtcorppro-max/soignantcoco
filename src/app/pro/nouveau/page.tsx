@@ -39,6 +39,20 @@ export default function NouveauHub() {
             desc="Créer un compte coordinatrice, chirurgien/médecin ou délégué."
           />
         )}
+        {peutPatient && (
+          <Choix
+            href="/pro/nouveau-soignant-externe"
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V21" />
+                <circle cx="9.5" cy="7" r="3.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 8v6M22 11h-6" />
+              </svg>
+            }
+            titre="Nouveau soignant externe"
+            desc="Médecin, chirurgien ou infirmière libérale hors entreprise, sans compte."
+          />
+        )}
         {peutRegion && (
           <Choix
             href="/pro/structure"

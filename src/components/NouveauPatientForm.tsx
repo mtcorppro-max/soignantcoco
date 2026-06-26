@@ -20,6 +20,17 @@ type Soignant = {
   protocoles: ProtocoleConsigne[] | null;
 };
 
+// Soignant externe (sans compte) — cf. migration 0040.
+type Externe = {
+  id: string;
+  type: "medecin" | "infirmiere";
+  titre: string | null;
+  prenom: string | null;
+  nom: string;
+  specialite: string | null;
+  telephone: string | null;
+};
+
 // Nom complet affiché et stocké : « [Titre] Prénom Nom ».
 const nomComplet = (s: Soignant) => [s.titre, s.prenom, s.nom].filter(Boolean).join(" ");
 
@@ -78,6 +89,7 @@ export function NouveauPatientForm() {
   const [joursSuivi, setJoursSuivi] = useState<number[]>([]);
   const [seuilsProto, setSeuilsProto] = useState<{ type: string; min: string; max: string }[]>([]);
   const [medecinLibre, setMedecinLibre] = useState(false); // médecin sans compte (saisie libre)
+  const [externes, setExternes] = useState<Externe[]>([]);
   const pro = useProSession();
   const [agenceId, setAgenceId] = useState("");
   const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
@@ -88,6 +100,11 @@ export function NouveauPatientForm() {
       .select("id,nom,prenom,titre,role,niveau,telephone,specialite,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
+    createClient()
+      .from("soignant_externe")
+      .select("id,type,titre,prenom,nom,specialite,telephone")
+      .order("nom")
+      .then(({ data }) => setExternes((data ?? []) as Externe[]));
     Promise.all([
       createClient().from("region").select("id,nom"),
       createClient().from("agence").select("id,nom,region_id"),
@@ -103,17 +120,33 @@ export function NouveauPatientForm() {
   const coordinatrices = soignants.filter((s) => s.role === "coordinatrice");
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
   const infirmieres = soignants.filter((s) => s.role === "infirmiere_liberale");
+  const externesMed = externes.filter((e) => e.type === "medecin");
+  const externesInf = externes.filter((e) => e.type === "infirmiere");
+  const nomExterne = (e: Externe) => [e.titre, e.prenom, e.nom].filter(Boolean).join(" ");
 
-  // Choix de l'infirmière libérale : enregistre son nom + tél (et rattachement auto).
+  // Options du sélecteur chirurgien/médecin : comptes + soignants externes.
+  const optionsChirurgien = [
+    ...chirurgiens.map((s) => ({ value: nomComplet(s), label: nomComplet(s) })),
+    ...externesMed.map((e) => ({ value: nomExterne(e), label: `${nomExterne(e)} · externe` })),
+  ];
+  const optionsInfirmiere = [
+    ...infirmieres.map((s) => ({ value: nomComplet(s), label: nomComplet(s) })),
+    ...externesInf.map((e) => ({ value: nomExterne(e), label: `${nomExterne(e)} · externe` })),
+  ];
+
+  // Choix de l'infirmière libérale : enregistre son nom + tél (et rattachement auto si compte).
   const choisirInfirmiere = (v: string) => {
     const inf = infirmieres.find((s) => nomComplet(s) === v);
-    setForm((f) => ({ ...f, infirmiere_nom: v, infirmiere_tel: inf?.telephone ?? f.infirmiere_tel }));
+    const ext = externesInf.find((e) => nomExterne(e) === v);
+    setForm((f) => ({ ...f, infirmiere_nom: v, infirmiere_tel: inf?.telephone ?? ext?.telephone ?? f.infirmiere_tel }));
   };
 
   // Compte chirurgien/médecin sélectionné + classification (chirurgien vs médecin).
   const selChirurgien = chirurgiens.find((s) => nomComplet(s) === form.chirurgien);
-  const estChirurgical = (selChirurgien?.specialite ?? "").toLowerCase().includes("chirurg");
-  const protocolesChir = selChirurgien?.protocoles ?? [];
+  const selExterneMed = externesMed.find((e) => nomExterne(e) === form.chirurgien);
+  const specialiteSel = selChirurgien?.specialite ?? selExterneMed?.specialite ?? "";
+  const estChirurgical = specialiteSel.toLowerCase().includes("chirurg");
+  const protocolesChir = selChirurgien?.protocoles ?? []; // protocoles : comptes uniquement
 
   // Applique un protocole : remplit opération, durée et jours de suivi.
   const appliquerProtocole = (v: string) => {
@@ -271,7 +304,7 @@ export function NouveauPatientForm() {
             }}
             placeholder="— Choisir un chirurgien / médecin —"
             options={[
-              ...chirurgiens.map((s) => ({ value: nomComplet(s), label: nomComplet(s) })),
+              ...optionsChirurgien,
               { value: "__libre__", label: "➕ Médecin sans compte AS2CŒUR" },
             ]}
           />
@@ -352,19 +385,19 @@ export function NouveauPatientForm() {
           </div>
         </div>
         <div>
-          <label className="label">Infirmière libérale (compte rattaché)</label>
+          <label className="label">Infirmière libérale</label>
           <Select
             value={form.infirmiere_nom}
             onChange={choisirInfirmiere}
-            placeholder={infirmieres.length ? "— Choisir une infirmière libérale —" : "Aucun compte infirmière libérale"}
+            placeholder={optionsInfirmiere.length ? "— Choisir une infirmière libérale —" : "Aucune infirmière libérale"}
             options={[
-              ...infirmieres.map((s) => ({ value: nomComplet(s), label: nomComplet(s) })),
-              ...(form.infirmiere_nom && !infirmieres.some((s) => nomComplet(s) === form.infirmiere_nom)
+              ...optionsInfirmiere,
+              ...(form.infirmiere_nom && !optionsInfirmiere.some((o) => o.value === form.infirmiere_nom)
                 ? [{ value: form.infirmiere_nom, label: form.infirmiere_nom }]
                 : []),
             ]}
           />
-          <p className="mt-1 text-xs text-slate-400">Elle pourra voir ce patient et saisir ses constantes.</p>
+          <p className="mt-1 text-xs text-slate-400">Un compte rattaché pourra voir ce patient et saisir ses constantes ; une infirmière externe est indiquée à titre de référence.</p>
         </div>
         <div>
           <label className="label">Alerte 1 — infirmière coordinatrice</label>
