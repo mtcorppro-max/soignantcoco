@@ -89,7 +89,6 @@ export function NouveauPatientForm() {
   const [soignants, setSoignants] = useState<Soignant[]>([]);
   const [joursSuivi, setJoursSuivi] = useState<number[]>([]);
   const [seuilsProto, setSeuilsProto] = useState<{ type: string; min: string; max: string }[]>([]);
-  const [medecinLibre, setMedecinLibre] = useState(false); // médecin sans compte (saisie libre)
   const [externes, setExternes] = useState<Externe[]>([]);
   const pro = useProSession();
   const [agenceId, setAgenceId] = useState("");
@@ -217,7 +216,6 @@ export function NouveauPatientForm() {
               setForm({ ...VIDE });
               setJoursSuivi([]);
               setSeuilsProto([]);
-              setMedecinLibre(false);
             }}
             className="btn-secondary flex-1"
           >
@@ -293,34 +291,15 @@ export function NouveauPatientForm() {
         <div>
           <label className="label">Chirurgien / Médecin</label>
           <Select
-            value={medecinLibre ? "__libre__" : form.chirurgien}
-            onChange={(v) => {
-              if (v === "__libre__") {
-                setMedecinLibre(true);
-                setForm((f) => ({ ...f, chirurgien: "", traitement: "", traitement_autre: "" }));
-              } else {
-                setMedecinLibre(false);
-                setForm((f) => ({ ...f, chirurgien: v, traitement: "", traitement_autre: "" }));
-              }
-            }}
+            value={form.chirurgien}
+            onChange={(v) => setForm((f) => ({ ...f, chirurgien: v, traitement: "", traitement_autre: "" }))}
             placeholder="— Choisir un chirurgien / médecin —"
-            options={[
-              ...optionsChirurgien,
-              { value: "__libre__", label: "➕ Médecin sans compte AS2CŒUR" },
-            ]}
+            options={optionsChirurgien}
           />
-          {medecinLibre && (
-            <input
-              className="input mt-2"
-              value={form.chirurgien}
-              onChange={set("chirurgien")}
-              placeholder="Nom du médecin (ex. Dr Martin)"
-            />
-          )}
         </div>
 
         {/* Traitement à suivre (dès qu'un chirurgien/médecin est choisi) */}
-        {(form.chirurgien || medecinLibre) && (
+        {form.chirurgien && (
           <div>
             <label className="label">Traitement à suivre</label>
             <Select
