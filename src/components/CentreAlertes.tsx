@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { useData, invalidate } from "@/lib/hooks/useData";
 import { AlerteCard, type AlerteEnrichie } from "@/components/AlerteCard";
+import { estCoordOuManager } from "@/lib/roles";
 
 async function fetchAlertes(): Promise<AlerteEnrichie[]> {
   const supabase = createClient();
@@ -21,7 +22,7 @@ export function CentreAlertes() {
   const pro = useProSession();
   const [reloadKey, setReloadKey] = useState(0);
   const alertes = useData<AlerteEnrichie[]>("pro:alertes", fetchAlertes, [reloadKey]);
-  const peutTraiter = pro?.role === "coordinatrice";
+  const peutTraiter = estCoordOuManager(pro?.role);
 
   const recharger = () => {
     invalidate("pro:alertes");
