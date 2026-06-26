@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 
-type Pro = { id: string; nom: string; prenom: string | null; titre: string | null; role: string };
+type Pro = { id: string; nom: string; prenom: string | null; titre: string | null; role: string; niveau: number };
 type Message = { id: string; expediteur_id: string; destinataire_id: string; contenu: string; lu: boolean; created_at: string };
 
 const nomComplet = (p: Pro) => [p.titre, p.prenom, p.nom].filter(Boolean).join(" ");
@@ -28,7 +28,9 @@ export default function MessageriePage() {
       supabase.from("professionnel").select("id,nom,prenom,titre,role,niveau").neq("id", monId).order("nom"),
       supabase.from("message_pro").select("id,expediteur_id,destinataire_id,contenu,lu,created_at").order("created_at", { ascending: true }),
     ]);
-    setPros(((ps ?? []) as (Pro & { niveau: number })[]).filter((p) => p.niveau !== 0));
+    // On garde tout le monde pour résoudre les noms (y compris un niveau 0 qui
+    // vous a écrit) ; le filtrage niveau 0 ne s'applique qu'au choix d'un nouveau contact.
+    setPros((ps ?? []) as Pro[]);
     setMessages((ms ?? []) as Message[]);
   }, [monId]);
 
@@ -91,7 +93,8 @@ export default function MessageriePage() {
 
   const sel = selId ? proParId.get(selId) : undefined;
   const dejaEnConv = new Set(conversations.map((c) => c.id));
-  const autresPros = pros.filter((p) => !dejaEnConv.has(p.id));
+  // Nouveau contact : on ne propose pas les comptes niveau 0 (invisibles).
+  const autresPros = pros.filter((p) => p.niveau !== 0 && !dejaEnConv.has(p.id));
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -102,7 +105,6 @@ export default function MessageriePage() {
         <div className="grid content-start gap-2">
           {conversations.map((c) => {
             const p = proParId.get(c.id);
-            if (!p) return null;
             return (
               <button
                 key={c.id}
@@ -110,7 +112,7 @@ export default function MessageriePage() {
                 className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition ${selId === c.id ? "border-brand bg-rose-50" : "border-rose-100 hover:bg-rose-50"}`}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-700">{nomComplet(p)}</p>
+                  <p className="truncate text-sm font-semibold text-slate-700">{p ? nomComplet(p) : "Soignant"}</p>
                   <p className="truncate text-xs text-slate-400">{c.dernier.contenu}</p>
                 </div>
                 {c.nonLus > 0 && <span className="badge bg-brand text-white">{c.nonLus}</span>}
@@ -136,14 +138,14 @@ export default function MessageriePage() {
 
         {/* Fil de discussion */}
         <div className="grid grid-rows-[auto_1fr_auto] rounded-2xl border border-rose-100 bg-white" style={{ minHeight: "60vh" }}>
-          {!sel ? (
+          {!selId ? (
             <div className="row-span-3 flex items-center justify-center p-8 text-center text-sm text-slate-400">
               Sélectionnez un soignant pour démarrer une conversation.
             </div>
           ) : (
             <>
               <div className="border-b border-rose-100 px-4 py-3">
-                <p className="font-semibold text-slate-800">{nomComplet(sel)}</p>
+                <p className="font-semibold text-slate-800">{sel ? nomComplet(sel) : "Soignant"}</p>
               </div>
               <div className="grid content-start gap-2 overflow-auto p-4">
                 {fil.length === 0 ? (
