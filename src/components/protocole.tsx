@@ -17,6 +17,14 @@ const MOLECULES_PER_OS_INIT = (): Molecule[] => predef(["Paracétamol", "Lovenox
 // Constante à surveiller avec ses seuils d'alerte.
 export type ConstanteSurv = { type: string; min: string; max: string };
 
+// Bilan sanguin : voies d'abord possibles et analyses à doser.
+const VOIES_BILAN = ["VVP", "PAC", "VVC", "PICCLINE"];
+const ANALYSES_BILAN = [
+  "NFS", "Plaquettes", "Ionogramme sanguin", "Calcémie", "Urée", "Créatinémie",
+  "Albuminémie", "Pré-albumine", "VS", "CRP", "Transaminases SGOT/SGPT",
+  "Gamma GT", "Phosphatases alcalines", "Bilirubine totale",
+];
+
 export type Protocole = {
   intervention: string;
   duree: string;
@@ -26,6 +34,10 @@ export type Protocole = {
   medicaments_per_os: Molecule[];
   surveiller_constantes: boolean;
   constantes: ConstanteSurv[];
+  bilan_sanguin: boolean;
+  bilan_voie: string;
+  bilan_analyses: string[];
+  bilan_autres: string;
   pansement: boolean;
   pansement_detail: string;
   cryotherapie: boolean;
@@ -46,6 +58,10 @@ export const protocoleVide = (): Protocole => ({
   medicaments_per_os: MOLECULES_PER_OS_INIT(),
   surveiller_constantes: false,
   constantes: [],
+  bilan_sanguin: false,
+  bilan_voie: "",
+  bilan_analyses: [],
+  bilan_autres: "",
   pansement: false,
   pansement_detail: "",
   cryotherapie: false,
@@ -77,6 +93,10 @@ export const protocolePropre = (p: Protocole) => ({
   constantes: p.surveiller_constantes
     ? p.constantes.map((c) => ({ type: c.type, min: c.min.trim(), max: c.max.trim() }))
     : [],
+  bilan_sanguin: p.bilan_sanguin,
+  bilan_voie: p.bilan_sanguin ? p.bilan_voie : "",
+  bilan_analyses: p.bilan_sanguin ? p.bilan_analyses : [],
+  bilan_autres: p.bilan_sanguin ? p.bilan_autres.trim() : "",
   materiel: p.materiel,
   materiel_paramedical: p.materiel ? p.materiel_paramedical.trim() : "",
   envoi_ordo: p.envoi_ordo,
@@ -250,6 +270,64 @@ export function ProtocoleEditor({
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Bilan sanguin */}
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <label className="label mb-0">Besoin d&apos;un bilan sanguin ?</label>
+          <OuiNon valeur={value.bilan_sanguin} onChange={(v) => onChange({ bilan_sanguin: v })} nom={`bilan-${index}`} />
+        </div>
+        {value.bilan_sanguin && (
+          <div className="grid gap-3 rounded-xl border border-rose-100 bg-rose-50/40 p-3">
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-500">Voie d&apos;abord</p>
+              <div className="flex flex-wrap gap-2">
+                {VOIES_BILAN.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onChange({ bilan_voie: value.bilan_voie === v ? "" : v })}
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                      value.bilan_voie === v ? "border-brand bg-brand text-white" : "border-rose-200 bg-white text-slate-600 hover:border-brand hover:text-brand"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-500">À doser dans le sang</p>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {ANALYSES_BILAN.map((a) => {
+                  const coche = value.bilan_analyses.includes(a);
+                  return (
+                    <label key={a} className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={coche}
+                        onChange={(e) => onChange({
+                          bilan_analyses: e.target.checked
+                            ? [...value.bilan_analyses, a]
+                            : value.bilan_analyses.filter((x) => x !== a),
+                        })}
+                        className="h-4 w-4 accent-brand"
+                      />
+                      {a}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <input
+              className="input"
+              value={value.bilan_autres}
+              onChange={(e) => onChange({ bilan_autres: e.target.value })}
+              placeholder="Autres dosages…"
+            />
           </div>
         )}
       </div>

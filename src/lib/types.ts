@@ -72,6 +72,10 @@ export interface ProtocoleConsigne {
   medicaments_per_os: { nom: string; posologie: string }[];
   surveiller_constantes?: boolean;
   constantes?: { type: string; min: string; max: string }[];
+  bilan_sanguin?: boolean;
+  bilan_voie?: string;
+  bilan_analyses?: string[];
+  bilan_autres?: string;
   materiel: boolean;
   materiel_paramedical: string;
   autres: string;

@@ -172,7 +172,7 @@ export default function SuivisPage() {
                     {libelleJour(g.date, today)}
                   </h2>
                   {estAujourdhui && <span className="badge bg-brand text-white">Aujourd&apos;hui</span>}
-                  {enRetard && <span className="badge bg-amber-100 text-attention">En retard</span>}
+                  {enRetard && <span className="rounded-full border border-rose-800 px-2 py-0.5 text-[11px] font-semibold text-rose-800">En retard</span>}
                   <span className="text-xs text-slate-400">{g.items.length} suivi(s)</span>
                 </div>
                 <div className="grid gap-2">

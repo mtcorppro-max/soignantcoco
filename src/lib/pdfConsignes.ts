@@ -19,6 +19,10 @@ export type ProtocolePdf = {
   medicaments_per_os: Med[];
   surveiller_constantes?: boolean;
   constantes?: { type: string; min: string; max: string }[];
+  bilan_sanguin?: boolean;
+  bilan_voie?: string;
+  bilan_analyses?: string[];
+  bilan_autres?: string;
   materiel: boolean;
   materiel_paramedical: string;
   autres: string;
@@ -231,6 +235,13 @@ export async function genererPdfConsignes(
         const seuil = [c.min ? `min ${c.min}` : "", c.max ? `max ${c.max}` : ""].filter(Boolean).join(" / ");
         ligne(`${LABEL_CONST[c.type] ?? c.type} :`, seuil || "à surveiller");
       });
+    }
+
+    if (p.bilan_sanguin) {
+      sousTitre("Bilan sanguin");
+      if (p.bilan_voie) ligne("Voie d'abord :", p.bilan_voie);
+      const analyses = [...(p.bilan_analyses ?? []), ...(p.bilan_autres ? [p.bilan_autres] : [])];
+      ligne("À doser :", analyses.length ? analyses.join(", ") : "à préciser");
     }
 
     const aSoins = p.pansement || p.cryotherapie || p.envoi_ordo.length || p.materiel;
