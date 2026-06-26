@@ -11,7 +11,7 @@ const SPECIALITES = [
   "Chirurgien viscéral / digestif", "Chirurgien urologique", "Chirurgien gynécologique", "Chirurgien plasticien",
   "Chirurgien maxillo-facial", "Chirurgien ORL", "Neurochirurgien", "Ophtalmologue", "Cardiologue",
   "Pneumologue", "Gastro-entérologue", "Néphrologue", "Endocrinologue", "Rhumatologue", "Dermatologue",
-  "Médecin généraliste", "Autre",
+  "Addictologue", "Médecin généraliste", "Autre",
 ];
 
 const VIDE = {
@@ -23,6 +23,10 @@ const VIDE = {
   telephone: "",
   email: "",
   zone_exercice: "",
+  cabinets: "",
+  secretariat_nom: "",
+  secretariat_email: "",
+  secretariat_tel: "",
 };
 
 export default function NouveauSoignantExterne() {
@@ -57,6 +61,10 @@ export default function NouveauSoignantExterne() {
       telephone: f.telephone.trim() || null,
       email: f.email.trim() || null,
       zone_exercice: estMedecin ? null : f.zone_exercice.trim() || null,
+      cabinets: estMedecin ? f.cabinets.trim() || null : null,
+      secretariat_nom: estMedecin ? f.secretariat_nom.trim() || null : null,
+      secretariat_email: estMedecin ? f.secretariat_email.trim() || null : null,
+      secretariat_tel: estMedecin ? f.secretariat_tel.trim() || null : null,
       protocoles: estMedecin ? protocoles.map(protocolePropre) : [],
     });
     setBusy(false);
@@ -141,7 +149,7 @@ export default function NouveauSoignantExterne() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">Téléphone</label>
+            <label className="label">Téléphone {estMedecin && "(personnel)"}</label>
             <input className="input" value={f.telephone} onChange={set("telephone")} placeholder="06…" inputMode="tel" />
           </div>
           <div>
@@ -150,40 +158,65 @@ export default function NouveauSoignantExterne() {
           </div>
         </div>
 
+        {estMedecin && (
+          <>
+            <div className="border-t border-rose-100 pt-4">
+              <label className="label">Adresse du / des cabinets</label>
+              <input className="input" value={f.cabinets} onChange={set("cabinets")} placeholder="Clinique du Parc à Castelnau-le-Lez / …" />
+            </div>
+
+            <div className="grid gap-4 border-t border-rose-100 pt-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Secrétariat</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="label">Nom</label>
+                  <input className="input" value={f.secretariat_nom} onChange={set("secretariat_nom")} placeholder="Nathalie" />
+                </div>
+                <div>
+                  <label className="label">Email</label>
+                  <input className="input" value={f.secretariat_email} onChange={set("secretariat_email")} placeholder="secretariat@…" inputMode="email" />
+                </div>
+                <div>
+                  <label className="label">Téléphone</label>
+                  <input className="input" value={f.secretariat_tel} onChange={set("secretariat_tel")} placeholder="0…" inputMode="tel" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 border-t border-rose-100 pt-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Protocoles par intervention</p>
+                <span className="text-xs text-slate-400">{protocoles.length} protocole(s)</span>
+              </div>
+              <p className="-mt-2 text-xs text-slate-400">
+                Un protocole par type d&apos;intervention. Réutilisé lors de la création d&apos;un patient.
+              </p>
+              {protocoles.map((p, i) => (
+                <ProtocoleEditor
+                  key={i}
+                  index={i}
+                  value={p}
+                  onChange={(patch) => majProtocole(i, patch)}
+                  onRemove={() => supprimerProtocole(i)}
+                  canRemove={protocoles.length > 1}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={ajouterProtocole}
+                className="justify-self-start rounded-lg border border-dashed border-rose-300 px-4 py-2 text-sm font-semibold text-brand hover:bg-rose-50"
+              >
+                + Ajouter un protocole / une intervention
+              </button>
+            </div>
+          </>
+        )}
+
         {erreur && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{erreur}</p>}
         <button onClick={enregistrer} disabled={busy} className="btn-primary py-3">
           {busy ? "Enregistrement…" : "Enregistrer le soignant externe"}
         </button>
       </div>
-
-      {estMedecin && (
-        <div className="grid gap-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Protocoles & consignes</p>
-            <span className="text-xs text-slate-400">{protocoles.length} protocole(s)</span>
-          </div>
-          <p className="text-sm text-slate-500">
-            Un protocole par intervention. Réutilisé automatiquement lors de la création d&apos;un patient.
-          </p>
-          {protocoles.map((p, i) => (
-            <ProtocoleEditor
-              key={i}
-              index={i}
-              value={p}
-              onChange={(patch) => majProtocole(i, patch)}
-              onRemove={() => supprimerProtocole(i)}
-              canRemove={protocoles.length > 1}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={ajouterProtocole}
-            className="justify-self-start rounded-lg border border-dashed border-rose-300 px-4 py-2 text-sm font-medium text-brand hover:bg-rose-50"
-          >
-            + Ajouter un protocole (autre intervention)
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -30,6 +30,7 @@ const SPECIALITES = [
   "Endocrinologue",
   "Rhumatologue",
   "Dermatologue",
+  "Addictologue",
   "Médecin généraliste",
   "Autre",
 ];
