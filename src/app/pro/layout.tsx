@@ -11,10 +11,11 @@ import { LIBELLE_ROLE } from "@/lib/roles";
 export default function ProLayout({ children }: { children: React.ReactNode }) {
   const pro = useProSession();
   const pathname = usePathname();
-  const estCoord = pro?.role === "coordinatrice";
-  const estChir = pro?.role === "chirurgien";
+  const estN0 = pro?.niveau === 0; // super-admin plateforme : accès à tout
+  const estCoord = pro?.role === "coordinatrice" || estN0;
+  const estChir = pro?.role === "chirurgien" && !estN0;
   // Gérer/créer des comptes & l'équipe : niveau 0, 1 ou 2 (hors chirurgien)
-  const peutGerer = !!pro && pro.niveau <= 2 && pro.role !== "chirurgien";
+  const peutGerer = estN0 || (!!pro && pro.niveau <= 2 && pro.role !== "chirurgien");
 
   // Remonte en haut à chaque changement de page (évite la restauration de
   // scroll qui laissait la fiche patient en bas après un clic depuis le tableau).

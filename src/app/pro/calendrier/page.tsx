@@ -60,7 +60,7 @@ export default function OrganisationPage() {
   const [events, setEvents] = useState<Evt[]>([]);
   const [editing, setEditing] = useState<Evt | null>(null);
 
-  const interdit = pro && pro.role !== "coordinatrice";
+  const interdit = pro && pro.role !== "coordinatrice" && pro.niveau !== 0;
   const fin = addDays(start, NB_JOURS - 1);
 
   const charger = useCallback(async () => {

@@ -93,7 +93,7 @@ export default function SuivisPage() {
     return [...map.values()];
   }, [patients, filtreChir, today]);
 
-  if (pro && pro.role !== "coordinatrice") {
+  if (pro && pro.role !== "coordinatrice" && pro.niveau !== 0) {
     return (
       <div className="card text-sm text-slate-500">
         Le calendrier des suivis est réservé aux infirmières coordinatrices.
