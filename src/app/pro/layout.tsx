@@ -56,20 +56,20 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
               {estCoord && <Onglet href="/pro/calendrier" icon="clipboard" label="Organisation" pathname={pathname} badge={nbDemandes} />}
               {peutGerer && <Onglet href="/pro/equipe" icon="users" label="Équipe soignante" pathname={pathname} />}
               {peutGerer && <Onglet href="/pro/infirmieres" icon="home" label="Infirmières libérales" pathname={pathname} />}
-              {(estCoord || estChir || peutGerer) && (
-                <Link
-                  href="/pro/nouveau"
-                  prefetch={true}
-                  className="ml-1 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
-                >
-                  <IconeNav name="plus" className="h-4 w-4" />
-                  Nouveau
-                </Link>
-              )}
               {peutPec && <Onglet href="/pro/pec" icon="chart" label="PEC" pathname={pathname} />}
             </nav>
           </div>
           <div className="flex items-center gap-3 text-right">
+            {(estCoord || estChir || peutGerer) && (
+              <Link
+                href="/pro/nouveau"
+                prefetch={true}
+                className="hidden items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark sm:inline-flex"
+              >
+                <IconeNav name="plus" className="h-4 w-4" />
+                Nouveau
+              </Link>
+            )}
             {pro && (
               <div className="leading-tight">
                 <p className="text-sm font-semibold text-slate-700">
@@ -92,8 +92,8 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         {estCoord && <NavItem href="/pro/calendrier" icon="clipboard" label="Organisation" badge={nbDemandes} />}
         {peutGerer && <NavItem href="/pro/equipe" icon="users" label="Équipe" />}
         {peutGerer && <NavItem href="/pro/infirmieres" icon="home" label="Inf. lib." />}
-        {(estCoord || estChir || peutGerer) && <NavItem href="/pro/nouveau" icon="plus" label="Nouveau" />}
         {peutPec && <NavItem href="/pro/pec" icon="chart" label="PEC" />}
+        {(estCoord || estChir || peutGerer) && <NavItem href="/pro/nouveau" icon="plus" label="Nouveau" />}
       </nav>
     </div>
   );
