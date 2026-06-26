@@ -190,13 +190,19 @@ export default function OrganisationPage() {
       remplacant_id: ev.remplacant_id,
       note: ev.note,
     };
-    if (ev.id) await supabase.from("evenement_planning").update(payload).eq("id", ev.id);
-    else await supabase.from("evenement_planning").insert(payload);
+    const { error } = ev.id
+      ? await supabase.from("evenement_planning").update(payload).eq("id", ev.id)
+      : await supabase.from("evenement_planning").insert(payload);
+    if (error) {
+      alert("Enregistrement refusé : " + error.message);
+      return;
+    }
     setEditing(null);
     charger();
   }
   async function supprimer(id: string) {
-    await createClient().from("evenement_planning").delete().eq("id", id);
+    const { error } = await createClient().from("evenement_planning").delete().eq("id", id);
+    if (error) { alert("Suppression refusée : " + error.message); return; }
     setEditing(null);
     charger();
   }
