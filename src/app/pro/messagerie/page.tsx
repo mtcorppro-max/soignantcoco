@@ -102,20 +102,20 @@ export default function MessageriePage() {
 
       <div className="grid gap-4 md:grid-cols-[18rem_1fr]">
         {/* Conversations + nouveau message */}
-        <div className="grid content-start gap-2">
+        <div className="grid min-w-0 content-start gap-2">
           {conversations.map((c) => {
             const p = proParId.get(c.id);
             return (
               <button
                 key={c.id}
                 onClick={() => setSelId(c.id)}
-                className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition ${selId === c.id ? "border-brand bg-rose-50" : "border-rose-100 hover:bg-rose-50"}`}
+                className={`flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-xl border px-3 py-2 text-left transition ${selId === c.id ? "border-brand bg-rose-50" : "border-rose-100 hover:bg-rose-50"}`}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-700">{p ? nomComplet(p) : "Soignant"}</p>
                   <p className="truncate text-xs text-slate-400">{c.dernier.contenu}</p>
                 </div>
-                {c.nonLus > 0 && <span className="badge bg-brand text-white">{c.nonLus}</span>}
+                {c.nonLus > 0 && <span className="badge shrink-0 bg-brand text-white">{c.nonLus}</span>}
               </button>
             );
           })}
