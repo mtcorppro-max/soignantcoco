@@ -7,9 +7,9 @@ import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 import { Select } from "@/components/Select";
 import type { Patient, RolePro, ProtocoleConsigne } from "@/lib/types";
 
-type Soignant = { id: string; nom: string; prenom: string | null; titre: string | null; role: RolePro; telephone: string | null; protocoles: ProtocoleConsigne[] | null };
+type Soignant = { id: string; nom: string; prenom: string | null; titre: string | null; role: RolePro; telephone: string | null; specialite: string | null; protocoles: ProtocoleConsigne[] | null };
 // Soignant externe (sans compte) — cf. migrations 0040 / 0041.
-type Externe = { id: string; type: "medecin" | "infirmiere"; titre: string | null; prenom: string | null; nom: string; telephone: string | null; protocoles: ProtocoleConsigne[] | null };
+type Externe = { id: string; type: "medecin" | "infirmiere"; titre: string | null; prenom: string | null; nom: string; telephone: string | null; specialite: string | null; protocoles: ProtocoleConsigne[] | null };
 
 // Nom complet affiché et stocké : « [Titre] Prénom Nom ».
 const nomComplet = (s: { titre: string | null; prenom: string | null; nom: string }) => [s.titre, s.prenom, s.nom].filter(Boolean).join(" ");
@@ -80,12 +80,12 @@ export function InfosPatient({
     if (!edition || soignants.length) return;
     createClient()
       .from("professionnel")
-      .select("id,nom,prenom,titre,role,telephone,protocoles")
+      .select("id,nom,prenom,titre,role,telephone,specialite,protocoles")
       .order("nom")
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
     createClient()
       .from("soignant_externe")
-      .select("id,type,titre,prenom,nom,telephone,protocoles")
+      .select("id,type,titre,prenom,nom,telephone,specialite,protocoles")
       .order("nom")
       .then(({ data }) => setExternes((data ?? []) as Externe[]));
     Promise.all([
@@ -128,11 +128,11 @@ export function InfosPatient({
     setForm((f) => ({ ...f, [champNom]: v, [champTel]: c?.telephone ?? "" }));
   };
 
-  // Protocoles du chirurgien/médecin choisi (compte ou externe) + application.
-  const protocolesChir =
-    chirurgiens.find((s) => nomComplet(s) === form.chirurgien)?.protocoles ??
-    externesMed.find((e) => nomComplet(e) === form.chirurgien)?.protocoles ??
-    [];
+  // Protocoles du chirurgien/médecin choisi (compte ou externe) + classification.
+  const selChir = chirurgiens.find((s) => nomComplet(s) === form.chirurgien);
+  const selExterneMed = externesMed.find((e) => nomComplet(e) === form.chirurgien);
+  const estChirurgical = ((selChir?.specialite ?? selExterneMed?.specialite) ?? "").toLowerCase().includes("chirurg");
+  const protocolesChir = selChir?.protocoles ?? selExterneMed?.protocoles ?? [];
   const appliquerProtocole = (v: string) => {
     const p = protocolesChir[Number(v)];
     if (!p) return;
@@ -238,7 +238,7 @@ export function InfosPatient({
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Champ label="Date de l'opération" type="date" value={form.date_operation} onChange={set("date_operation")} />
+            <Champ label={estChirurgical ? "Date de l'opération" : "Date de début de prise en charge"} type="date" value={form.date_operation} onChange={set("date_operation")} />
             <Champ label="Jours de prise en charge" value={form.duree_prise_en_charge} onChange={set("duree_prise_en_charge")} />
           </div>
           {joursSuivi.length > 0 && (

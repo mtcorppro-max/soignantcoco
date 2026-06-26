@@ -336,8 +336,8 @@ export function NouveauPatientForm() {
           </div>
         )}
 
-        {/* Jour de la chirurgie + jour de sortie (chirurgien à compte, ou Post op) */}
-        {(estChirurgical || form.traitement === "Post op") && (
+        {/* Chirurgien : jour de la chirurgie + jour de sortie */}
+        {(estChirurgical || form.traitement === "Post op") ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Jour de la chirurgie</label>
@@ -348,7 +348,13 @@ export function NouveauPatientForm() {
               <input type="date" className="input" value={form.date_sortie} onChange={set("date_sortie")} />
             </div>
           </div>
-        )}
+        ) : form.chirurgien ? (
+          /* Médecin : juste la date de début de prise en charge */
+          <div>
+            <label className="label">Date de début de prise en charge</label>
+            <input type="date" className="input" value={form.date_operation} onChange={set("date_operation")} />
+          </div>
+        ) : null}
         {joursSuivi.length > 0 && (
           <p className="text-xs text-brand">
             Jours de suivi programmés : {joursSuivi.map((j) => `J${j}`).join(", ")}
