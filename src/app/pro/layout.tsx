@@ -29,7 +29,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
               <Onglet href="/pro" label="Tableau de bord" />
               <Onglet href="/pro/alertes" label="Alertes" />
               {estCoord && <Onglet href="/pro/suivis" label="Suivis" />}
-              {!estChir && <Onglet href="/pro/calendrier" label="Organisation" />}
+              {estCoord && <Onglet href="/pro/calendrier" label="Organisation" />}
               {estNiveau1 && !estChir && <Onglet href="/pro/equipe" label="Équipe soignante" />}
               {(estCoord || estChir || estNiveau1) && (
                 <Link
@@ -63,7 +63,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         <NavItem href="/pro" icon="⊞" label="Tableau" />
         <NavItem href="/pro/alertes" icon="◎" label="Alertes" />
         {estCoord && <NavItem href="/pro/suivis" icon="🗓" label="Suivis" />}
-        {!estChir && <NavItem href="/pro/calendrier" icon="▦" label="Organisation" />}
+        {estCoord && <NavItem href="/pro/calendrier" icon="▦" label="Organisation" />}
         {estNiveau1 && !estChir && <NavItem href="/pro/equipe" icon="👥" label="Équipe" />}
         {(estCoord || estChir || estNiveau1) && <NavItem href="/pro/nouveau" icon="＋" label="Nouveau" />}
       </nav>

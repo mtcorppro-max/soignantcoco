@@ -1,447 +1,359 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
-import { LIBELLE_ROLE } from "@/lib/roles";
-import { isoDate, semainesAVenir, astreintesIncompletes } from "@/lib/astreinte";
-import type { RolePro } from "@/lib/types";
 
+type RolePro = "coordinatrice" | "chirurgien" | "delegue";
 type ProLite = { id: string; nom: string; prenom: string | null; titre: string | null; role: RolePro };
-
-// Nom complet affiché : « [Titre] Prénom Nom ».
-const nomCompletPro = (p: { titre?: string | null; prenom?: string | null; nom: string }) =>
-  [p.titre, p.prenom, p.nom].filter(Boolean).join(" ");
-type AbsenceLigne = {
+type TypeEvt = "astreinte" | "conges" | "arret_maladie" | "formation" | "autre";
+type Evt = {
   id: string;
   professionnel_id: string;
-  remplacant_id: string | null;
-  date_debut: string;
+  type: TypeEvt;
+  date_debut: string; // YYYY-MM-DD
   date_fin: string;
-  motif: string | null;
-  professionnel: { nom: string; prenom: string | null; titre: string | null; role: RolePro } | null;
-  remplacant: { nom: string; prenom: string | null; titre: string | null; role: RolePro } | null;
+  remplacant_id: string | null;
+  note: string | null;
 };
 
-// Palette : une couleur stable par soignant (selon son id).
-const PALETTE = [
-  "bg-rose-400", "bg-sky-400", "bg-emerald-400", "bg-amber-400",
-  "bg-violet-400", "bg-teal-500", "bg-orange-400", "bg-fuchsia-400",
-  "bg-indigo-400", "bg-lime-500",
-];
-function couleurPour(id: string) {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return PALETTE[h % PALETTE.length];
-}
+const TYPES: Record<TypeEvt, { label: string; bar: string; chip: string }> = {
+  astreinte:     { label: "Astreinte",     bar: "bg-indigo-500",  chip: "bg-indigo-100 text-indigo-700" },
+  conges:        { label: "Congés",        bar: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-700" },
+  arret_maladie: { label: "Arrêt maladie", bar: "bg-rose-500",    chip: "bg-rose-100 text-rose-700" },
+  formation:     { label: "Formation",     bar: "bg-amber-500",   chip: "bg-amber-100 text-amber-700" },
+  autre:         { label: "Autre",         bar: "bg-slate-400",   chip: "bg-slate-100 text-slate-600" },
+};
+const ABSENCES: TypeEvt[] = ["conges", "arret_maladie", "formation"];
 
-function parseISO(s: string) {
+const nomComplet = (p: { titre?: string | null; prenom?: string | null; nom: string }) =>
+  [p.titre, p.prenom, p.nom].filter(Boolean).join(" ");
+
+// ── Helpers date (YYYY-MM-DD, sans fuseau) ──────────────────────────────
+function ymd(y: number, m: number, d: number) {
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+function parse(s: string) {
   const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  return { y, m: m - 1, d };
 }
-function formatDate(iso: string) {
-  const [a, m, j] = iso.split("-");
-  return `${j}/${m}/${a}`;
+function addDays(s: string, n: number) {
+  const { y, m, d } = parse(s);
+  const dt = new Date(y, m, d + n);
+  return ymd(dt.getFullYear(), dt.getMonth(), dt.getDate());
 }
-function statutPeriode(debut: string, fin: string): "en_cours" | "a_venir" | "passe" {
-  const today = new Date().toISOString().slice(0, 10);
-  if (today < debut) return "a_venir";
-  if (today > fin) return "passe";
-  return "en_cours";
+function diffDays(a: string, b: string) {
+  const pa = parse(a), pb = parse(b);
+  return Math.round((new Date(pb.y, pb.m, pb.d).getTime() - new Date(pa.y, pa.m, pa.d).getTime()) / 86_400_000);
 }
 
-export default function CalendrierSoignant() {
+export default function OrganisationPage() {
   const pro = useProSession();
-  const [absences, setAbsences] = useState<AbsenceLigne[]>([]);
-  // Organisation interdite aux médecins / chirurgiens
-  const interdit = pro?.role === "chirurgien";
-  const [equipe, setEquipe] = useState<ProLite[]>([]);
-  const [ready, setReady] = useState(false);
-  // Astreintes : clé "YYYY-MM-DD|semaine" / "YYYY-MM-DD|weekend" -> professionnel_id
-  const [astreintes, setAstreintes] = useState<Map<string, string>>(new Map());
+  const [mois, setMois] = useState(() => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() }; });
+  const [coords, setCoords] = useState<ProLite[]>([]);
+  const [events, setEvents] = useState<Evt[]>([]);
+  const [editing, setEditing] = useState<Evt | null>(null);
 
-  // Mois affiché dans le calendrier
-  const [mois, setMois] = useState(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), 1);
-  });
+  const interdit = pro && pro.role !== "coordinatrice";
 
-  // Formulaire
-  const [debut, setDebut] = useState("");
-  const [fin, setFin] = useState("");
-  const [remplacant, setRemplacant] = useState("");
-  const [motif, setMotif] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [erreur, setErreur] = useState<string | null>(null);
-
-  async function charger() {
+  const charger = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: abs }, { data: pros }, { data: astr }] = await Promise.all([
-      supabase
-        .from("absence")
-        .select("*, professionnel:professionnel_id(nom,prenom,titre,role), remplacant:remplacant_id(nom,prenom,titre,role)")
-        .order("date_debut", { ascending: true }),
-      supabase.from("professionnel").select("id,nom,prenom,titre,role").order("nom"),
-      supabase.from("astreinte").select("semaine_debut,type,professionnel_id"),
+    const debutMois = ymd(mois.y, mois.m, 1);
+    const finMois = ymd(mois.y, mois.m, new Date(mois.y, mois.m + 1, 0).getDate());
+    const [{ data: pros }, { data: evts }] = await Promise.all([
+      supabase.from("professionnel").select("id,nom,prenom,titre,role").eq("role", "coordinatrice").order("nom"),
+      supabase.from("evenement_planning").select("id,professionnel_id,type,date_debut,date_fin,remplacant_id,note")
+        .lte("date_debut", finMois).gte("date_fin", debutMois),
     ]);
-    setAbsences((abs ?? []) as unknown as AbsenceLigne[]);
-    setEquipe((pros ?? []) as ProLite[]);
-    const m = new Map<string, string>();
-    (astr ?? []).forEach((a) => m.set(`${a.semaine_debut}|${a.type}`, a.professionnel_id));
-    setAstreintes(m);
-    setReady(true);
-  }
+    setCoords((pros ?? []) as ProLite[]);
+    setEvents((evts ?? []) as Evt[]);
+  }, [mois]);
 
-  useEffect(() => {
-    charger();
-  }, []);
+  useEffect(() => { charger(); }, [charger]);
 
-  async function declarer(e: React.FormEvent) {
-    e.preventDefault();
-    setErreur(null);
-    if (!pro) return;
-    if (fin < debut) {
-      setErreur("La date de fin doit être après la date de début.");
-      return;
-    }
-    setBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("absence").insert({
-      professionnel_id: pro.id,
-      remplacant_id: remplacant || null,
-      date_debut: debut,
-      date_fin: fin,
-      motif: motif.trim() || null,
-    });
-    setBusy(false);
-    if (error) {
-      setErreur("Enregistrement refusé. Réessayez.");
-      return;
-    }
-    setDebut(""); setFin(""); setRemplacant(""); setMotif("");
-    charger();
-  }
-
-  async function supprimer(id: string) {
-    const supabase = createClient();
-    const { error } = await supabase.from("absence").delete().eq("id", id);
-    if (!error) setAbsences((prev) => prev.filter((a) => a.id !== id));
-  }
-
-  async function definirAstreinte(semaineISO: string, type: "semaine" | "weekend", proId: string) {
-    if (!pro) return;
-    const supabase = createClient();
-    const cle = `${semaineISO}|${type}`;
-    // Optimiste
-    setAstreintes((prev) => {
-      const m = new Map(prev);
-      if (proId) m.set(cle, proId);
-      else m.delete(cle);
-      return m;
-    });
-    if (!proId) {
-      await supabase
-        .from("astreinte")
-        .delete()
-        .eq("prestataire_id", pro.prestataire_id)
-        .eq("semaine_debut", semaineISO)
-        .eq("type", type);
-    } else {
-      await supabase.from("astreinte").upsert(
-        {
-          prestataire_id: pro.prestataire_id,
-          semaine_debut: semaineISO,
-          type,
-          professionnel_id: proId,
-        },
-        { onConflict: "prestataire_id,semaine_debut,type" }
-      );
-    }
-  }
-
-  // ── Calcul des barres du calendrier pour le mois affiché ──────────
-  const annee = mois.getFullYear();
-  const moisIdx = mois.getMonth();
-  const nbJours = new Date(annee, moisIdx + 1, 0).getDate();
-  const moisDebut = new Date(annee, moisIdx, 1);
-  const moisFin = new Date(annee, moisIdx, nbJours);
-
-  const lignes = useMemo(() => {
-    // Regroupe par soignant les absences qui chevauchent le mois affiché.
-    const parPersonne = new Map<
-      string,
-      { nom: string; couleur: string; barres: { start: number; end: number; abs: AbsenceLigne }[] }
-    >();
-    absences.forEach((a) => {
-      const d1 = parseISO(a.date_debut);
-      const d2 = parseISO(a.date_fin);
-      if (d2 < moisDebut || d1 > moisFin) return; // hors mois
-      const start = d1 < moisDebut ? 1 : d1.getDate();
-      const end = d2 > moisFin ? nbJours : d2.getDate();
-      const entry = parPersonne.get(a.professionnel_id) ?? {
-        nom: a.professionnel ? nomCompletPro(a.professionnel) : "Soignant",
-        couleur: couleurPour(a.professionnel_id),
-        barres: [],
-      };
-      entry.barres.push({ start, end, abs: a });
-      parPersonne.set(a.professionnel_id, entry);
-    });
-    return [...parPersonne.values()].sort((a, b) => a.nom.localeCompare(b.nom));
-  }, [absences, annee, moisIdx, nbJours]);
-
+  const nbJours = new Date(mois.y, mois.m + 1, 0).getDate();
   const jours = Array.from({ length: nbJours }, (_, i) => i + 1);
   const today = new Date();
-  const jourAujourdhui =
-    today.getFullYear() === annee && today.getMonth() === moisIdx ? today.getDate() : null;
-  const largeurMin = 110 + nbJours * 26;
+  const moisLabel = new Date(mois.y, mois.m, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
-  // Seules les infirmières coordinatrices peuvent être désignées (astreinte / remplacement).
-  const coordinatrices = equipe.filter((p) => p.role === "coordinatrice");
-  const autresPros = coordinatrices.filter((p) => p.id !== pro?.id);
-  const aVenirEtEnCours = absences.filter((a) => statutPeriode(a.date_debut, a.date_fin) !== "passe");
+  // ── Drag (déplacer / étendre) ───────────────────────────────────────
+  const drag = useRef<{ id: string; kind: "move" | "resize-l" | "resize-r"; left: number; dayW: number; lastIdx: number } | null>(null);
 
-  function changerMois(delta: number) {
-    setMois(new Date(annee, moisIdx + delta, 1));
+  const onPointerMove = useCallback((e: PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const idx = Math.max(0, Math.min(nbJours - 1, Math.floor((e.clientX - d.left) / d.dayW)));
+    if (idx === d.lastIdx) return;
+    const delta = idx - d.lastIdx;
+    d.lastIdx = idx;
+    setEvents((arr) => arr.map((ev) => {
+      if (ev.id !== d.id) return ev;
+      if (d.kind === "move") return { ...ev, date_debut: addDays(ev.date_debut, delta), date_fin: addDays(ev.date_fin, delta) };
+      if (d.kind === "resize-r") {
+        const nf = ymd(mois.y, mois.m, idx + 1);
+        return diffDays(ev.date_debut, nf) >= 0 ? { ...ev, date_fin: nf } : ev;
+      }
+      const nd = ymd(mois.y, mois.m, idx + 1);
+      return diffDays(nd, ev.date_fin) >= 0 ? { ...ev, date_debut: nd } : ev;
+    }));
+  }, [nbJours, mois]);
+
+  const onPointerUp = useCallback(() => {
+    const d = drag.current;
+    drag.current = null;
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    if (!d) return;
+    // Persiste les dates à jour de l'événement déplacé / redimensionné.
+    setEvents((arr) => {
+      const cur = arr.find((x) => x.id === d.id);
+      if (cur) {
+        void createClient()
+          .from("evenement_planning")
+          .update({ date_debut: cur.date_debut, date_fin: cur.date_fin })
+          .eq("id", cur.id);
+      }
+      return arr;
+    });
+  }, [onPointerMove]);
+
+  function demarrerDrag(e: React.PointerEvent, ev: Evt, kind: "move" | "resize-l" | "resize-r") {
+    e.stopPropagation();
+    const zone = (e.currentTarget as HTMLElement).closest("[data-zone]") as HTMLElement | null;
+    if (!zone) return;
+    const rect = zone.getBoundingClientRect();
+    drag.current = { id: ev.id, kind, left: rect.left, dayW: rect.width / nbJours, lastIdx: idxDepuisXInit(e.clientX, rect.left, rect.width / nbJours, nbJours) };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  }
+
+  // ── Création par clic sur une cellule ───────────────────────────────
+  function creer(proId: string, jour: number) {
+    const date = ymd(mois.y, mois.m, jour);
+    setEditing({ id: "", professionnel_id: proId, type: "conges", date_debut: date, date_fin: date, remplacant_id: null, note: null });
+  }
+
+  async function sauver(ev: Evt) {
+    const supabase = createClient();
+    const payload = {
+      prestataire_id: pro!.prestataire_id,
+      professionnel_id: ev.professionnel_id,
+      type: ev.type,
+      date_debut: ev.date_debut,
+      date_fin: ev.date_fin,
+      remplacant_id: ev.remplacant_id,
+      note: ev.note,
+    };
+    if (ev.id) await supabase.from("evenement_planning").update(payload).eq("id", ev.id);
+    else await supabase.from("evenement_planning").insert(payload);
+    setEditing(null);
+    charger();
+  }
+  async function supprimer(id: string) {
+    await createClient().from("evenement_planning").delete().eq("id", id);
+    setEditing(null);
+    charger();
   }
 
   if (interdit) {
-    return (
-      <div className="card text-sm text-slate-500">
-        L&apos;organisation n&apos;est pas accessible aux médecins / chirurgiens.
-      </div>
-    );
+    return <div className="card text-sm text-slate-500">L&apos;organisation est réservée aux infirmières coordinatrices.</div>;
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      {/* ── Colonne principale ── */}
-      <div className="grid min-w-0 gap-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Organisation</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Calendrier des congés de l&apos;équipe. Une couleur par soignant.
-          </p>
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold capitalize text-slate-800">{moisLabel}</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setMois((s) => ({ y: s.m === 0 ? s.y - 1 : s.y, m: s.m === 0 ? 11 : s.m - 1 }))} className="btn-secondary px-3 py-1.5">←</button>
+          <button onClick={() => { const n = new Date(); setMois({ y: n.getFullYear(), m: n.getMonth() }); }} className="btn-secondary px-3 py-1.5 text-sm">Aujourd&apos;hui</button>
+          <button onClick={() => setMois((s) => ({ y: s.m === 11 ? s.y + 1 : s.y, m: s.m === 11 ? 0 : s.m + 1 }))} className="btn-secondary px-3 py-1.5">→</button>
         </div>
+      </div>
 
-        {ready && astreintesIncompletes(new Set(astreintes.keys())) && (
-          <p className="rounded-xl bg-rose-800 px-4 py-3 text-sm font-medium text-white">
-            ⚠️ Astreintes non renseignées pour les 15 prochains jours. Merci de désigner les soignants d&apos;astreinte ci-dessous.
-          </p>
-        )}
+      {/* Légende */}
+      <div className="flex flex-wrap gap-3">
+        {(Object.keys(TYPES) as TypeEvt[]).map((t) => (
+          <span key={t} className="flex items-center gap-1.5 text-xs text-slate-500">
+            <span className={`h-3 w-3 rounded ${TYPES[t].bar}`} />{TYPES[t].label}
+          </span>
+        ))}
+        <span className="text-xs text-slate-400">· Clic sur un jour = ajouter · Glisser la barre = déplacer · Bord droit = étendre</span>
+      </div>
 
-        {/* ── Calendrier mensuel ── */}
-        <div className="card min-w-0 overflow-hidden">
-          <div className="mb-3 flex items-center justify-between">
-            <button onClick={() => changerMois(-1)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-brand">
-              ←
-            </button>
-            <h2 className="text-sm font-semibold capitalize text-slate-700">
-              {mois.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
-            </h2>
-            <button onClick={() => changerMois(1)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-rose-50 hover:text-brand">
-              →
-            </button>
-          </div>
-
-          {!ready ? (
-            <div className="h-40 animate-pulse rounded-xl bg-rose-50" />
-          ) : (
-            <div className="overflow-x-auto">
-              <div style={{ minWidth: largeurMin }}>
-                {/* En-tête : numéros des jours */}
-                <div className="flex items-end">
-                  <div className="w-[110px] shrink-0" />
-                  <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}>
-                    {jours.map((j) => (
-                      <div
-                        key={j}
-                        className={`py-1 text-center text-[10px] ${j === jourAujourdhui ? "font-bold text-brand" : "text-slate-400"}`}
-                      >
-                        {j}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Lignes par soignant */}
-                {lignes.length === 0 ? (
-                  <p className="border-t border-rose-50 py-8 text-center text-sm text-slate-400">
-                    Aucun congé ce mois-ci.
-                  </p>
-                ) : (
-                  lignes.map((l) => (
-                    <div key={l.nom} className="flex items-center border-t border-rose-50">
-                      <div className="flex w-[110px] shrink-0 items-center gap-1.5 pr-2">
-                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${l.couleur}`} />
-                        <span className="truncate text-xs font-medium text-slate-600">{l.nom}</span>
-                      </div>
-                      <div
-                        className="relative grid flex-1 py-1.5"
-                        style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}
-                      >
-                        {/* repère "aujourd'hui" */}
-                        {jourAujourdhui && (
-                          <div
-                            className="pointer-events-none row-start-1 self-stretch border-l-2 border-brand/30"
-                            style={{ gridColumn: `${jourAujourdhui} / ${jourAujourdhui + 1}` }}
-                          />
-                        )}
-                        {l.barres.map((b, i) => (
-                          <div
-                            key={i}
-                            style={{ gridColumn: `${b.start} / ${b.end + 1}` }}
-                            title={`${formatDate(b.abs.date_debut)} → ${formatDate(b.abs.date_fin)}${b.abs.motif ? ` · ${b.abs.motif}` : ""}`}
-                            className={`h-5 rounded-full ${l.couleur} opacity-90`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Astreintes ── */}
-        <section className="card grid gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-700">Astreintes</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Désignez l&apos;astreinte semaine (lun–ven) et week-end (sam–dim), au moins 15 jours à l&apos;avance.
-            </p>
-          </div>
-          {!ready ? (
-            <div className="h-32 animate-pulse rounded-xl bg-rose-50" />
-          ) : (
-            <div className="grid gap-3">
-              {semainesAVenir(6).map((lundi) => {
-                const k = isoDate(lundi);
-                const dimanche = new Date(lundi);
-                dimanche.setDate(dimanche.getDate() + 6);
-                const label = `${lundi.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })} – ${dimanche.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}`;
-                const semaineVide = !astreintes.has(`${k}|semaine`);
-                const weekendVide = !astreintes.has(`${k}|weekend`);
+      {/* Calendrier */}
+      <div className="overflow-x-auto rounded-2xl border border-rose-100 bg-white">
+        <div className="min-w-[760px]">
+          {/* En-tête jours */}
+          <div className="flex border-b border-rose-100">
+            <div className="w-40 shrink-0 px-3 py-2 text-xs font-semibold text-slate-400">Coordinatrice</div>
+            <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}>
+              {jours.map((j) => {
+                const estAuj = today.getFullYear() === mois.y && today.getMonth() === mois.m && today.getDate() === j;
+                const dow = new Date(mois.y, mois.m, j).getDay();
+                const we = dow === 0 || dow === 6;
                 return (
-                  <div key={k} className="grid gap-2 border-t border-rose-50 pt-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
-                    <span className="text-sm font-medium text-slate-600">Sem. {label}</span>
-                    <label className="grid gap-1">
-                      <span className="text-[11px] text-slate-400">Semaine (lun–ven)</span>
-                      <select
-                        className={`select ${semaineVide ? "border-rose-300" : ""}`}
-                        value={astreintes.get(`${k}|semaine`) ?? ""}
-                        onChange={(e) => definirAstreinte(k, "semaine", e.target.value)}
-                      >
-                        <option value="">— À désigner —</option>
-                        {coordinatrices.map((p) => (
-                          <option key={p.id} value={p.id}>{nomCompletPro(p)}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="grid gap-1">
-                      <span className="text-[11px] text-slate-400">Week-end (sam–dim)</span>
-                      <select
-                        className={`select ${weekendVide ? "border-rose-300" : ""}`}
-                        value={astreintes.get(`${k}|weekend`) ?? ""}
-                        onChange={(e) => definirAstreinte(k, "weekend", e.target.value)}
-                      >
-                        <option value="">— À désigner —</option>
-                        {coordinatrices.map((p) => (
-                          <option key={p.id} value={p.id}>{nomCompletPro(p)}</option>
-                        ))}
-                      </select>
-                    </label>
+                  <div key={j} className={`border-l border-rose-50 py-1 text-center text-[10px] ${we ? "bg-rose-50/50" : ""} ${estAuj ? "font-bold text-brand" : "text-slate-400"}`}>
+                    {j}
                   </div>
                 );
               })}
             </div>
-          )}
-        </section>
-
-      </div>
-
-      {/* ── Colonne de droite : formulaire + absences ── */}
-      <aside className="grid content-start gap-5">
-        <form onSubmit={declarer} className="card grid gap-4">
-          <h2 className="text-sm font-semibold text-slate-700">Déclarer une absence</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label">Du *</label>
-              <input type="date" className="input" value={debut} onChange={(e) => setDebut(e.target.value)} required />
-            </div>
-            <div>
-              <label className="label">Au *</label>
-              <input type="date" className="input" value={fin} onChange={(e) => setFin(e.target.value)} required />
-            </div>
           </div>
-          <div>
-            <label className="label">Remplacé(e) par</label>
-            <select className="select" value={remplacant} onChange={(e) => setRemplacant(e.target.value)}>
-              <option value="">— Choisir un soignant —</option>
-              {autresPros.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {nomCompletPro(p)} ({LIBELLE_ROLE[p.role]})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Motif (optionnel)</label>
-            <input className="input" value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Congés, astreinte…" />
-          </div>
-          {erreur && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{erreur}</p>}
-          <button className="btn-primary py-2.5" disabled={busy || !pro}>
-            {busy ? "Enregistrement…" : "Déclarer l'absence"}
-          </button>
-        </form>
 
-        {/* ── Absences à venir & en cours ── */}
-        <section className="grid gap-3">
-          <h2 className="text-sm font-semibold text-slate-600">Absences à venir & en cours</h2>
-          {!ready ? (
-            <div className="h-20 animate-pulse rounded-2xl bg-white" />
-          ) : aVenirEtEnCours.length === 0 ? (
-            <p className="card p-4 text-sm text-slate-400">Aucune absence prévue. 🌿</p>
+          {/* Lignes coordinatrices */}
+          {coords.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-slate-400">Aucune infirmière coordinatrice.</p>
           ) : (
-            aVenirEtEnCours.map((a) => {
-              const periode = statutPeriode(a.date_debut, a.date_fin);
-              const estMienne = a.professionnel_id === pro?.id;
+            coords.map((c) => {
+              const evs = events.filter((e) => e.professionnel_id === c.id);
+              const lanes = assignerLanes(evs);
+              const nbLanes = Math.max(1, ...lanes.values());
+              const hauteur = nbLanes * 26 + 10;
               return (
-                <div key={a.id} className={`card border-l-4 ${periode === "en_cours" ? "border-l-attention" : "border-l-rose-300"}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2.5 w-2.5 rounded-full ${couleurPour(a.professionnel_id)}`} />
-                        <span className="font-semibold text-slate-800">{a.professionnel ? nomCompletPro(a.professionnel) : "Soignant"}</span>
-                        {periode === "en_cours" ? (
-                          <span className="badge bg-amber-100 text-attention">En congé</span>
-                        ) : (
-                          <span className="badge bg-rose-50 text-rose-400">À venir</span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-sm text-slate-600">Du {formatDate(a.date_debut)} au {formatDate(a.date_fin)}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Remplacé(e) par :{" "}
-                        {a.remplacant ? (
-                          <span className="font-medium text-brand">{nomCompletPro(a.remplacant)}</span>
-                        ) : (
-                          <span className="text-slate-400">non précisé</span>
-                        )}
-                      </p>
-                      {a.motif && <p className="mt-0.5 text-xs text-slate-400">« {a.motif} »</p>}
+                <div key={c.id} className="flex border-b border-rose-50">
+                  <div className="flex w-40 shrink-0 items-center px-3 py-2 text-sm font-medium text-slate-700">
+                    {nomComplet(c)}
+                  </div>
+                  <div data-zone className="relative flex-1" style={{ height: hauteur }}>
+                    {/* cellules cliquables */}
+                    <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${nbJours}, minmax(0,1fr))` }}>
+                      {jours.map((j) => {
+                        const dow = new Date(mois.y, mois.m, j).getDay();
+                        const we = dow === 0 || dow === 6;
+                        return <button key={j} onClick={() => creer(c.id, j)} className={`border-l border-rose-50 ${we ? "bg-rose-50/40" : ""} hover:bg-rose-100/50`} />;
+                      })}
                     </div>
-                    {estMienne && (
-                      <button onClick={() => supprimer(a.id)} className="text-xs font-medium text-slate-400 hover:text-critique">
-                        Annuler
-                      </button>
-                    )}
+                    {/* barres */}
+                    {evs.map((ev) => {
+                      const s = Math.max(0, diffDays(ymd(mois.y, mois.m, 1), ev.date_debut));
+                      const e = Math.min(nbJours - 1, diffDays(ymd(mois.y, mois.m, 1), ev.date_fin));
+                      if (e < 0 || s > nbJours - 1) return null;
+                      const lane = lanes.get(ev.id) ?? 1;
+                      return (
+                        <div
+                          key={ev.id}
+                          onPointerDown={(p) => demarrerDrag(p, ev, "move")}
+                          onClick={(p) => { p.stopPropagation(); setEditing(ev); }}
+                          className={`absolute flex cursor-grab items-center rounded-md px-1.5 text-[10px] font-medium text-white ${TYPES[ev.type].bar} active:cursor-grabbing`}
+                          style={{
+                            left: `${(s / nbJours) * 100}%`,
+                            width: `${((e - s + 1) / nbJours) * 100}%`,
+                            top: (lane - 1) * 26 + 5,
+                            height: 22,
+                          }}
+                          title={`${TYPES[ev.type].label} — ${ev.date_debut} → ${ev.date_fin}`}
+                        >
+                          <span className="truncate">{TYPES[ev.type].label}</span>
+                          <span
+                            onPointerDown={(p) => demarrerDrag(p, ev, "resize-r")}
+                            className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r-md bg-black/10"
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
             })
           )}
-        </section>
-      </aside>
+        </div>
+      </div>
+
+      {editing && (
+        <EditeurEvenement
+          ev={editing}
+          coords={coords}
+          onClose={() => setEditing(null)}
+          onSave={sauver}
+          onDelete={supprimer}
+        />
+      )}
+    </div>
+  );
+}
+
+// Index initial de jour (au pointerdown) pour les déplacements.
+function idxDepuisXInit(clientX: number, left: number, dayW: number, n: number) {
+  return Math.max(0, Math.min(n - 1, Math.floor((clientX - left) / dayW)));
+}
+
+// Affecte une "voie" (lane) à chaque événement pour éviter le chevauchement.
+function assignerLanes(evs: Evt[]): Map<string, number> {
+  const map = new Map<string, number>();
+  const finsParLane: string[] = []; // date_fin par lane (index 0 = lane 1)
+  [...evs].sort((a, b) => a.date_debut.localeCompare(b.date_debut)).forEach((ev) => {
+    let lane = 0;
+    while (lane < finsParLane.length && finsParLane[lane] >= ev.date_debut) lane++;
+    finsParLane[lane] = ev.date_fin;
+    map.set(ev.id, lane + 1);
+  });
+  return map;
+}
+
+function EditeurEvenement({
+  ev, coords, onClose, onSave, onDelete,
+}: {
+  ev: Evt;
+  coords: ProLite[];
+  onClose: () => void;
+  onSave: (e: Evt) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [f, setF] = useState<Evt>(ev);
+  const coordCible = coords.find((c) => c.id === f.professionnel_id);
+  const remplacants = coords.filter((c) => c.id !== f.professionnel_id);
+  const estAbsence = ABSENCES.includes(f.type);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div className="card w-full max-w-md grid gap-4" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-sm font-semibold text-slate-700">
+          {ev.id ? "Modifier" : "Ajouter"} — {coordCible ? nomComplet(coordCible) : ""}
+        </h2>
+
+        <div>
+          <label className="label">Type</label>
+          <select className="select" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as TypeEvt })}>
+            {(Object.keys(TYPES) as TypeEvt[]).map((t) => <option key={t} value={t}>{TYPES[t].label}</option>)}
+          </select>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label">Du</label>
+            <input type="date" className="input" value={f.date_debut} onChange={(e) => setF({ ...f, date_debut: e.target.value, date_fin: e.target.value > f.date_fin ? e.target.value : f.date_fin })} />
+          </div>
+          <div>
+            <label className="label">Au</label>
+            <input type="date" className="input" value={f.date_fin} min={f.date_debut} onChange={(e) => setF({ ...f, date_fin: e.target.value })} />
+          </div>
+        </div>
+
+        {estAbsence && (
+          <div>
+            <label className="label">Remplacé(e) par (reroutage des alertes / suivis)</label>
+            <select className="select" value={f.remplacant_id ?? ""} onChange={(e) => setF({ ...f, remplacant_id: e.target.value || null })}>
+              <option value="">— Aucun —</option>
+              {remplacants.map((c) => <option key={c.id} value={c.id}>{nomComplet(c)}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label className="label">Note (optionnel)</label>
+          <input className="input" value={f.note ?? ""} onChange={(e) => setF({ ...f, note: e.target.value || null })} />
+        </div>
+
+        <div className="flex gap-2">
+          {ev.id && (
+            <button onClick={() => onDelete(ev.id)} className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-critique hover:bg-red-50">
+              Supprimer
+            </button>
+          )}
+          <button onClick={onClose} className="btn-secondary flex-1">Annuler</button>
+          <button onClick={() => onSave(f)} className="btn-primary flex-1">Enregistrer</button>
+        </div>
+      </div>
     </div>
   );
 }
