@@ -13,6 +13,8 @@ type Evt = {
   type: TypeEvt;
   date_debut: string; // YYYY-MM-DD
   date_fin: string;
+  heure_debut: string | null;
+  heure_fin: string | null;
   remplacant_id: string | null;
   note: string | null;
 };
@@ -64,7 +66,7 @@ export default function OrganisationPage() {
     const supabase = createClient();
     const [{ data: pros }, { data: evts }] = await Promise.all([
       supabase.from("professionnel").select("id,nom,prenom,titre,role").eq("role", "coordinatrice").order("nom"),
-      supabase.from("evenement_planning").select("id,professionnel_id,type,date_debut,date_fin,remplacant_id,note")
+      supabase.from("evenement_planning").select("id,professionnel_id,type,date_debut,date_fin,heure_debut,heure_fin,remplacant_id,note")
         .lte("date_debut", fin).gte("date_fin", start),
     ]);
     setCoords((pros ?? []) as ProLite[]);
@@ -140,7 +142,7 @@ export default function OrganisationPage() {
 
   // ── Création par clic sur une cellule ───────────────────────────────
   function creer(proId: string, ds: string) {
-    setEditing({ id: "", professionnel_id: proId, type: "conges", date_debut: ds, date_fin: ds, remplacant_id: null, note: null });
+    setEditing({ id: "", professionnel_id: proId, type: "conges", date_debut: ds, date_fin: ds, heure_debut: null, heure_fin: null, remplacant_id: null, note: null });
   }
 
   async function sauver(ev: Evt) {
@@ -151,6 +153,8 @@ export default function OrganisationPage() {
       type: ev.type,
       date_debut: ev.date_debut,
       date_fin: ev.date_fin,
+      heure_debut: ev.type === "astreinte" ? ev.heure_debut || null : null,
+      heure_fin: ev.type === "astreinte" ? ev.heure_fin || null : null,
       remplacant_id: ev.remplacant_id,
       note: ev.note,
     };
@@ -253,9 +257,12 @@ export default function OrganisationPage() {
                             top: (lane - 1) * 26 + 5,
                             height: 22,
                           }}
-                          title={`${TYPES[ev.type].label} — ${ev.date_debut} → ${ev.date_fin}`}
+                          title={`${TYPES[ev.type].label}${ev.type === "astreinte" && ev.heure_debut ? ` ${ev.heure_debut}–${ev.heure_fin ?? ""}` : ""} — ${ev.date_debut} → ${ev.date_fin}`}
                         >
-                          <span className="truncate">{TYPES[ev.type].label}</span>
+                          <span className="truncate">
+                            {TYPES[ev.type].label}
+                            {ev.type === "astreinte" && ev.heure_debut ? ` ${ev.heure_debut}–${ev.heure_fin ?? ""}` : ""}
+                          </span>
                           <span
                             onPointerDown={(p) => demarrerDrag(p, ev, "resize-r")}
                             className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r-md bg-black/10"
@@ -340,6 +347,19 @@ function EditeurEvenement({
             <input type="date" className="input" value={f.date_fin} min={f.date_debut} onChange={(e) => setF({ ...f, date_fin: e.target.value })} />
           </div>
         </div>
+
+        {f.type === "astreinte" && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">Heure de début</label>
+              <input type="time" className="input" value={f.heure_debut ?? ""} onChange={(e) => setF({ ...f, heure_debut: e.target.value || null })} />
+            </div>
+            <div>
+              <label className="label">Heure de fin</label>
+              <input type="time" className="input" value={f.heure_fin ?? ""} onChange={(e) => setF({ ...f, heure_fin: e.target.value || null })} />
+            </div>
+          </div>
+        )}
 
         {estAbsence && (
           <div>
