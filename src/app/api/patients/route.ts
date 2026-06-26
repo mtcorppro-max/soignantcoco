@@ -33,13 +33,7 @@ export async function POST(request: Request) {
   if (!pro) {
     return NextResponse.json({ message: "Compte introuvable." }, { status: 403 });
   }
-  // Coordinatrice, chirurgien, ou super-admin niveau 0 (qui peut tout faire).
-  if (pro.role !== "coordinatrice" && pro.role !== "manager" && pro.role !== "chirurgien" && pro.niveau !== 0) {
-    return NextResponse.json(
-      { message: "Vous n'avez pas les droits pour créer un patient." },
-      { status: 403 }
-    );
-  }
+  // Tout soignant (niveau 0 à 3) peut créer un patient.
   if (!pro.prestataire_id) {
     return NextResponse.json(
       { message: "Aucun prestataire associé à votre compte — impossible de créer le patient." },

@@ -6,7 +6,7 @@ import { useProSession } from "@/lib/hooks/useSession";
 export default function NouveauHub() {
   const pro = useProSession();
   const estN0 = pro?.niveau === 0;                 // super-admin : tout
-  const peutPatient = estN0 || pro?.role === "coordinatrice" || pro?.role === "manager" || pro?.role === "chirurgien";
+  const peutPatient = !!pro; // tout soignant (niveau 0 à 3) peut créer un patient
   const peutSoignant = estN0 || (!!pro && pro.niveau <= 2 && pro.role !== "chirurgien");
   const peutRegion = estN0;                         // créer une région
   const peutAgence = !!pro && pro.niveau <= 1;     // créer une agence
