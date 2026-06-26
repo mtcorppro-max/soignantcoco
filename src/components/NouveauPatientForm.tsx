@@ -20,7 +20,7 @@ type Soignant = {
   protocoles: ProtocoleConsigne[] | null;
 };
 
-// Soignant externe (sans compte) — cf. migration 0040.
+// Soignant externe (sans compte) — cf. migrations 0040 / 0041.
 type Externe = {
   id: string;
   type: "medecin" | "infirmiere";
@@ -29,6 +29,7 @@ type Externe = {
   nom: string;
   specialite: string | null;
   telephone: string | null;
+  protocoles: ProtocoleConsigne[] | null;
 };
 
 // Nom complet affiché et stocké : « [Titre] Prénom Nom ».
@@ -102,7 +103,7 @@ export function NouveauPatientForm() {
       .then(({ data }) => setSoignants((data ?? []) as Soignant[]));
     createClient()
       .from("soignant_externe")
-      .select("id,type,titre,prenom,nom,specialite,telephone")
+      .select("id,type,titre,prenom,nom,specialite,telephone,protocoles")
       .order("nom")
       .then(({ data }) => setExternes((data ?? []) as Externe[]));
     Promise.all([
@@ -146,7 +147,7 @@ export function NouveauPatientForm() {
   const selExterneMed = externesMed.find((e) => nomExterne(e) === form.chirurgien);
   const specialiteSel = selChirurgien?.specialite ?? selExterneMed?.specialite ?? "";
   const estChirurgical = specialiteSel.toLowerCase().includes("chirurg");
-  const protocolesChir = selChirurgien?.protocoles ?? []; // protocoles : comptes uniquement
+  const protocolesChir = selChirurgien?.protocoles ?? selExterneMed?.protocoles ?? [];
 
   // Applique un protocole : remplit opération, durée et jours de suivi.
   const appliquerProtocole = (v: string) => {

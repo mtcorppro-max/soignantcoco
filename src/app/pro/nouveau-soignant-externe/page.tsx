@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { Select } from "@/components/Select";
+import { ProtocoleEditor, protocoleVide, protocolePropre, type Protocole } from "@/components/protocole";
 
 const SPECIALITES = [
   "Chirurgien orthopédique", "Chirurgien cardiaque", "Chirurgien vasculaire", "Chirurgien thoracique",
@@ -27,9 +28,15 @@ const VIDE = {
 export default function NouveauSoignantExterne() {
   const pro = useProSession();
   const [f, setF] = useState({ ...VIDE });
+  const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+
+  const majProtocole = (i: number, patch: Partial<Protocole>) =>
+    setProtocoles((arr) => arr.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
+  const ajouterProtocole = () => setProtocoles((arr) => [...arr, protocoleVide()]);
+  const supprimerProtocole = (i: number) => setProtocoles((arr) => arr.filter((_, idx) => idx !== i));
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setF((s) => ({ ...s, [k]: e.target.value }));
@@ -50,6 +57,7 @@ export default function NouveauSoignantExterne() {
       telephone: f.telephone.trim() || null,
       email: f.email.trim() || null,
       zone_exercice: estMedecin ? null : f.zone_exercice.trim() || null,
+      protocoles: estMedecin ? protocoles.map(protocolePropre) : [],
     });
     setBusy(false);
     if (error) { setErreur("Échec : " + error.message); return; }
@@ -61,7 +69,7 @@ export default function NouveauSoignantExterne() {
       <div className="mx-auto max-w-lg card grid gap-4 text-center">
         <p className="text-sm text-slate-600">Soignant externe enregistré ✓</p>
         <p className="text-xs text-slate-400">Il est désormais sélectionnable lors de la création d&apos;un patient.</p>
-        <button onClick={() => { setF({ ...VIDE }); setOk(false); }} className="btn-secondary">Enregistrer un autre</button>
+        <button onClick={() => { setF({ ...VIDE }); setProtocoles([protocoleVide()]); setOk(false); }} className="btn-secondary">Enregistrer un autre</button>
       </div>
     );
   }
@@ -147,6 +155,35 @@ export default function NouveauSoignantExterne() {
           {busy ? "Enregistrement…" : "Enregistrer le soignant externe"}
         </button>
       </div>
+
+      {estMedecin && (
+        <div className="grid gap-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Protocoles & consignes</p>
+            <span className="text-xs text-slate-400">{protocoles.length} protocole(s)</span>
+          </div>
+          <p className="text-sm text-slate-500">
+            Un protocole par intervention. Réutilisé automatiquement lors de la création d&apos;un patient.
+          </p>
+          {protocoles.map((p, i) => (
+            <ProtocoleEditor
+              key={i}
+              index={i}
+              value={p}
+              onChange={(patch) => majProtocole(i, patch)}
+              onRemove={() => supprimerProtocole(i)}
+              canRemove={protocoles.length > 1}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={ajouterProtocole}
+            className="justify-self-start rounded-lg border border-dashed border-rose-300 px-4 py-2 text-sm font-medium text-brand hover:bg-rose-50"
+          >
+            + Ajouter un protocole (autre intervention)
+          </button>
+        </div>
+      )}
     </div>
   );
 }
