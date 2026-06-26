@@ -8,6 +8,7 @@ import { Logo } from "@/components/Logo";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useProSession } from "@/lib/hooks/useSession";
 import { LIBELLE_ROLE, estCoordOuManager } from "@/lib/roles";
+import { RechercheSoignants } from "@/components/RechercheSoignants";
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
   const pro = useProSession();
@@ -59,6 +60,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
           <div className="flex items-center gap-3 text-right">
+            {peutGerer && <RechercheSoignants />}
             {(estCoord || estChir || peutGerer) && (
               <Link
                 href="/pro/nouveau"
