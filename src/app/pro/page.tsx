@@ -211,7 +211,7 @@ export default function Dashboard() {
                     {acts.length > 0 && (
                       <button
                         onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); validerActions(p.id, acts); }}
-                        className={`badge text-white ${acts.some((a) => a.retard) ? "bg-critique" : "bg-rose-800"}`}
+                        className="badge bg-rose-800 text-white"
                         title={`${acts.map(libelleAction).join(", ")} — appuyer pour valider`}
                       >
                         {acts.length} action · valider
@@ -282,7 +282,7 @@ export default function Dashboard() {
                         {acts.length > 0 ? (
                           <span className="inline-flex items-center gap-2">
                             <span
-                              className={`badge text-white ${acts.some((a) => a.retard) ? "bg-critique" : "bg-rose-800"}`}
+                              className="badge bg-rose-800 text-white"
                               title={acts.map(libelleAction).join(", ")}
                             >
                               {acts.length}
