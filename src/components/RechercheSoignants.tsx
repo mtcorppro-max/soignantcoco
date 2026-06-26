@@ -139,8 +139,19 @@ export function RechercheSoignants() {
                   <div key={r.key} className="rounded-lg border border-rose-100 px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-slate-800">{r.nom}</span>
-                      <span className="badge bg-rose-100 text-brand">{r.categorie === "medecin" ? "Médecin / Chirurgien" : "Infirmière libérale"}</span>
-                      {r.externe && <span className="badge bg-slate-100 text-slate-600">Externe</span>}
+                      <span className="badge bg-rose-100 text-brand">
+                        {r.categorie === "medecin"
+                          ? ((r.detail ?? "").toLowerCase().includes("chirurg") ? "Chirurgien" : "Médecin")
+                          : "Infirmière libérale"}
+                      </span>
+                      {!r.externe && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white" title="Dispose d'un compte AS2CŒUR">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-3 w-3">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Compte
+                        </span>
+                      )}
                     </div>
                     {r.detail && <p className="mt-0.5 text-sm text-slate-500">{r.detail}</p>}
                     <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">

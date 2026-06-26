@@ -51,6 +51,22 @@ const COLS_EXT =
 
 const ROLES_INTERNES = ["coordinatrice", "manager", "delegue"] as const;
 
+// Libellé médecin/chirurgien selon la spécialité.
+const labelMedecin = (specialite: string | null) =>
+  (specialite ?? "").toLowerCase().includes("chirurg") ? "Chirurgien" : "Médecin";
+
+// Petit badge « Compte » (rose foncé) : la personne dispose d'un compte AS2CŒUR.
+function BadgeCompte() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white" title="Dispose d'un compte AS2CŒUR">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-3 w-3">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+      Compte
+    </span>
+  );
+}
+
 export default function EquipePage() {
   const pro = useProSession();
   const [vue, setVue] = useState<"internes" | "externes">("internes");
@@ -162,7 +178,7 @@ export default function EquipePage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-slate-800">{nomAffiche}</span>
-              <span className="badge bg-slate-100 text-slate-600">Externe</span>
+              <span className="badge bg-rose-100 text-brand">{estMed ? labelMedecin(e.specialite) : "Infirmière libérale"}</span>
             </div>
             {estMed && e.specialite && <p className="mt-0.5 text-sm text-slate-500">{e.specialite}</p>}
             {!estMed && e.zone_exercice && <p className="mt-0.5 text-sm text-slate-500">{e.zone_exercice}</p>}
@@ -198,7 +214,7 @@ export default function EquipePage() {
     );
   };
 
-  const carte = (s: Soignant) => {
+  const carte = (s: Soignant, montrerCompte = false) => {
     const estChir = s.role === "chirurgien";
     const nomAffiche = [s.titre, s.prenom, s.nom].filter(Boolean).join(" ");
     const modifiable = peutModifier(s);
@@ -212,10 +228,14 @@ export default function EquipePage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-slate-800">{nomAffiche}</span>
-              <span className="badge bg-rose-100 text-brand">{LIBELLE_ROLE[s.role]}</span>
-              <span className={`badge ${s.niveau <= 1 ? "bg-green-100 text-ok" : s.niveau === 2 ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-attention"}`}>
-                {NIVEAU_LABEL[s.niveau] ?? `Niveau ${s.niveau}`}
-              </span>
+              <span className="badge bg-rose-100 text-brand">{estChir ? labelMedecin(s.specialite) : LIBELLE_ROLE[s.role]}</span>
+              {montrerCompte ? (
+                <BadgeCompte />
+              ) : (
+                <span className={`badge ${s.niveau <= 1 ? "bg-green-100 text-ok" : s.niveau === 2 ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-attention"}`}>
+                  {NIVEAU_LABEL[s.niveau] ?? `Niveau ${s.niveau}`}
+                </span>
+              )}
               {s.region_id && regionNom.get(s.region_id) && (
                 <span className="badge bg-slate-100 text-slate-600">{regionNom.get(s.region_id)}</span>
               )}
@@ -307,13 +327,13 @@ export default function EquipePage() {
             {encadrement.length > 0 && (
               <section className="grid gap-3">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-rose-400">Encadrement (région / plateforme)</h2>
-                {encadrement.map(carte)}
+                {encadrement.map((s) => carte(s))}
               </section>
             )}
             {groupesAgence.map((g) => (
               <section key={g.titre} className="grid gap-3">
                 <h2 className="text-xs font-bold uppercase tracking-widest text-rose-400">{g.titre}</h2>
-                {g.items.map(carte)}
+                {g.items.map((s) => carte(s))}
               </section>
             ))}
           </div>
@@ -328,7 +348,7 @@ export default function EquipePage() {
               <p className="text-sm text-slate-400">Aucun médecin / chirurgien.</p>
             ) : (
               <>
-                {medecinsComptes.map(carte)}
+                {medecinsComptes.map((s) => carte(s, true))}
                 {externesMed.map(carteExterne)}
               </>
             )}
@@ -339,7 +359,7 @@ export default function EquipePage() {
               <p className="text-sm text-slate-400">Aucune infirmière libérale.</p>
             ) : (
               <>
-                {infirmieresComptes.map(carte)}
+                {infirmieresComptes.map((s) => carte(s, true))}
                 {externesInf.map(carteExterne)}
               </>
             )}
