@@ -12,8 +12,7 @@ export type ModeleOrdo = { id: string; label: string; description?: string; cham
 export const MODELES_ORDONNANCE: ModeleOrdo[] = [
   {
     id: "perfusion_domicile",
-    label: "Prescription de perfusion à domicile",
-    description: "Formulaire de prescription de perfusion à domicile (ville ou hôpital).",
+    label: "Perfadom",
     champs: [
       { key: "type_demande", label: "Type de demande", type: "radio", options: ["Initiation d'une perfusion à domicile", "Renouvellement ou modification"] },
 
