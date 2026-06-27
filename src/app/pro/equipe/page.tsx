@@ -413,6 +413,41 @@ export default function EquipePage() {
   );
 }
 
+// Liste de protocoles repliés : nom de la chirurgie + bouton « Modifier » pour ouvrir.
+function BlocProtocoles({ protocoles, setProtocoles }: { protocoles: Protocole[]; setProtocoles: React.Dispatch<React.SetStateAction<Protocole[]>> }) {
+  const [ouvert, setOuvert] = useState<number | null>(null);
+  const retirer = (i: number) => { setProtocoles((arr) => arr.filter((_, idx) => idx !== i)); setOuvert(null); };
+  return (
+    <div className="grid gap-3 border-t border-rose-100 pt-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Protocoles</p>
+        <span className="text-xs text-slate-400">{protocoles.length}</span>
+      </div>
+      {protocoles.map((p, i) => (
+        <div key={i} className="rounded-xl border border-rose-100">
+          <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <span className="font-medium text-slate-800">Protocole {p.intervention || "sans nom"}</span>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setOuvert(ouvert === i ? null : i)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-brand hover:bg-rose-50">
+                {ouvert === i ? "Réduire" : "Modifier"}
+              </button>
+              <button type="button" onClick={() => retirer(i)} className="rounded-lg border border-rose-200 px-2 py-1.5 text-sm text-critique hover:bg-red-50">✕</button>
+            </div>
+          </div>
+          {ouvert === i && (
+            <div className="border-t border-rose-100 p-3">
+              <ProtocoleEditor index={i} value={p} onChange={(patch) => setProtocoles((arr) => arr.map((x, idx) => (idx === i ? { ...x, ...patch } : x)))} onRemove={() => retirer(i)} canRemove={false} />
+            </div>
+          )}
+        </div>
+      ))}
+      <button type="button" onClick={() => { setProtocoles((arr) => [...arr, protocoleVide()]); setOuvert(protocoles.length); }} className="justify-self-start rounded-lg border border-dashed border-rose-300 px-4 py-2 text-sm font-semibold text-brand hover:bg-rose-50">
+        + Ajouter un protocole
+      </button>
+    </div>
+  );
+}
+
 function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClose: () => void; onSaved: () => void }) {
   const estMed = externe.type === "medecin";
   const [f, setF] = useState({
@@ -426,7 +461,6 @@ function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClo
   const [err, setErr] = useState<string | null>(null);
   const [protocoles, setProtocoles] = useState<Protocole[]>(() => (externe.protocoles ?? []).map((p) => protocoleDepuis(p as unknown as Record<string, unknown>)));
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
-  const majProto = (i: number, patch: Partial<Protocole>) => setProtocoles((arr) => arr.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   const t = (v: string) => (v.trim() ? v.trim() : null);
 
   async function sauver() {
@@ -470,18 +504,7 @@ function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClo
               <div><label className="label">Tél. secr.</label><input className="input" value={f.secretariat_tel} onChange={set("secretariat_tel")} inputMode="tel" /></div>
             </div>
 
-            <div className="grid gap-3 border-t border-rose-100 pt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Protocoles</p>
-                <span className="text-xs text-slate-400">{protocoles.length}</span>
-              </div>
-              {protocoles.map((p, i) => (
-                <ProtocoleEditor key={i} index={i} value={p} onChange={(patch) => majProto(i, patch)} onRemove={() => setProtocoles((arr) => arr.filter((_, idx) => idx !== i))} canRemove />
-              ))}
-              <button type="button" onClick={() => setProtocoles((arr) => [...arr, protocoleVide()])} className="justify-self-start rounded-lg border border-dashed border-rose-300 px-4 py-2 text-sm font-semibold text-brand hover:bg-rose-50">
-                + Ajouter un protocole
-              </button>
-            </div>
+            <BlocProtocoles protocoles={protocoles} setProtocoles={setProtocoles} />
           </>
         )}
         {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{err}</p>}
@@ -519,7 +542,6 @@ function EditeurSoignant({
   const estChir = soignant.role === "chirurgien";
   const peutAcces = niveauMoi <= 1 && soignant.niveau >= 2;
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
-  const majProto = (i: number, patch: Partial<Protocole>) => setProtocoles((arr) => arr.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
 
   async function sauver() {
     setBusy(true); setErr(null);
@@ -557,18 +579,7 @@ function EditeurSoignant({
               <div><label className="label">Tél. secr.</label><input className="input" value={f.secretariat_tel} onChange={set("secretariat_tel")} inputMode="tel" /></div>
             </div>
 
-            <div className="grid gap-3 border-t border-rose-100 pt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Protocoles</p>
-                <span className="text-xs text-slate-400">{protocoles.length}</span>
-              </div>
-              {protocoles.map((p, i) => (
-                <ProtocoleEditor key={i} index={i} value={p} onChange={(patch) => majProto(i, patch)} onRemove={() => setProtocoles((arr) => arr.filter((_, idx) => idx !== i))} canRemove />
-              ))}
-              <button type="button" onClick={() => setProtocoles((arr) => [...arr, protocoleVide()])} className="justify-self-start rounded-lg border border-dashed border-rose-300 px-4 py-2 text-sm font-semibold text-brand hover:bg-rose-50">
-                + Ajouter un protocole
-              </button>
-            </div>
+            <BlocProtocoles protocoles={protocoles} setProtocoles={setProtocoles} />
           </>
         )}
 
