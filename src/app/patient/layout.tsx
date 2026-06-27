@@ -33,7 +33,7 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
                 prefetch={true}
                 className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-rose-50 hover:text-brand"
               >
-                <span className="text-base">{n.icon}</span>
+                {n.href === "/patient/profil" ? <IconeProfil className="h-4 w-4" /> : <span className="text-base">{n.icon}</span>}
                 {n.label}
               </Link>
             ))}
@@ -61,11 +61,20 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
             prefetch={true}
             className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1 text-[10px] font-medium text-slate-500 hover:text-brand"
           >
-            <span className="text-lg">{n.icon}</span>
+            {n.href === "/patient/profil" ? <IconeProfil className="h-5 w-5" /> : <span className="text-lg">{n.icon}</span>}
             {n.label}
           </Link>
         ))}
       </nav>
     </div>
+  );
+}
+
+function IconeProfil({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className} aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 20a8 8 0 0 1 16 0" />
+    </svg>
   );
 }
