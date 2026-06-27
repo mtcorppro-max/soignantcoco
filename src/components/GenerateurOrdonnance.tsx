@@ -173,10 +173,14 @@ export function GenerateurOrdonnance({ patientId, patientChirurgien, onCreated }
                         {choisi && (
                           <div className="mt-3 grid gap-3 border-t border-rose-100 pt-3">
                             {m.champs.map((c) => (
-                              <div key={c.key}>
-                                <label className="label">{c.label}</label>
-                                {champ(m.id, c)}
-                              </div>
+                              c.type === "section" ? (
+                                <p key={c.key} className="mt-1 text-xs font-bold uppercase tracking-widest text-rose-400">{c.label}</p>
+                              ) : (
+                                <div key={c.key}>
+                                  <label className="label">{c.label}</label>
+                                  {champ(m.id, c)}
+                                </div>
+                              )
                             ))}
                           </div>
                         )}

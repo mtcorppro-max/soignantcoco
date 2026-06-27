@@ -99,28 +99,31 @@ export async function genererPdfPerfusionDomicile(d: PerfDomicileData, mode: "do
   // Ville : toujours cocher 2.2
   coche(POS.presta_22);
 
-  // Produit n°1
-  txt(c.produit as string, POS.produit, 9);
-  // Durée d'une perfusion : valeur placée devant l'unité choisie
-  if (c.duree_valeur) txt(c.duree_valeur as string, c.duree_unite === "heures" ? POS.duree_h : POS.duree_min);
-  txt(c.nb_perfusions as string, POS.nb_perfusions);
-  txt(c.frequence_nb as string, POS.frequence_nb);
-  const periode = c.frequence_periode as string;
-  if (periode && POS_FREQ[periode]) coche(POS_FREQ[periode]);
+  // Bloc « produit à perfuser » réutilisable (n°1 à dy=0, n°2 décalé de 169 pt).
+  type Prod = { produit?: unknown; voie?: unknown; mode?: unknown; dv?: unknown; du?: unknown; nb?: unknown; fnb?: unknown; fper?: unknown; dd?: unknown; df?: unknown };
+  const off = (p: { x: number; y: number }, dy: number) => ({ x: p.x, y: p.y + dy });
+  const produitBloc = (P: Prod, dy: number) => {
+    txt(P.produit as string, off(POS.produit, dy), 9);
+    if (P.dv) txt(P.dv as string, off(P.du === "heures" ? POS.duree_h : POS.duree_min, dy));
+    txt(P.nb as string, off(POS.nb_perfusions, dy));
+    txt(P.fnb as string, off(POS.frequence_nb, dy));
+    const per = P.fper as string;
+    if (per && POS_FREQ[per]) coche(off(POS_FREQ[per], dy));
+    const v = P.voie as string;
+    if (v && POS_VOIE[v]) coche(off(POS_VOIE[v], dy));
+    const m = P.mode as string;
+    if (m && POS_MODE[m]) coche(off(POS_MODE[m], dy));
+    if (P.dd) { blanc({ ...BLANC.cure_debut, y: BLANC.cure_debut.y + dy }); txt(frDate(P.dd), { x: BLANC.cure_debut.x + 2, y: BLANC.cure_debut.y + dy }); }
+    if (P.df) { blanc({ ...BLANC.cure_fin, y: BLANC.cure_fin.y + dy }); txt(frDate(P.df), { x: BLANC.cure_fin.x + 2, y: BLANC.cure_fin.y + dy }); }
+    if (P.dd && P.df) {
+      const jours = Math.round((new Date(P.df as string).getTime() - new Date(P.dd as string).getTime()) / 86_400_000) + 1;
+      if (jours > 0) txt(String(jours), off(POS.cure_jours, dy));
+    }
+  };
 
-  const voie = c.voie as string;
-  if (voie && POS_VOIE[voie]) coche(POS_VOIE[voie]);
-  const md = c.mode as string;
-  if (md && POS_MODE[md]) coche(POS_MODE[md]);
-
-  // Dates de cure (barres effacées) + durée de cure calculée automatiquement
-  if (c.date_debut) { blanc(BLANC.cure_debut); txt(frDate(c.date_debut), { x: BLANC.cure_debut.x + 2, y: BLANC.cure_debut.y }); }
-  if (c.date_fin) { blanc(BLANC.cure_fin); txt(frDate(c.date_fin), { x: BLANC.cure_fin.x + 2, y: BLANC.cure_fin.y }); }
-  if (c.date_debut && c.date_fin) {
-    // Durée inclusive : du 7 au 10 = 4 jours (différence + 1).
-    const jours = Math.round((new Date(c.date_fin as string).getTime() - new Date(c.date_debut as string).getTime()) / 86_400_000) + 1;
-    if (jours > 0) txt(String(jours), POS.cure_jours);
-  }
+  produitBloc({ produit: c.produit, voie: c.voie, mode: c.mode, dv: c.duree_valeur, du: c.duree_unite, nb: c.nb_perfusions, fnb: c.frequence_nb, fper: c.frequence_periode, dd: c.date_debut, df: c.date_fin }, 0);
+  const p2: Prod = { produit: c.produit2, voie: c.voie2, mode: c.mode2, dv: c.duree_valeur2, du: c.duree_unite2, nb: c.nb_perfusions2, fnb: c.frequence_nb2, fper: c.frequence_periode2, dd: c.date_debut2, df: c.date_fin2 };
+  if (p2.produit || p2.voie || p2.mode || p2.dv || p2.nb || p2.fnb || p2.dd || p2.df) produitBloc(p2, 169);
 
   if (d.signature) {
     try {
