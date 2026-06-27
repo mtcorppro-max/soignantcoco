@@ -58,7 +58,7 @@ export default function Landing() {
             <div className="[text-shadow:_0_2px_12px_rgba(0,0,0,0.5)]">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-300" />
-                Télésurveillance post-opératoire
+                Télésuivi post-opératoire
               </div>
               <h1 className="text-4xl font-bold leading-tight text-white drop-shadow-lg md:text-5xl">
                 Votre rétablissement{" "}
@@ -241,7 +241,7 @@ export default function Landing() {
       <footer className="border-t border-rose-100 bg-white py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-slate-400 sm:flex-row">
           <Logo />
-          <p>Prototype — Télésurveillance post-opératoire à domicile</p>
+          <p>Prototype — Télésuivi post-opératoire à domicile</p>
           <p>© 2026 AS2CŒUR</p>
         </div>
       </footer>

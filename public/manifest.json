@@ -1,7 +1,7 @@
 {
   "name": "AS2CŒUR",
   "short_name": "AS2CŒUR",
-  "description": "Télésurveillance post-opératoire à domicile",
+  "description": "Télésuivi post-opératoire à domicile",
   "start_url": "/patient",
   "scope": "/",
   "display": "standalone",
