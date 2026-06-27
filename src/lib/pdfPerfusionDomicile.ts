@@ -4,35 +4,46 @@ const TEMPLATE = "/formulaire-prescription_perfusions_urps-ph-paca-2016.pdf";
 
 export type PerfDomicileData = {
   patientNom: string;
-  prescripteurNom: string;
+  patientNaissance?: string | null;   // ISO
+  prescripteurNom?: string | null;
+  prescripteurPrenom?: string | null;
   prescripteurRpps?: string | null;
-  date?: string | null; // date de prescription (JJ/MM/AAAA)
+  prescripteurStructure?: string | null; // raison sociale / lieu d'exercice
+  date?: string | null;                // date de prescription (JJ/MM/AAAA)
   contenu: Record<string, unknown>;
   signature?: string | null;
 };
 
-// Coordonnées (points, repère depuis le HAUT de la page A4 595x842),
-// calées sur la position réelle des libellés du formulaire.
+// Positions (points, repère depuis le HAUT de la page A4 595x842).
 const POS = {
-  initiation: { x: 25, y: 73 },          // case « Initiation d'une perfusion à domicile »
+  initiation: { x: 25, y: 73 },
+  presta_22: { x: 270, y: 203 },         // case 2.2 (Ville)
   patient_nom: { x: 300, y: 60 },
-  prescripteur_nom: { x: 55, y: 122 },
-  prescripteur_rpps: { x: 92, y: 159 },
-  produit: { x: 52, y: 335 },            // dénomination du produit n°1
-  duree: { x: 305, y: 383 },             // après « … minutes » sur la ligne Durée
+  presc_nom: { x: 55, y: 122 },
+  presc_prenom: { x: 58, y: 134 },
+  presc_rpps: { x: 90, y: 159 },
+  struct_raison: { x: 320, y: 122 },
+  struct_adresse: { x: 300, y: 134 },
+  produit: { x: 52, y: 335 },
+  duree_h: { x: 190, y: 383 },
+  duree_min: { x: 252, y: 383 },
   nb_perfusions: { x: 140, y: 407 },
-  frequence: { x: 232, y: 410 },
-  signature: { x: 405, y: 805 },         // cadre SIGNATURE (bas droite)
+  frequence_nb: { x: 231, y: 411 },
+  signature: { x: 405, y: 805 },
 };
-
-// Dates écrites dans les cases JJ / MM / AAAA (x de chaque groupe, baseline y).
-const POS_DATE = {
-  prescription: { xs: [112, 131, 150] as [number, number, number], y: 61 },
-  debut: { xs: [51, 70, 91] as [number, number, number], y: 436 },
-  fin: { xs: [168, 187, 208] as [number, number, number], y: 436 },
+const POS_FREQ: Record<string, { x: number; y: number }> = {
+  jour: { x: 290, y: 396 },
+  semaine: { x: 290, y: 404 },
+  mois: { x: 289, y: 413 },
 };
-
-// Cases « Voie d'abord » (produit n°1).
+// Zones de cases-dates à effacer (barre blanche) puis réécrire : [xTop, yTop, largeur]
+const BLANC = {
+  date_presc: { x: 108, y: 61, w: 70 },
+  naissance: { x: 340, y: 72, w: 72 },
+  rpps: { x: 88, y: 159, w: 95 },
+  cure_debut: { x: 46, y: 437, w: 77 },
+  cure_fin: { x: 163, y: 437, w: 77 },
+};
 const POS_VOIE: Record<string, { x: number; y: number }> = {
   "Veineuse centrale (VC)": { x: 359, y: 301 },
   "Chambre implantable": { x: 375, y: 312 },
@@ -42,8 +53,6 @@ const POS_VOIE: Record<string, { x: number; y: number }> = {
   "Veineuse périphérique": { x: 359, y: 367 },
   "Sous-cutanée": { x: 359, y: 380 },
 };
-
-// Cases « Mode d'administration » (produit n°1).
 const POS_MODE: Record<string, { x: number; y: number }> = {
   "Gravité": { x: 461, y: 301 },
   "Diffuseur": { x: 461, y: 313 },
@@ -51,11 +60,13 @@ const POS_MODE: Record<string, { x: number; y: number }> = {
   "Transfuseur": { x: 461, y: 396 },
 };
 
+const frDate = (v: unknown) => (v ? new Date(v as string).toLocaleDateString("fr-FR") : "");
+
 export async function genererPdfPerfusionDomicile(d: PerfDomicileData, mode: "download" | "bloburl" = "download"): Promise<string | void> {
   const tplBytes = await fetch(TEMPLATE).then((r) => r.arrayBuffer());
   const tpl = await PDFDocument.load(tplBytes);
   const out = await PDFDocument.create();
-  const [page] = await out.copyPages(tpl, [0]); // page 1 uniquement
+  const [page] = await out.copyPages(tpl, [0]);
   out.addPage(page);
   const font = await out.embedFont(StandardFonts.Helvetica);
   const H = page.getHeight();
@@ -64,37 +75,45 @@ export async function genererPdfPerfusionDomicile(d: PerfDomicileData, mode: "do
     if (!s) return;
     page.drawText(String(s), { x: p.x, y: H - p.y, size, font, color: rgb(0.1, 0.1, 0.12) });
   };
-  const coche = (p: { x: number; y: number }) => {
-    page.drawText("X", { x: p.x, y: H - p.y, size: 10, font, color: rgb(0.75, 0.1, 0.36) });
-  };
-  // Écrit une date JJ/MM/AAAA dans ses 3 groupes de cases.
-  const dateCases = (val: string | null | undefined, p: { xs: [number, number, number]; y: number }) => {
-    if (!val) return;
-    const [dd, mm, yyyy] = val.split("/");
-    if (!yyyy) { txt(val, { x: p.xs[0], y: p.y }, 8); return; }
-    txt(dd, { x: p.xs[0], y: p.y }, 8);
-    txt(mm, { x: p.xs[1], y: p.y }, 8);
-    txt(yyyy, { x: p.xs[2], y: p.y }, 8);
-  };
-  const isoToFr = (s: unknown) => (s ? new Date(s as string).toLocaleDateString("fr-FR") : "");
+  const coche = (p: { x: number; y: number }) => page.drawText("X", { x: p.x, y: H - p.y, size: 10, font, color: rgb(0.75, 0.1, 0.36) });
+  const blanc = (z: { x: number; y: number; w: number }) => page.drawRectangle({ x: z.x, y: H - z.y - 2, width: z.w, height: 11, color: rgb(1, 1, 1) });
 
   const c = d.contenu;
-  dateCases(d.date || new Date().toLocaleDateString("fr-FR"), POS_DATE.prescription);
+
+  // En-tête : date de prescription (barres effacées), Initiation
+  blanc(BLANC.date_presc); txt(d.date || new Date().toLocaleDateString("fr-FR"), { x: BLANC.date_presc.x + 2, y: BLANC.date_presc.y });
   coche(POS.initiation);
+
+  // Patient : nom + date de naissance
   txt(d.patientNom, POS.patient_nom);
-  txt(d.prescripteurNom, POS.prescripteur_nom);
-  txt(d.prescripteurRpps ?? "", POS.prescripteur_rpps);
+  if (d.patientNaissance) { blanc(BLANC.naissance); txt(frDate(d.patientNaissance), { x: BLANC.naissance.x + 2, y: BLANC.naissance.y }); }
+
+  // Prescripteur + structure
+  txt(d.prescripteurNom ?? "", POS.presc_nom);
+  txt(d.prescripteurPrenom ?? "", POS.presc_prenom);
+  if (d.prescripteurRpps) { blanc(BLANC.rpps); txt(d.prescripteurRpps, { x: BLANC.rpps.x + 2, y: BLANC.rpps.y }); }
+  txt(d.prescripteurStructure ?? "", POS.struct_raison, 8);
+
+  // Ville : toujours cocher 2.2
+  coche(POS.presta_22);
+
+  // Produit n°1
   txt(c.produit as string, POS.produit, 9);
-  txt(c.duree_perfusion as string, POS.duree);
+  txt(c.duree_heures as string, POS.duree_h);
+  txt(c.duree_minutes as string, POS.duree_min);
   txt(c.nb_perfusions as string, POS.nb_perfusions);
-  txt(c.frequence as string, POS.frequence);
-  dateCases(isoToFr(c.date_debut), POS_DATE.debut);
-  dateCases(isoToFr(c.date_fin), POS_DATE.fin);
+  txt(c.frequence_nb as string, POS.frequence_nb);
+  const periode = c.frequence_periode as string;
+  if (periode && POS_FREQ[periode]) coche(POS_FREQ[periode]);
 
   const voie = c.voie as string;
   if (voie && POS_VOIE[voie]) coche(POS_VOIE[voie]);
   const md = c.mode as string;
   if (md && POS_MODE[md]) coche(POS_MODE[md]);
+
+  // Dates de cure (barres effacées)
+  if (c.date_debut) { blanc(BLANC.cure_debut); txt(frDate(c.date_debut), { x: BLANC.cure_debut.x + 2, y: BLANC.cure_debut.y }); }
+  if (c.date_fin) { blanc(BLANC.cure_fin); txt(frDate(c.date_fin), { x: BLANC.cure_fin.x + 2, y: BLANC.cure_fin.y }); }
 
   if (d.signature) {
     try {
@@ -108,8 +127,6 @@ export async function genererPdfPerfusionDomicile(d: PerfDomicileData, mode: "do
   const url = URL.createObjectURL(blob);
   if (mode === "bloburl") return url;
   const a = document.createElement("a");
-  a.href = url;
-  a.download = "prescription-perfusion-domicile.pdf";
-  a.click();
+  a.href = url; a.download = "prescription-perfusion-domicile.pdf"; a.click();
   URL.revokeObjectURL(url);
 }

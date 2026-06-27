@@ -8,20 +8,24 @@ import { genererPdfOrdonnance } from "@/lib/pdfOrdonnance";
 import { genererPdfPerfusionDomicile } from "@/lib/pdfPerfusionDomicile";
 import { GenerateurOrdonnance } from "@/components/GenerateurOrdonnance";
 
+type Pro = { nom: string; prenom: string | null; titre: string | null; rpps: string | null; cabinets: string | null };
 type Ordo = {
   id: string;
   type: string;
   titre: string;
   contenu: Record<string, unknown>;
   destinataire_id: string | null;
+  destinataire: Pro | Pro[] | null;
   statut: "a_signer" | "signee" | "refusee";
   signature: string | null;
   signataire_nom: string | null;
   signee_le: string | null;
   created_at: string;
 };
+const unPro = (o: Ordo): Pro | null => (Array.isArray(o.destinataire) ? o.destinataire[0] : o.destinataire) ?? null;
+const nomPro = (p: Pro | null) => (p ? [p.titre, p.prenom, p.nom].filter(Boolean).join(" ") : "");
 
-export function OrdonnancesPatient({ patientId, patientNom, patientChirurgien }: { patientId: string; patientNom: string; patientChirurgien: string | null }) {
+export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, patientChirurgien }: { patientId: string; patientNom: string; patientNaissance: string | null; patientChirurgien: string | null }) {
   const pro = useProSession();
   const [ordos, setOrdos] = useState<Ordo[]>([]);
   const [signer, setSigner] = useState<Ordo | null>(null);
@@ -29,7 +33,7 @@ export function OrdonnancesPatient({ patientId, patientNom, patientChirurgien }:
   const charger = useCallback(async () => {
     const { data } = await createClient()
       .from("ordonnance")
-      .select("id,type,titre,contenu,destinataire_id,statut,signature,signataire_nom,signee_le,created_at")
+      .select("id,type,titre,contenu,destinataire_id,statut,signature,signataire_nom,signee_le,created_at,destinataire:destinataire_id(nom,prenom,titre,rpps,cabinets)")
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false });
     setOrdos((data ?? []) as Ordo[]);
@@ -39,9 +43,14 @@ export function OrdonnancesPatient({ patientId, patientNom, patientChirurgien }:
 
   async function genererPdf(o: Ordo, mode: "download" | "bloburl") {
     if (o.type === "perfusion_domicile") {
+      const med = unPro(o);
       return genererPdfPerfusionDomicile({
         patientNom,
-        prescripteurNom: o.signataire_nom ?? "",
+        patientNaissance,
+        prescripteurNom: med?.nom ?? null,
+        prescripteurPrenom: med?.prenom ?? null,
+        prescripteurRpps: med?.rpps ?? null,
+        prescripteurStructure: med?.cabinets ?? null,
         date: new Date(o.created_at).toLocaleDateString("fr-FR"),
         contenu: o.contenu,
         signature: o.signature,

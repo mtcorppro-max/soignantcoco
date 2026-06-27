@@ -168,7 +168,7 @@ export default function FichePatient() {
       <InfosPatient patient={patient} modifiable={modifiableInfos} />
 
       {/* ── Ordonnances du patient ── */}
-      <OrdonnancesPatient patientId={patient.id} patientNom={patient.nom} patientChirurgien={patient.chirurgien} />
+      <OrdonnancesPatient patientId={patient.id} patientNom={patient.nom} patientNaissance={patient.date_naissance} patientChirurgien={patient.chirurgien} />
 
       {/* ── Dernières valeurs ── */}
       <section>
