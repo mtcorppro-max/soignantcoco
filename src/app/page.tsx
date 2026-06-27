@@ -241,7 +241,7 @@ export default function Landing() {
       <footer className="border-t border-rose-100 bg-white py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-slate-400 sm:flex-row">
           <Logo />
-          <p>Prototype — Télésuivi post-opératoire à domicile</p>
+          <p>Prototype — Plateforme de soins post-opératoires</p>
           <p>© 2026 AS2CŒUR</p>
         </div>
       </footer>
