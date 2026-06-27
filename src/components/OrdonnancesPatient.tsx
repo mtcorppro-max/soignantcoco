@@ -10,6 +10,8 @@ import { genererPdfIdelPerf } from "@/lib/pdfIdelPerf";
 import { genererPdfOrdoBS } from "@/lib/pdfOrdoBS";
 import { genererPdfModele, CONFIGS } from "@/lib/ordoTemplates";
 import { GenerateurOrdonnance } from "@/components/GenerateurOrdonnance";
+import { ChampsOrdonnance } from "@/components/ChampsOrdonnance";
+import { Select } from "@/components/Select";
 
 type Pro = { nom: string; prenom: string | null; titre: string | null; rpps: string | null; cabinets: string | null };
 type Ordo = {
@@ -31,6 +33,7 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
   const pro = useProSession();
   const [ordos, setOrdos] = useState<Ordo[]>([]);
   const [signer, setSigner] = useState<Ordo | null>(null);
+  const [editer, setEditer] = useState<Ordo | null>(null);
 
   const charger = useCallback(async () => {
     const { data } = await createClient()
@@ -126,6 +129,9 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
                 </div>
                 <div className="flex items-center gap-2">
                   {aSigner && <button onClick={() => setSigner(o)} className="btn-primary px-3 py-1.5 text-sm">Lire et signer</button>}
+                  {o.statut !== "signee" && (
+                    <button onClick={() => setEditer(o)} className="btn-secondary px-3 py-1.5 text-sm">Modifier</button>
+                  )}
                   <button onClick={() => voir(o)} className="btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-sm">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
@@ -156,7 +162,56 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
           onSigned={() => { setSigner(null); charger(); }}
         />
       )}
+
+      {editer && (
+        <EditeurOrdonnance
+          ordo={editer}
+          onClose={() => setEditer(null)}
+          onSaved={() => { setEditer(null); charger(); }}
+        />
+      )}
     </section>
+  );
+}
+
+function EditeurOrdonnance({ ordo, onClose, onSaved }: { ordo: Ordo; onClose: () => void; onSaved: () => void }) {
+  const modele = modeleOrdo(ordo.type);
+  const [valeurs, setValeurs] = useState<Record<string, unknown>>({ ...ordo.contenu });
+  const [medecins, setMedecins] = useState<{ id: string; nom: string; prenom: string | null; titre: string | null }[]>([]);
+  const [destinataire, setDestinataire] = useState(ordo.destinataire_id ?? "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    createClient().from("professionnel").select("id,nom,prenom,titre").eq("role", "chirurgien").order("nom")
+      .then(({ data }) => setMedecins((data ?? []) as { id: string; nom: string; prenom: string | null; titre: string | null }[]));
+  }, []);
+
+  async function sauver() {
+    setBusy(true); setErr(null);
+    const { error } = await createClient().from("ordonnance").update({ contenu: valeurs, destinataire_id: destinataire || null, statut: "a_signer" }).eq("id", ordo.id).neq("statut", "signee");
+    setBusy(false);
+    if (error) { setErr("Échec : " + error.message); return; }
+    onSaved();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/30 p-4 pt-12" onClick={onClose}>
+      <div className="card grid w-full max-w-2xl gap-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-800">Modifier — {ordo.titre}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-critique">✕</button>
+        </div>
+        <div>
+          <label className="label">Médecin signataire</label>
+          <Select value={destinataire} onChange={setDestinataire} placeholder="— Choisir un médecin —"
+            options={medecins.map((m) => ({ value: m.id, label: [m.titre, m.prenom, m.nom].filter(Boolean).join(" ") }))} />
+        </div>
+        {modele && <ChampsOrdonnance champs={modele.champs} valeurs={valeurs} set={(k, v) => setValeurs((s) => ({ ...s, [k]: v }))} />}
+        {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{err}</p>}
+        <button onClick={sauver} disabled={busy} className="btn-primary py-3">{busy ? "Enregistrement…" : "Enregistrer les modifications"}</button>
+      </div>
+    </div>
   );
 }
 
