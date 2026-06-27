@@ -34,8 +34,8 @@ export async function genererPdfOrdonnance(d: OrdonnancePdf, mode: "download" | 
   const M = 16;
   const L = 210 - M * 2;
 
-  const logo = await chargerImage("/as2coeur-logo.png");
-  if (logo?.url) { try { doc.addImage(logo.url, "PNG", M, 10, 50, 12); } catch { /* */ } }
+  const logo = await chargerImage("/logo-as2coeur-trim.png");
+  if (logo?.url) { try { doc.addImage(logo.url, "PNG", M, 11, 52, 11); } catch { /* */ } }
 
   doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(...NOIR);
   doc.text("Ordonnance", 210 - M, 16, { align: "right" });

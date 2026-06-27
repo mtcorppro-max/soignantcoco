@@ -54,7 +54,7 @@ export type ConsignesData = {
 // Charge le logo AS2CŒUR (PNG transparent) en data-URL.
 async function chargerLogo(): Promise<string | null> {
   try {
-    const res = await fetch("/as2coeur-logo.png");
+    const res = await fetch("/logo-as2coeur-trim.png");
     if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise<string>((resolve) => {
@@ -104,7 +104,7 @@ export async function genererPdfConsignes(
   const logo = await chargerLogo();
   if (logo) {
     try {
-      doc.addImage(logo, "PNG", M, 10, 52, 12);
+      doc.addImage(logo, "PNG", M, 11, 52, 11);
     } catch {
       /* format non supporté */
     }
