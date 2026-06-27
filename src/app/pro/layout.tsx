@@ -111,12 +111,12 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
               </Link>
             )}
             {pro && (
-              <div className="leading-tight">
+              <Link href="/pro/profil" prefetch className="leading-tight rounded-lg px-2 py-1 text-left transition hover:bg-rose-50" title="Mon profil">
                 <p className="text-sm font-semibold text-slate-700">
                   {[pro.titre, pro.prenom, pro.nom].filter(Boolean).join(" ")}
                 </p>
                 <p className="text-xs text-slate-400">{LIBELLE_ROLE[pro.role as keyof typeof LIBELLE_ROLE]}</p>
-              </div>
+              </Link>
             )}
             <LogoutButton />
           </div>

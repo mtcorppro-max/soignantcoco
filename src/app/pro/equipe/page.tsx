@@ -81,6 +81,7 @@ export default function EquipePage() {
   const [chargement, setChargement] = useState(true);
   const [suppression, setSuppression] = useState<string | null>(null);
   const [edite, setEdite] = useState<Soignant | null>(null);
+  const [editeExt, setEditeExt] = useState<Externe | null>(null);
 
   const charger = useCallback(async () => {
     const supabase = createClient();
@@ -127,7 +128,8 @@ export default function EquipePage() {
 
   const labelAgence = (id: string | null) => agences.find((a) => a.value === id)?.label ?? null;
   // Un niveau 0/1 peut modifier les comptes de niveau 2 ou 3 (sauf le sien).
-  const peutModifier = (s: Soignant) => niveauMoi <= 1 && s.niveau >= 2 && pro?.id !== s.id;
+  // Édition du profil (coordonnées) : niveau 0/1/2. (Le niveau/agence reste géré dans l'éditeur, réservé 0/1.)
+  const peutModifier = (s: Soignant) => niveauMoi <= 2 && pro?.id !== s.id;
   // Un niveau 0/1 peut supprimer un compte qui n'est pas plus puissant que lui.
   const peutSupprimer = (s: Soignant) => niveauMoi <= 1 && pro?.id !== s.id && s.niveau >= niveauMoi;
 
@@ -154,7 +156,8 @@ export default function EquipePage() {
   }
 
   // ── Soignants externes (sans compte) ──
-  const peutGererExterne = niveauMoi <= 1;
+  const peutGererExterne = niveauMoi <= 1;          // suppression
+  const peutEditerExterne = niveauMoi <= 2;         // édition du profil
   async function supprimerExterne(e: Externe) {
     if (!confirm(`Supprimer le soignant externe ${[e.prenom, e.nom].filter(Boolean).join(" ")} ?`)) return;
     setSuppression(e.id);
@@ -175,7 +178,11 @@ export default function EquipePage() {
     const nomAffiche = [e.titre, e.prenom, e.nom].filter(Boolean).join(" ");
     const estMed = e.type === "medecin";
     return (
-      <div key={e.id} className="card grid gap-3">
+      <div
+        key={e.id}
+        onClick={() => peutEditerExterne && setEditeExt(e)}
+        className={`card grid gap-3 ${peutEditerExterne ? "cursor-pointer transition hover:border-rose-200 hover:shadow-md" : ""}`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -187,7 +194,7 @@ export default function EquipePage() {
           </div>
           {peutGererExterne && (
             <button
-              onClick={() => supprimerExterne(e)}
+              onClick={(ev) => { ev.stopPropagation(); supprimerExterne(e); }}
               disabled={suppression === e.id}
               className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-critique hover:bg-red-50 disabled:opacity-50"
             >
@@ -209,7 +216,7 @@ export default function EquipePage() {
                 ? `${e.protocoles.length} protocole(s) : ${e.protocoles.map((p) => p.intervention || "Sans nom").join(", ")}`
                 : "Aucun protocole enregistré"}
             </span>
-            <button onClick={() => pdfExterne(e)} className="btn-secondary text-sm">📄 PDF des consignes</button>
+            <button onClick={(ev) => { ev.stopPropagation(); pdfExterne(e); }} className="btn-secondary text-sm">📄 PDF des consignes</button>
           </div>
         )}
       </div>
@@ -277,7 +284,7 @@ export default function EquipePage() {
           {s.secretariat_tel && <Info label="Tél. secrétariat" value={s.secretariat_tel} href={`tel:${s.secretariat_tel}`} />}
         </div>
 
-        {modifiable && <p className="text-xs text-brand">Cliquer pour modifier le niveau / l&apos;agence</p>}
+        {modifiable && <p className="text-xs text-brand">Cliquer pour modifier le profil</p>}
 
         {estChir && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rose-50 pt-3" onClick={(e) => e.stopPropagation()}>
@@ -393,6 +400,80 @@ export default function EquipePage() {
           onSaved={() => { setEdite(null); charger(); }}
         />
       )}
+
+      {editeExt && (
+        <EditeurExterne
+          externe={editeExt}
+          onClose={() => setEditeExt(null)}
+          onSaved={() => { setEditeExt(null); charger(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClose: () => void; onSaved: () => void }) {
+  const estMed = externe.type === "medecin";
+  const [f, setF] = useState({
+    titre: externe.titre ?? "", prenom: externe.prenom ?? "", nom: externe.nom,
+    specialite: externe.specialite ?? "", rpps: externe.rpps ?? "",
+    telephone: externe.telephone ?? "", email: externe.email ?? "",
+    cabinets: externe.cabinets ?? "", secretariat_nom: externe.secretariat_nom ?? "", secretariat_tel: externe.secretariat_tel ?? "",
+    zone_exercice: externe.zone_exercice ?? "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const t = (v: string) => (v.trim() ? v.trim() : null);
+
+  async function sauver() {
+    if (!f.nom.trim()) { setErr("Le nom est requis."); return; }
+    setBusy(true); setErr(null);
+    const maj = estMed
+      ? { titre: t(f.titre), prenom: t(f.prenom), nom: f.nom.trim(), specialite: t(f.specialite), rpps: t(f.rpps), telephone: t(f.telephone), email: t(f.email), cabinets: t(f.cabinets), secretariat_nom: t(f.secretariat_nom), secretariat_tel: t(f.secretariat_tel) }
+      : { prenom: t(f.prenom), nom: f.nom.trim(), telephone: t(f.telephone), email: t(f.email), zone_exercice: t(f.zone_exercice) };
+    const { error } = await createClient().from("soignant_externe").update(maj).eq("id", externe.id);
+    setBusy(false);
+    if (error) { setErr("Échec : " + error.message); return; }
+    onSaved();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/30 p-4 pt-12" onClick={onClose}>
+      <div className="card grid w-full max-w-md gap-4" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-sm font-semibold text-slate-700">Soignant externe</h2>
+        {estMed && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div><label className="label">Spécialité</label><input className="input" value={f.specialite} onChange={set("specialite")} /></div>
+            <div><label className="label">N° RPPS</label><input className="input" value={f.rpps} onChange={set("rpps")} inputMode="numeric" /></div>
+          </div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div><label className="label">Prénom</label><input className="input" value={f.prenom} onChange={set("prenom")} /></div>
+          <div><label className="label">Nom *</label><input className="input" value={f.nom} onChange={set("nom")} /></div>
+        </div>
+        {!estMed && (
+          <div><label className="label">Zone(s) d&apos;exercice</label><input className="input" value={f.zone_exercice} onChange={set("zone_exercice")} /></div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div><label className="label">Téléphone</label><input className="input" value={f.telephone} onChange={set("telephone")} inputMode="tel" /></div>
+          <div><label className="label">Email</label><input className="input" value={f.email} onChange={set("email")} inputMode="email" /></div>
+        </div>
+        {estMed && (
+          <>
+            <div><label className="label">Lieu d&apos;exercice</label><input className="input" value={f.cabinets} onChange={set("cabinets")} /></div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><label className="label">Secrétariat</label><input className="input" value={f.secretariat_nom} onChange={set("secretariat_nom")} /></div>
+              <div><label className="label">Tél. secr.</label><input className="input" value={f.secretariat_tel} onChange={set("secretariat_tel")} inputMode="tel" /></div>
+            </div>
+          </>
+        )}
+        {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{err}</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="btn-secondary flex-1" disabled={busy}>Annuler</button>
+          <button onClick={sauver} className="btn-primary flex-1" disabled={busy}>{busy ? "…" : "Enregistrer"}</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -410,60 +491,74 @@ function EditeurSoignant({
   const [niveau, setNiveau] = useState(String(soignant.niveau));
   const [agenceId, setAgenceId] = useState(soignant.agence_id ?? "");
   const [regionId, setRegionId] = useState(soignant.region_id ?? "");
+  const [f, setF] = useState({
+    telephone: soignant.telephone ?? "", email: soignant.email ?? "",
+    rpps: soignant.rpps ?? "", specialite: soignant.specialite ?? "", cabinets: soignant.cabinets ?? "",
+    secretariat_nom: soignant.secretariat_nom ?? "", secretariat_email: soignant.secretariat_email ?? "", secretariat_tel: soignant.secretariat_tel ?? "",
+  });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const nomAffiche = [soignant.titre, soignant.prenom, soignant.nom].filter(Boolean).join(" ");
+  const estChir = soignant.role === "chirurgien";
+  const peutAcces = niveauMoi <= 1 && soignant.niveau >= 2;
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
 
   async function sauver() {
     setBusy(true); setErr(null);
-    const res = await fetch(`/api/soignants/${soignant.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        niveau: Number(niveau),
-        agence_id: (niveau === "2" || niveau === "3") ? (agenceId || null) : null,
-        region_id: niveau === "1" ? (regionId || null) : null,
-      }),
-    });
+    const body: Record<string, unknown> = {
+      telephone: f.telephone, email: f.email,
+      ...(estChir ? { rpps: f.rpps, specialite: f.specialite, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel } : {}),
+      ...(peutAcces ? { niveau: Number(niveau), agence_id: (niveau === "2" || niveau === "3") ? (agenceId || null) : null, region_id: niveau === "1" ? (regionId || null) : null } : {}),
+    };
+    const res = await fetch(`/api/soignants/${soignant.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setBusy(false);
-    if (!res.ok) {
-      const j = await res.json().catch(() => null);
-      setErr(j?.message ?? `Échec (HTTP ${res.status}).`);
-      return;
-    }
+    if (!res.ok) { const j = await res.json().catch(() => null); setErr(j?.message ?? `Échec (HTTP ${res.status}).`); return; }
     onSaved();
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="card w-full max-w-md grid gap-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/30 p-4 pt-12" onClick={onClose}>
+      <div className="card grid w-full max-w-md gap-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-sm font-semibold text-slate-700">{nomAffiche}</h2>
 
-        <div>
-          <label className="label">Niveau d&apos;accès</label>
-          <Select value={niveau} onChange={setNiveau} options={optionsNiveau(niveauMoi)} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div><label className="label">Téléphone</label><input className="input" value={f.telephone} onChange={set("telephone")} inputMode="tel" /></div>
+          <div><label className="label">Email</label><input className="input" value={f.email} onChange={set("email")} inputMode="email" /></div>
         </div>
 
-        {niveau === "1" && (
-          <div>
-            <label className="label">Région de rattachement</label>
-            <Select
-              value={regionId}
-              onChange={setRegionId}
-              placeholder={regions.length ? "— Choisir une région —" : "Aucune région créée"}
-              options={regions}
-            />
-          </div>
+        {estChir && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><label className="label">Spécialité</label><input className="input" value={f.specialite} onChange={set("specialite")} /></div>
+              <div><label className="label">N° RPPS</label><input className="input" value={f.rpps} onChange={set("rpps")} inputMode="numeric" /></div>
+            </div>
+            <div><label className="label">Lieu d&apos;exercice</label><input className="input" value={f.cabinets} onChange={set("cabinets")} /></div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div><label className="label">Secrétariat</label><input className="input" value={f.secretariat_nom} onChange={set("secretariat_nom")} /></div>
+              <div><label className="label">Email secr.</label><input className="input" value={f.secretariat_email} onChange={set("secretariat_email")} inputMode="email" /></div>
+              <div><label className="label">Tél. secr.</label><input className="input" value={f.secretariat_tel} onChange={set("secretariat_tel")} inputMode="tel" /></div>
+            </div>
+          </>
         )}
-        {(niveau === "2" || niveau === "3") && (
-          <div>
-            <label className="label">Agence de rattachement</label>
-            <Select
-              value={agenceId}
-              onChange={setAgenceId}
-              placeholder={agences.length ? "— Choisir une agence —" : "Aucune agence créée"}
-              options={agences}
-            />
+
+        {peutAcces && (
+          <div className="grid gap-4 border-t border-rose-100 pt-4">
+            <div>
+              <label className="label">Niveau d&apos;accès</label>
+              <Select value={niveau} onChange={setNiveau} options={optionsNiveau(niveauMoi)} />
+            </div>
+            {niveau === "1" && (
+              <div>
+                <label className="label">Région de rattachement</label>
+                <Select value={regionId} onChange={setRegionId} placeholder={regions.length ? "— Choisir une région —" : "Aucune région créée"} options={regions} />
+              </div>
+            )}
+            {(niveau === "2" || niveau === "3") && (
+              <div>
+                <label className="label">Agence de rattachement</label>
+                <Select value={agenceId} onChange={setAgenceId} placeholder={agences.length ? "— Choisir une agence —" : "Aucune agence créée"} options={agences} />
+              </div>
+            )}
           </div>
         )}
 

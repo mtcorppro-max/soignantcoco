@@ -70,9 +70,10 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
-// Modification d'un compte soignant : niveau et/ou agence de rattachement.
-// Règles : seuls les niveaux 0 et 1 (ou admin) peuvent modifier des comptes
-// de niveau 2 ou 3. On ne peut pas octroyer un niveau inférieur au sien.
+// Modification d'un compte soignant.
+//  • Coordonnées / infos pro (tél, email, RPPS, spécialité, cabinet, secrétariat,
+//    zone) : modifiables par soi-même, ou par un niveau 0/1/2 du même prestataire.
+//  • Niveau / agence / région d'accès : réservés aux niveaux 0/1 (cibles niveau ≥ 2).
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
@@ -88,10 +89,7 @@ export async function PATCH(
     .maybeSingle();
   const admin_ = estEmailAdmin(user.email);
   const niveauMoi = admin_ ? 0 : (moi?.niveau ?? 3);
-
-  if (!admin_ && niveauMoi > 1) {
-    return NextResponse.json({ message: "Seuls les niveaux 0 et 1 peuvent modifier un compte." }, { status: 403 });
-  }
+  const estSelf = !!moi && moi.id === params.id;
 
   const admin = createAdminClient();
   const { data: cible } = await admin
@@ -100,20 +98,33 @@ export async function PATCH(
     .eq("id", params.id)
     .maybeSingle();
   if (!cible) return NextResponse.json({ message: "Compte introuvable." }, { status: 404 });
-
-  // On ne peut modifier que des comptes de niveau 2 ou 3
-  if (cible.niveau < 2) {
-    return NextResponse.json({ message: "Ce compte ne peut pas être modifié à ce niveau." }, { status: 403 });
-  }
-  if (!admin_ && cible.prestataire_id !== moi?.prestataire_id) {
+  if (!admin_ && !estSelf && cible.prestataire_id !== moi?.prestataire_id) {
     return NextResponse.json({ message: "Compte hors de votre prestataire." }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({}));
-  const maj: { niveau?: number; agence_id?: string | null; region_id?: string | null } = {};
+  const t = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const maj: Record<string, unknown> = {};
+
+  // Coordonnées / infos pro : soi-même ou niveau ≤ 2.
+  const peutContact = admin_ || estSelf || niveauMoi <= 2;
+  if (peutContact) {
+    for (const k of ["telephone", "email", "rpps", "specialite", "cabinets", "secretariat_nom", "secretariat_email", "secretariat_tel", "zone_exercice", "titre", "prenom"]) {
+      if (body[k] !== undefined) maj[k] = t(body[k]);
+    }
+    if (body.nom !== undefined && t(body.nom)) maj.nom = t(body.nom);
+  }
+
+  // Niveau / agence / région : réservés aux niveaux 0/1, cibles de niveau ≥ 2, hors soi-même.
+  const peutAcces = (admin_ || niveauMoi <= 1) && !estSelf && cible.niveau >= 2;
+  if (!peutAcces && (body.niveau !== undefined || body.agence_id !== undefined || body.region_id !== undefined)) {
+    if (Object.keys(maj).length === 0) {
+      return NextResponse.json({ message: "Modification du niveau/agence réservée aux niveaux 0 et 1." }, { status: 403 });
+    }
+  }
 
   // Nouveau niveau (optionnel)
-  if (body.niveau !== undefined && body.niveau !== null) {
+  if (peutAcces && body.niveau !== undefined && body.niveau !== null) {
     const n = Number(body.niveau);
     if (![0, 1, 2, 3].includes(n)) {
       return NextResponse.json({ message: "Niveau invalide." }, { status: 400 });
@@ -125,7 +136,7 @@ export async function PATCH(
   }
 
   // Nouvelle agence (optionnel) — validée selon le périmètre
-  if (body.agence_id !== undefined) {
+  if (peutAcces && body.agence_id !== undefined) {
     const agId: string | null = body.agence_id || null;
     if (agId) {
       const { data: ag } = await admin
@@ -144,7 +155,7 @@ export async function PATCH(
   }
 
   // Nouvelle région (pour un manager niveau 1) — validée selon le prestataire
-  if (body.region_id !== undefined) {
+  if (peutAcces && body.region_id !== undefined) {
     const regId: string | null = body.region_id || null;
     if (regId) {
       const { data: reg } = await admin.from("region").select("id, prestataire_id").eq("id", regId).maybeSingle();
