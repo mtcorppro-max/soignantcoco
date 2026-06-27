@@ -9,33 +9,6 @@ export type ModeleOrdo = { id: string; label: string; description?: string; cham
 
 export const MODELES_ORDONNANCE: ModeleOrdo[] = [
   {
-    id: "bilan_sanguin",
-    label: "Bilan sanguin",
-    description: "Dosages sanguins à pratiquer à domicile.",
-    champs: [
-      { key: "voie", label: "Voie d'abord", type: "radio", options: ["VVP", "PAC", "VVC", "PICCLINE"] },
-      {
-        key: "analyses", label: "À doser dans le sang", type: "checkboxes",
-        options: ["NFS", "Plaquettes", "Ionogramme sanguin", "Calcémie", "Urée", "Créatinémie", "Albuminémie", "Pré-albumine", "VS", "CRP", "Transaminases SGOT/SGPT", "Gamma GT", "Phosphatases alcalines", "Bilirubine totale"],
-      },
-      { key: "autres", label: "Autres dosages", type: "text" },
-      { key: "ordonnance_jours", label: "Ordonnance (nombre de jours)", type: "number" },
-    ],
-  },
-  {
-    id: "perfusion_ide",
-    label: "Ordonnance de perfusion (soins IDE)",
-    description: "Soins infirmiers à domicile : pose, surveillance, rinçage, retrait.",
-    champs: [
-      { key: "date_debut", label: "Date de début des soins", type: "date" },
-      { key: "voie", label: "Par voie d'abord", type: "radio", options: ["Périphérique", "PICC-line", "Cathéter central", "Chambre implantable", "Sous-cutanée"] },
-      { key: "mode", label: "Traitement à administrer par", type: "radio", options: ["Pompe en continu ou discontinu", "Diffuseur", "Gravité", "Pousse-seringue électrique"] },
-      { key: "perfusion_1", label: "1/ Perfusion de", type: "textarea" },
-      { key: "perfusion_2", label: "2/ Perfusion de", type: "textarea" },
-      { key: "duree_jours", label: "D'une durée de (jours)", type: "number" },
-    ],
-  },
-  {
     id: "perfusion_domicile",
     label: "Prescription de perfusion à domicile",
     description: "Formulaire de prescription de perfusion à domicile (ville ou hôpital).",
