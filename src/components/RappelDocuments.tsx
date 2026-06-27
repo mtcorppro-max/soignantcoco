@@ -31,9 +31,9 @@ export function RappelDocuments() {
   return (
     <Link
       href="/patient/profil"
-      className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 transition hover:border-amber-300"
+      className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 transition hover:border-brand"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6 shrink-0 text-attention">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6 shrink-0 text-brand">
         <rect x="3" y="5" width="18" height="14" rx="2" /><path strokeLinecap="round" d="M3 9h18M7 14h5" />
       </svg>
       <div className="text-sm">
