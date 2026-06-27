@@ -3,8 +3,11 @@ import { ouvrirTemplate, nomPrescripteur, type DocOrdoData } from "@/lib/pdfOver
 const TEMPLATE = "/Pharma%20perf.pdf";
 
 export async function genererPdfPharmaPerf(d: DocOrdoData, mode: "download" | "bloburl" = "download"): Promise<string | void> {
-  const { txt, signer, finaliser } = await ouvrirTemplate(TEMPLATE);
+  const { txt, blanc, signer, finaliser } = await ouvrirTemplate(TEMPLATE);
   const c = d.contenu;
+
+  // Masque la mention préimprimée « Centre Hospitalier de Perpignan / N° FINESS … ».
+  blanc(335, 116, 210, 24);
 
   txt(nomPrescripteur(d), { x: 65, y: 128 });
   if (d.prescripteurRpps) txt(`RPPS ${d.prescripteurRpps}`, { x: 65, y: 143 }, 8);
