@@ -68,7 +68,7 @@ export function DateField({ value, onChange, placeholder = "Choisir une date" }:
           placeholder={placeholder === "Choisir une date" ? "jj/mm/aaaa" : placeholder}
           value={texte}
           onChange={onType}
-          onFocus={() => { setOpen(true); setMode("jours"); }}
+          onFocus={() => { if (window.matchMedia?.("(pointer: coarse)").matches) return; setOpen(true); setMode("jours"); }}
           className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
         />
         <button type="button" onClick={() => { setOpen((o) => !o); setMode("jours"); }} title="Calendrier" className="shrink-0 text-brand hover:opacity-80">
