@@ -151,7 +151,7 @@ export default function Dashboard() {
       <AstreinteAlerte />
       <CentreAlertes />
       <div className="flex items-center justify-between border-t border-rose-100 pt-5">
-        <h1 className="text-2xl font-bold text-slate-800">Liste de clients</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Liste de patients</h1>
         {!data ? (
           <div className="h-6 w-32 animate-pulse rounded-full bg-rose-100" />
         ) : totalActives > 0 ? (
