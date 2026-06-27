@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { optionsNiveau } from "@/lib/niveaux";
 import { ProtocoleEditor, protocoleVide, protocolePropre, type Protocole } from "@/components/protocole";
-import { EditeurOrdonnancesTypes, type OrdonnanceType } from "@/components/EditeurOrdonnancesTypes";
 
 type Prestataire = { id: string; nom: string };
 
@@ -68,7 +67,6 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
 
   const [form, setForm] = useState({ ...VIDE });
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
-  const [ordonnancesTypes, setOrdonnancesTypes] = useState<OrdonnanceType[]>([]);
   const [agenceId, setAgenceId] = useState("");
   const [regionId, setRegionId] = useState("");
   const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
@@ -101,7 +99,6 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   const reset = () => {
     setForm({ ...VIDE });
     setProtocoles([protocoleVide()]);
-    setOrdonnancesTypes([]);
     setAgenceId("");
     setRegionId("");
   };
@@ -154,7 +151,6 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
           agence_id: !estInfLib && (form.niveau === "2" || form.niveau === "3") ? agenceId : null,
           region_id: form.niveau === "1" ? regionId : null,
           protocoles: estChirurgien ? protocoles.map(protocolePropre) : [],
-          ordonnances_types: estChirurgien ? ordonnancesTypes : [],
         }),
       });
       const j = await res.json();
@@ -391,10 +387,6 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             </button>
           </div>
 
-          <div className="grid gap-3 border-t border-rose-100 pt-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Ordonnances types</p>
-            <EditeurOrdonnancesTypes value={ordonnancesTypes} onChange={setOrdonnancesTypes} />
-          </div>
         </>
       )}
 

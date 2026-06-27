@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { Select } from "@/components/Select";
 import { ProtocoleEditor, protocoleVide, protocolePropre, type Protocole } from "@/components/protocole";
-import { EditeurOrdonnancesTypes, type OrdonnanceType } from "@/components/EditeurOrdonnancesTypes";
 import { RetourNouveau } from "@/components/RetourNouveau";
 
 const SPECIALITES = [
@@ -36,7 +35,6 @@ export default function NouveauSoignantExterne() {
   const pro = useProSession();
   const [f, setF] = useState({ ...VIDE });
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
-  const [ordonnancesTypes, setOrdonnancesTypes] = useState<OrdonnanceType[]>([]);
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -71,7 +69,6 @@ export default function NouveauSoignantExterne() {
       secretariat_email: estMedecin ? f.secretariat_email.trim() || null : null,
       secretariat_tel: estMedecin ? f.secretariat_tel.trim() || null : null,
       protocoles: estMedecin ? protocoles.map(protocolePropre) : [],
-      ordonnances_types: estMedecin ? ordonnancesTypes : [],
     });
     setBusy(false);
     if (error) { setErreur("Échec : " + error.message); return; }
@@ -83,7 +80,7 @@ export default function NouveauSoignantExterne() {
       <div className="mx-auto max-w-2xl card grid gap-4 text-center">
         <p className="text-sm text-slate-600">Soignant externe enregistré ✓</p>
         <p className="text-xs text-slate-400">Il est désormais sélectionnable lors de la création d&apos;un patient.</p>
-        <button onClick={() => { setF({ ...VIDE }); setProtocoles([protocoleVide()]); setOrdonnancesTypes([]); setOk(false); }} className="btn-secondary">Enregistrer un autre</button>
+        <button onClick={() => { setF({ ...VIDE }); setProtocoles([protocoleVide()]); setOk(false); }} className="btn-secondary">Enregistrer un autre</button>
       </div>
     );
   }
@@ -223,10 +220,6 @@ export default function NouveauSoignantExterne() {
               </button>
             </div>
 
-            <div className="grid gap-3 border-t border-rose-100 pt-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Ordonnances types</p>
-              <EditeurOrdonnancesTypes value={ordonnancesTypes} onChange={setOrdonnancesTypes} />
-            </div>
           </>
         )}
 

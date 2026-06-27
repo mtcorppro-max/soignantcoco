@@ -8,7 +8,8 @@ import { ChampsOrdonnance } from "@/components/ChampsOrdonnance";
 import { MODELES_ORDONNANCE } from "@/lib/ordonnances";
 import type { OrdonnanceType } from "@/components/EditeurOrdonnancesTypes";
 
-type Medecin = { id: string; nom: string; prenom: string | null; titre: string | null; ordonnances_types: OrdonnanceType[] | null };
+type ProtoLite = { intervention?: string; ordonnances_types?: OrdonnanceType[] };
+type Medecin = { id: string; nom: string; prenom: string | null; titre: string | null; protocoles: ProtoLite[] | null };
 const nomComplet = (m: Medecin) => [m.titre, m.prenom, m.nom].filter(Boolean).join(" ");
 
 export function GenerateurOrdonnance({ patientId, patientChirurgien, onCreated }: { patientId: string; patientChirurgien: string | null; onCreated?: () => void }) {
@@ -24,9 +25,9 @@ export function GenerateurOrdonnance({ patientId, patientChirurgien, onCreated }
 
   useEffect(() => {
     if (!ouvert) return;
-    createClient().from("professionnel").select("id,nom,prenom,titre,ordonnances_types").eq("role", "chirurgien").order("nom")
+    createClient().from("professionnel").select("id,nom,prenom,titre,protocoles").eq("role", "chirurgien").order("nom")
       .then(({ data }) => {
-        const m = (data ?? []) as Medecin[];
+        const m = (data ?? []) as unknown as Medecin[];
         setMedecins(m);
         const def = m.find((x) => nomComplet(x) === patientChirurgien);
         if (def) setDestinataire(def.id);
@@ -69,11 +70,13 @@ export function GenerateurOrdonnance({ patientId, patientChirurgien, onCreated }
     setOuvert(false); setOk(false); setSelection(new Set()); setValeurs({}); setErreur(null);
   }
 
-  // Pré-remplir depuis une ordonnance type du médecin choisi.
+  // Pré-remplir depuis une ordonnance type du médecin choisi (issues de ses protocoles).
   const med = medecins.find((m) => m.id === destinataire);
-  const types = (med?.ordonnances_types ?? []) as OrdonnanceType[];
+  const types = (med?.protocoles ?? []).flatMap((p) =>
+    (p.ordonnances_types ?? []).map((t) => ({ t, label: `${p.intervention ? p.intervention + " — " : ""}${t.nom || "Sans nom"}` }))
+  );
   const appliquerType = (idType: string) => {
-    const t = types.find((x) => x.id === idType);
+    const t = types.find((x) => x.t.id === idType)?.t;
     if (!t) return;
     setSelection((prev) => new Set(prev).add(t.type));
     setValeurs((prev) => ({ ...prev, [t.type]: { ...t.contenu } }));
@@ -121,7 +124,7 @@ export function GenerateurOrdonnance({ patientId, patientChirurgien, onCreated }
                       value=""
                       onChange={appliquerType}
                       placeholder="— Choisir une ordonnance type —"
-                      options={types.map((t) => ({ value: t.id, label: t.nom || "Sans nom" }))}
+                      options={types.map((x) => ({ value: x.t.id, label: x.label }))}
                     />
                   </div>
                 )}

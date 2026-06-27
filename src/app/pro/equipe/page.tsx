@@ -9,7 +9,6 @@ import { genererPdfConsignes, type ProtocolePdf } from "@/lib/pdfConsignes";
 import { NIVEAU_LABEL, optionsNiveau } from "@/lib/niveaux";
 import { Select } from "@/components/Select";
 import { ProtocoleEditor, protocoleVide, protocolePropre, protocoleDepuis, type Protocole } from "@/components/protocole";
-import { EditeurOrdonnancesTypes, type OrdonnanceType } from "@/components/EditeurOrdonnancesTypes";
 
 type Soignant = {
   id: string;
@@ -29,11 +28,10 @@ type Soignant = {
   secretariat_email: string | null;
   secretariat_tel: string | null;
   protocoles: ProtocolePdf[] | null;
-  ordonnances_types: OrdonnanceType[] | null;
 };
 
 const COLS =
-  "id,nom,prenom,titre,role,niveau,agence_id,region_id,email,telephone,specialite,rpps,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles,ordonnances_types";
+  "id,nom,prenom,titre,role,niveau,agence_id,region_id,email,telephone,specialite,rpps,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles";
 
 // Soignant externe (sans compte) — cf. migrations 0040 / 0041 / 0042.
 type Externe = {
@@ -51,10 +49,9 @@ type Externe = {
   secretariat_nom: string | null;
   secretariat_tel: string | null;
   protocoles: ProtocolePdf[] | null;
-  ordonnances_types: OrdonnanceType[] | null;
 };
 const COLS_EXT =
-  "id,type,titre,prenom,nom,specialite,rpps,telephone,email,zone_exercice,cabinets,secretariat_nom,secretariat_tel,protocoles,ordonnances_types";
+  "id,type,titre,prenom,nom,specialite,rpps,telephone,email,zone_exercice,cabinets,secretariat_nom,secretariat_tel,protocoles";
 
 const ROLES_INTERNES = ["coordinatrice", "manager", "delegue"] as const;
 
@@ -428,7 +425,6 @@ function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClo
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [protocoles, setProtocoles] = useState<Protocole[]>(() => (externe.protocoles ?? []).map((p) => protocoleDepuis(p as unknown as Record<string, unknown>)));
-  const [ordoTypes, setOrdoTypes] = useState<OrdonnanceType[]>(externe.ordonnances_types ?? []);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
   const majProto = (i: number, patch: Partial<Protocole>) => setProtocoles((arr) => arr.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   const t = (v: string) => (v.trim() ? v.trim() : null);
@@ -437,7 +433,7 @@ function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClo
     if (!f.nom.trim()) { setErr("Le nom est requis."); return; }
     setBusy(true); setErr(null);
     const maj = estMed
-      ? { titre: t(f.titre), prenom: t(f.prenom), nom: f.nom.trim(), specialite: t(f.specialite), rpps: t(f.rpps), telephone: t(f.telephone), email: t(f.email), cabinets: t(f.cabinets), secretariat_nom: t(f.secretariat_nom), secretariat_tel: t(f.secretariat_tel), protocoles: protocoles.map(protocolePropre), ordonnances_types: ordoTypes }
+      ? { titre: t(f.titre), prenom: t(f.prenom), nom: f.nom.trim(), specialite: t(f.specialite), rpps: t(f.rpps), telephone: t(f.telephone), email: t(f.email), cabinets: t(f.cabinets), secretariat_nom: t(f.secretariat_nom), secretariat_tel: t(f.secretariat_tel), protocoles: protocoles.map(protocolePropre) }
       : { prenom: t(f.prenom), nom: f.nom.trim(), telephone: t(f.telephone), email: t(f.email), zone_exercice: t(f.zone_exercice) };
     const { error } = await createClient().from("soignant_externe").update(maj).eq("id", externe.id);
     setBusy(false);
@@ -486,11 +482,6 @@ function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClo
                 + Ajouter un protocole
               </button>
             </div>
-
-            <div className="grid gap-3 border-t border-rose-100 pt-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Ordonnances types</p>
-              <EditeurOrdonnancesTypes value={ordoTypes} onChange={setOrdoTypes} />
-            </div>
           </>
         )}
         {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{err}</p>}
@@ -524,7 +515,6 @@ function EditeurSoignant({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [protocoles, setProtocoles] = useState<Protocole[]>(() => (soignant.protocoles ?? []).map((p) => protocoleDepuis(p as unknown as Record<string, unknown>)));
-  const [ordoTypes, setOrdoTypes] = useState<OrdonnanceType[]>(soignant.ordonnances_types ?? []);
   const nomAffiche = [soignant.titre, soignant.prenom, soignant.nom].filter(Boolean).join(" ");
   const estChir = soignant.role === "chirurgien";
   const peutAcces = niveauMoi <= 1 && soignant.niveau >= 2;
@@ -535,7 +525,7 @@ function EditeurSoignant({
     setBusy(true); setErr(null);
     const body: Record<string, unknown> = {
       telephone: f.telephone, email: f.email,
-      ...(estChir ? { rpps: f.rpps, specialite: f.specialite, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, protocoles: protocoles.map(protocolePropre), ordonnances_types: ordoTypes } : {}),
+      ...(estChir ? { rpps: f.rpps, specialite: f.specialite, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, protocoles: protocoles.map(protocolePropre) } : {}),
       ...(peutAcces ? { niveau: Number(niveau), agence_id: (niveau === "2" || niveau === "3") ? (agenceId || null) : null, region_id: niveau === "1" ? (regionId || null) : null } : {}),
     };
     const res = await fetch(`/api/soignants/${soignant.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -578,11 +568,6 @@ function EditeurSoignant({
               <button type="button" onClick={() => setProtocoles((arr) => [...arr, protocoleVide()])} className="justify-self-start rounded-lg border border-dashed border-rose-300 px-4 py-2 text-sm font-semibold text-brand hover:bg-rose-50">
                 + Ajouter un protocole
               </button>
-            </div>
-
-            <div className="grid gap-3 border-t border-rose-100 pt-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Ordonnances types</p>
-              <EditeurOrdonnancesTypes value={ordoTypes} onChange={setOrdoTypes} />
             </div>
           </>
         )}

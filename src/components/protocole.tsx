@@ -5,6 +5,8 @@
 // avec sa prise en charge propre (molécules, constantes à surveiller, soins…).
 
 import { MESURES, TYPES_MESURE } from "@/lib/constants";
+import type { OrdonnanceType } from "@/lib/ordonnances";
+import { EditeurOrdonnancesTypes } from "@/components/EditeurOrdonnancesTypes";
 
 export type Molecule = { nom: string; predefini: boolean; coche: boolean; posologie: string };
 
@@ -47,6 +49,7 @@ export type Protocole = {
   materiel_paramedical: string;
   envoi_ordo: string[];
   autres: string;
+  ordonnances_types: OrdonnanceType[];
 };
 
 export const protocoleVide = (): Protocole => ({
@@ -71,6 +74,7 @@ export const protocoleVide = (): Protocole => ({
   materiel_paramedical: "",
   envoi_ordo: [],
   autres: "",
+  ordonnances_types: [],
 });
 
 const propres = (arr: Molecule[]) =>
@@ -106,6 +110,7 @@ export function protocoleDepuis(s: Record<string, unknown>): Protocole {
     materiel_paramedical: str(s.materiel_paramedical),
     envoi_ordo: Array.isArray(s.envoi_ordo) ? (s.envoi_ordo as string[]) : [],
     autres: str(s.autres),
+    ordonnances_types: Array.isArray(s.ordonnances_types) ? (s.ordonnances_types as OrdonnanceType[]) : [],
   };
 }
 
@@ -134,6 +139,7 @@ export const protocolePropre = (p: Protocole) => ({
   materiel_paramedical: p.materiel ? p.materiel_paramedical.trim() : "",
   envoi_ordo: p.envoi_ordo,
   autres: p.autres.trim(),
+  ordonnances_types: p.ordonnances_types ?? [],
 });
 
 export function ProtocoleEditor({
@@ -459,6 +465,12 @@ export function ProtocoleEditor({
           onChange={(e) => onChange({ autres: e.target.value })}
           placeholder={"Allo docteur si urgence\nJour de consultation du médecin…"}
         />
+      </div>
+
+      {/* Ordonnances types rattachées à ce protocole */}
+      <div className="grid gap-2 border-t border-rose-100 pt-3">
+        <label className="label mb-0">Ordonnances types de ce protocole</label>
+        <EditeurOrdonnancesTypes value={value.ordonnances_types ?? []} onChange={(ot) => onChange({ ordonnances_types: ot })} />
       </div>
     </div>
   );

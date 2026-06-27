@@ -39,6 +39,9 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
   },
 ];
 
+// Ordonnance type (modèle pré-rempli) rattachée à un protocole.
+export type OrdonnanceType = { id: string; nom: string; type: string; contenu: Record<string, unknown> };
+
 export const modeleOrdo = (id: string) => MODELES_ORDONNANCE.find((m) => m.id === id);
 
 // Représentation lisible d'un champ (à partir du contenu complet de l'ordonnance).

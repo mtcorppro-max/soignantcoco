@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { MODELES_ORDONNANCE } from "@/lib/ordonnances";
+import { MODELES_ORDONNANCE, type OrdonnanceType } from "@/lib/ordonnances";
+import { Select } from "@/components/Select";
 import { ChampsOrdonnance } from "@/components/ChampsOrdonnance";
 
-export type OrdonnanceType = { id: string; nom: string; type: string; contenu: Record<string, unknown> };
+export type { OrdonnanceType };
 
-const MODELE_DEFAUT = MODELES_ORDONNANCE[0]; // Perfadom
+const MODELE_DEFAUT = MODELES_ORDONNANCE[0];
 
 // Gestion des « ordonnances types » d'un médecin (modèles pré-remplis réutilisés
 // lors de la génération d'une ordonnance : seul le patient change).
@@ -45,7 +46,17 @@ export function EditeurOrdonnancesTypes({ value, onChange }: { value: Ordonnance
               <button type="button" onClick={() => supprimer(t.id)} className="rounded-lg border border-rose-200 px-2 py-2 text-sm text-critique hover:bg-red-50">✕</button>
             </div>
             {estOuvert && (
-              <div className="mt-3 border-t border-rose-100 pt-3">
+              <div className="mt-3 grid gap-3 border-t border-rose-100 pt-3">
+                {MODELES_ORDONNANCE.length > 1 && (
+                  <div>
+                    <label className="label">Type d&apos;ordonnance</label>
+                    <Select
+                      value={t.type}
+                      onChange={(v) => maj(t.id, { type: v, contenu: {} })}
+                      options={MODELES_ORDONNANCE.map((m) => ({ value: m.id, label: m.label }))}
+                    />
+                  </div>
+                )}
                 <ChampsOrdonnance champs={modele.champs} valeurs={t.contenu} set={(k, val) => setChamp(t.id, k, val)} />
               </div>
             )}
