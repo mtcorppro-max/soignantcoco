@@ -27,7 +27,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
       { key: "date_debut", label: "Date de début de la cure", type: "date" },
       { key: "date_fin", label: "Date de fin de la cure", type: "date" },
 
-      { key: "_sec2", label: "Produit à perfuser n°2 (optionnel)", type: "section" },
+      { key: "_sec2", label: "Produit à perfuser n°2", type: "section" },
       { key: "produit2", label: "Dénomination du produit (dosage, posologie, solvant…)", type: "textarea" },
       { key: "voie2", label: "Voie d'abord", type: "radio", options: ["Veineuse centrale (VC)", "Chambre implantable", "Cathéter central", "PICC-line", "Péri-nerveuse", "Veineuse périphérique", "Sous-cutanée"] },
       { key: "mode2", label: "Mode d'administration", type: "radio", options: ["Gravité", "Diffuseur", "Système actif électrique", "Transfuseur"] },
