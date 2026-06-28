@@ -408,6 +408,7 @@ const PALETTE = ["#be185d", "#2563eb", "#16a34a", "#d97706", "#9333ea", "#0d9488
 
 // Graphique en ligne (SVG) + tableau pour une catégorie (entités × périodes).
 function CategorieRapport({ titre, periodes, lignes }: { titre: string; periodes: string[]; lignes: LigneCat[] }) {
+  const [voir, setVoir] = useState(false);
   const W = 720, H = 170, padL = 28, padR = 12, padT = 12, padB = 22;
   const n = periodes.length;
   const max = Math.max(1, ...lignes.flatMap((l) => l.serie));
@@ -416,7 +417,14 @@ function CategorieRapport({ titre, periodes, lignes }: { titre: string; periodes
 
   return (
     <div className="rounded-xl border border-rose-100 p-3">
-      <p className="mb-2 text-sm font-semibold text-slate-700">{titre}</p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-slate-700">{titre}</p>
+        <button onClick={() => setVoir((v) => !v)} className="btn-secondary inline-flex items-center gap-1.5 px-2.5 py-1 text-xs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-3.5 w-3.5"><polyline points="4 19 9 13 13 16 20 7" /><path strokeLinecap="round" d="M4 5v14h16" /></svg>
+          {voir ? "Masquer le graphique" : "Voir le graphique"}
+        </button>
+      </div>
+      {voir && (
       <div className="overflow-x-auto">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[520px]" style={{ height: 180 }}>
           <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="#e5e7eb" />
@@ -438,6 +446,7 @@ function CategorieRapport({ titre, periodes, lignes }: { titre: string; periodes
           })}
         </svg>
       </div>
+      )}
       <div className="mt-2 overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
