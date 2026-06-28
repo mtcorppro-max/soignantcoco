@@ -32,13 +32,15 @@ function addIso(iso: string, n: number): string {
   return isoDate(new Date(y, m - 1, d + n));
 }
 
-// Les astreintes couvrent-elles TOUS les jours des `jours` prochains jours ?
+// Premier jour NON couvert par une astreinte sur les `jours` prochains jours
+// (aujourd'hui inclus, week-ends compris). Renvoie sa date ISO, ou null si
+// tous les jours sont couverts.
 // `evenements` = plages d'astreinte { date_debut, date_fin } (evenement_planning
-// de type "astreinte"). Renvoie true s'il manque au moins un jour non couvert.
-export function astreintesIncompletes(
+// de type "astreinte").
+export function premierJourNonCouvert(
   evenements: { date_debut: string | null; date_fin: string | null }[],
   jours = 15
-): boolean {
+): string | null {
   const couverts = new Set<string>();
   for (const e of evenements) {
     if (!e.date_debut || !e.date_fin) continue;
@@ -53,7 +55,16 @@ export function astreintesIncompletes(
   for (let i = 0; i < jours; i++) {
     const dt = new Date(today);
     dt.setDate(dt.getDate() + i);
-    if (!couverts.has(isoDate(dt))) return true;
+    const iso = isoDate(dt);
+    if (!couverts.has(iso)) return iso;
   }
-  return false;
+  return null;
+}
+
+// Les astreintes sont-elles incomplètes (au moins un jour non couvert) ?
+export function astreintesIncompletes(
+  evenements: { date_debut: string | null; date_fin: string | null }[],
+  jours = 15
+): boolean {
+  return premierJourNonCouvert(evenements, jours) !== null;
 }
