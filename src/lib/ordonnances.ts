@@ -158,6 +158,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
       { key: "materiel", label: "Autre matériel", type: "checkboxes", options: ["Sets de soins", "Sonde Naso-Gastrique", "Set de remplacement (sonde gastrostomie)", "Bouton de gastrostomie", "Prolongateur bouton de gastrostomie"] },
       { key: "frequence", label: "Fréquence (jours sur 7)", type: "text" },
       { key: "debit", label: "Débit (ml/h)", type: "text" },
+      { key: "qsp", label: "QSP (jours) — uniquement si PAS de forfait 1re installation (sinon 14 j)", type: "text" },
     ],
   },
   {

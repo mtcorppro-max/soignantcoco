@@ -2,7 +2,8 @@ import { ouvrirTemplate, nomPrescripteur, frDate, type DocOrdoData, type Pt } fr
 
 // Moteur générique d'ordonnances à modèle (overlay sur CERFA), piloté par config.
 type Champ =
-  | { k: "txt" | "date"; key: string; pos: Pt; size?: number }
+  | { k: "txt"; key: string; pos: Pt; size?: number; centre?: boolean; masque?: Rect; condPasCoche?: { key: string; option: string } }
+  | { k: "date"; key: string; pos: Pt; size?: number }
   | { k: "lignes"; key: string; pos: Pt; lineH?: number }
   | { k: "radio" | "checks"; key: string; map: Record<string, Pt> }
   // Phrase recomposée : {clé} remplacé par la valeur (sinon « ____ ») ;
@@ -126,15 +127,16 @@ export const CONFIGS: Record<string, Conf> = {
     template: "/NEAD%20Presta.pdf", presc: { x: 45, y: 80 }, rpps: { x: 45, y: 100 }, patient: { x: 465, y: 82 }, date: { x: 500, y: 198 }, signature: { x: 380, y: 765 },
     champs: [
       { k: "checks", key: "produits", map: { "STANDARD": { x: 27, y: 270 }, "HYPERÉNERGÉTIQUE": { x: 27, y: 286 }, "HYPERÉNERGÉTIQUE HP": { x: 27, y: 300 }, "AUTRE": { x: 27, y: 314 } } },
-      { k: "checks", key: "fibres", map: { "Fibres STANDARD": { x: 185, y: 270 }, "Fibres HYPERÉNERGÉTIQUE": { x: 185, y: 286 }, "Fibres HP": { x: 185, y: 300 }, "Fibres AUTRE": { x: 185, y: 314 } } },
-      { k: "txt", key: "nom_std", pos: { x: 235, y: 270 } }, { k: "txt", key: "qte_std", pos: { x: 495, y: 270 } },
-      { k: "txt", key: "nom_he", pos: { x: 235, y: 286 } }, { k: "txt", key: "qte_he", pos: { x: 495, y: 286 } },
-      { k: "txt", key: "nom_hp", pos: { x: 235, y: 300 } }, { k: "txt", key: "qte_hp", pos: { x: 495, y: 300 } },
-      { k: "txt", key: "nom_autre", pos: { x: 235, y: 314 } }, { k: "txt", key: "qte_autre", pos: { x: 495, y: 314 } },
-      { k: "checks", key: "mode", map: { "Forfait Première Installation": { x: 24, y: 387 }, "Forfait 1 Sans Pompe": { x: 234, y: 387 }, "Forfait 2 Avec pompe": { x: 411, y: 387 }, "Location d'une Pompe Ambulatoire": { x: 24, y: 415 }, "Pied à sérum à roulettes": { x: 24, y: 427 } } },
-      { k: "checks", key: "materiel", map: { "Sets de soins": { x: 24, y: 502 }, "Sonde Naso-Gastrique": { x: 24, y: 529 }, "Set de remplacement (sonde gastrostomie)": { x: 24, y: 556 }, "Bouton de gastrostomie": { x: 24, y: 582 }, "Prolongateur bouton de gastrostomie": { x: 24, y: 608 } } },
+      { k: "checks", key: "fibres", map: { "Fibres STANDARD": { x: 182, y: 270 }, "Fibres HYPERÉNERGÉTIQUE": { x: 182, y: 286 }, "Fibres HP": { x: 182, y: 300 }, "Fibres AUTRE": { x: 182, y: 314 } } },
+      { k: "txt", key: "nom_std", pos: { x: 354, y: 270 }, centre: true, size: 11, masque: [228, 260, 252, 13] }, { k: "txt", key: "qte_std", pos: { x: 525, y: 270 }, centre: true, size: 11, masque: [482, 260, 87, 13] },
+      { k: "txt", key: "nom_he", pos: { x: 354, y: 286 }, centre: true, size: 11, masque: [228, 276, 252, 13] }, { k: "txt", key: "qte_he", pos: { x: 525, y: 286 }, centre: true, size: 11, masque: [482, 276, 87, 13] },
+      { k: "txt", key: "nom_hp", pos: { x: 354, y: 300 }, centre: true, size: 11, masque: [228, 290, 252, 13] }, { k: "txt", key: "qte_hp", pos: { x: 525, y: 300 }, centre: true, size: 11, masque: [482, 290, 87, 13] },
+      { k: "txt", key: "nom_autre", pos: { x: 354, y: 314 }, centre: true, size: 11, masque: [228, 304, 252, 13] }, { k: "txt", key: "qte_autre", pos: { x: 525, y: 314 }, centre: true, size: 11, masque: [482, 304, 87, 13] },
+      { k: "checks", key: "mode", map: { "Forfait Première Installation": { x: 20, y: 387 }, "Forfait 1 Sans Pompe": { x: 234, y: 387 }, "Forfait 2 Avec pompe": { x: 411, y: 387 }, "Location d'une Pompe Ambulatoire": { x: 20, y: 415 }, "Pied à sérum à roulettes": { x: 20, y: 427 } } },
+      { k: "checks", key: "materiel", map: { "Sets de soins": { x: 20, y: 502 }, "Sonde Naso-Gastrique": { x: 20, y: 529 }, "Set de remplacement (sonde gastrostomie)": { x: 20, y: 556 }, "Bouton de gastrostomie": { x: 20, y: 582 }, "Prolongateur bouton de gastrostomie": { x: 20, y: 608 } } },
       { k: "txt", key: "frequence", pos: { x: 100, y: 663 } },
       { k: "txt", key: "debit", pos: { x: 70, y: 690 } },
+      { k: "txt", key: "qsp", pos: { x: 88, y: 726 }, size: 11, masque: [86, 712, 17, 15], condPasCoche: { key: "mode", option: "Forfait Première Installation" } },
     ],
   },
   nead_idel: {
@@ -158,8 +160,15 @@ export async function genererPdfModele(type: string, d: DocOrdoData, mode: "down
 
   const c = d.contenu;
   for (const ch of conf.champs) {
-    if (ch.k === "txt") txt(c[ch.key], ch.pos, ch.size);
-    else if (ch.k === "date") txt(frDate(c[ch.key]), ch.pos);
+    if (ch.k === "txt") {
+      if (ch.condPasCoche) {
+        const cv = c[ch.condPasCoche.key];
+        if (Array.isArray(cv) && (cv as string[]).includes(ch.condPasCoche.option)) continue;
+      }
+      const val = c[ch.key];
+      if (ch.masque && val != null && val !== "") blanc(...ch.masque);
+      (ch.centre ? txtC : txt)(val, ch.pos, ch.size);
+    } else if (ch.k === "date") txt(frDate(c[ch.key]), ch.pos);
     else if (ch.k === "lignes") {
       const v = typeof c[ch.key] === "string" ? (c[ch.key] as string).split("\n").filter((l) => l.trim()) : [];
       v.forEach((l, i) => txt(l.trim(), { x: ch.pos.x, y: ch.pos.y + i * (ch.lineH ?? 14) }));
