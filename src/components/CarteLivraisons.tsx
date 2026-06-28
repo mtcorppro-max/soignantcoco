@@ -75,5 +75,11 @@ export function CarteLivraisons({ points }: { points: PointLivraison[] }) {
   // Détruire la carte au démontage.
   useEffect(() => () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } }, []);
 
-  return <div ref={ref} className="z-0 h-80 w-full overflow-hidden rounded-2xl border border-rose-100" />;
+  // La carte Leaflet est en position absolue dans un conteneur dimensionné :
+  // elle ne peut pas élargir la page (évite le débordement horizontal mobile).
+  return (
+    <div className="relative z-0 h-80 w-full overflow-hidden rounded-2xl border border-rose-100">
+      <div ref={ref} className="absolute inset-0" />
+    </div>
+  );
 }

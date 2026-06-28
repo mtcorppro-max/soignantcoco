@@ -145,7 +145,7 @@ export default function LivraisonsPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 overflow-x-hidden">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Ma tournée</h1>
         <p className="mt-1 text-sm text-slate-500">
