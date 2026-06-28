@@ -400,7 +400,7 @@ export function InfosPatient({
             ) : null}
             <Ligne label="Prise en charge" value={duree ? `${duree} jours` : ""} />
             <Ligne label="Type de traitement" value={vue.traitement} />
-            <Ligne label="Chirurgien" value={vue.chirurgien} />
+            <Ligne label={vue.operation ? "Chirurgien" : "Médecin"} value={vue.chirurgien} />
             <Ligne
               label="Pharmacie"
               value={vue.pharmacie}
