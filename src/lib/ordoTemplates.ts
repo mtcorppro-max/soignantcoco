@@ -123,22 +123,23 @@ export const CONFIGS: Record<string, Conf> = {
   },
   // PDF image (sans couche texte) : en-tête + jours + signature (positions à affiner).
   nead: {
-    template: "/NEAD.pdf", presc: { x: 60, y: 108 }, rpps: { x: 60, y: 128 }, patient: { x: 438, y: 112 }, date: { x: 465, y: 235 }, signature: { x: 400, y: 730 },
-    blancs: [[424, 660, 44, 12]], // masque « jours » (durée libre)
+    template: "/NEAD%20Presta.pdf", presc: { x: 45, y: 80 }, rpps: { x: 45, y: 100 }, patient: { x: 465, y: 82 }, date: { x: 500, y: 198 }, signature: { x: 380, y: 765 },
     champs: [
-      { k: "checks", key: "forfaits", map: { "Forfait de première installation": { x: 70, y: 268 }, "Forfait hebdomadaire avec pompe": { x: 70, y: 286 }, "Forfait hebdomadaire sans pompe": { x: 70, y: 304 } } },
-      { k: "checks", key: "standards", map: { "Ligne 1": { x: 70, y: 340 }, "Ligne 2": { x: 70, y: 358 } } },
-      { k: "txt", key: "std1_ml", pos: { x: 150, y: 340 } },
-      { k: "txt", key: "std1_produit", pos: { x: 312, y: 340 } },
-      { k: "txt", key: "std2_ml", pos: { x: 150, y: 358 } },
-      { k: "txt", key: "std2_produit", pos: { x: 312, y: 358 } },
-      { k: "txt", key: "ordonnance_jours", pos: { x: 405, y: 669 } },
-      { k: "txt", key: "a_renouveler", pos: { x: 452, y: 696 } },
+      { k: "checks", key: "produits", map: { "STANDARD": { x: 27, y: 270 }, "HYPERÉNERGÉTIQUE": { x: 27, y: 286 }, "HYPERÉNERGÉTIQUE HP": { x: 27, y: 300 }, "AUTRE": { x: 27, y: 314 } } },
+      { k: "checks", key: "fibres", map: { "Fibres STANDARD": { x: 185, y: 270 }, "Fibres HYPERÉNERGÉTIQUE": { x: 185, y: 286 }, "Fibres HP": { x: 185, y: 300 }, "Fibres AUTRE": { x: 185, y: 314 } } },
+      { k: "txt", key: "nom_std", pos: { x: 235, y: 270 } }, { k: "txt", key: "qte_std", pos: { x: 495, y: 270 } },
+      { k: "txt", key: "nom_he", pos: { x: 235, y: 286 } }, { k: "txt", key: "qte_he", pos: { x: 495, y: 286 } },
+      { k: "txt", key: "nom_hp", pos: { x: 235, y: 300 } }, { k: "txt", key: "qte_hp", pos: { x: 495, y: 300 } },
+      { k: "txt", key: "nom_autre", pos: { x: 235, y: 314 } }, { k: "txt", key: "qte_autre", pos: { x: 495, y: 314 } },
+      { k: "checks", key: "mode", map: { "Forfait Première Installation": { x: 24, y: 387 }, "Forfait 1 Sans Pompe": { x: 234, y: 387 }, "Forfait 2 Avec pompe": { x: 411, y: 387 }, "Location d'une Pompe Ambulatoire": { x: 24, y: 415 }, "Pied à sérum à roulettes": { x: 24, y: 427 } } },
+      { k: "checks", key: "materiel", map: { "Sets de soins": { x: 24, y: 502 }, "Sonde Naso-Gastrique": { x: 24, y: 529 }, "Set de remplacement (sonde gastrostomie)": { x: 24, y: 556 }, "Bouton de gastrostomie": { x: 24, y: 582 }, "Prolongateur bouton de gastrostomie": { x: 24, y: 608 } } },
+      { k: "txt", key: "frequence", pos: { x: 100, y: 663 } },
+      { k: "txt", key: "debit", pos: { x: 70, y: 690 } },
     ],
   },
   nead_idel: {
-    template: "/NEAD%20IDEL.pdf", presc: { x: 135, y: 115 }, rpps: { x: 135, y: 135 }, patient: { x: 425, y: 111 }, patientGauche: true, date: { x: 360, y: 240 }, signature: { x: 400, y: 665 },
-    champs: [{ k: "txt", key: "ordonnance_jours", pos: { x: 385, y: 613 } }, { k: "txt", key: "a_renouveler", pos: { x: 410, y: 631 } }],
+    template: "/NEAD%20idel%202.pdf", presc: { x: 45, y: 80 }, rpps: { x: 45, y: 100 }, patient: { x: 465, y: 82 }, date: { x: 500, y: 312 }, signature: { x: 400, y: 760 },
+    champs: [],
   },
 };
 
