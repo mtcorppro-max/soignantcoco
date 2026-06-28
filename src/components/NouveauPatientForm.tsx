@@ -345,14 +345,14 @@ export function NouveauPatientForm() {
           </div>
         )}
 
-        {/* Chirurgien + Post op → protocole à suivre */}
-        {estChirurgical && form.traitement === "Post op" && protocolesChir.length > 0 && (
+        {/* Post op (chirurgien) ou Sevrage Alcoolique → protocole à suivre */}
+        {((estChirurgical && form.traitement === "Post op") || form.traitement === "Sevrage Alcoolique") && protocolesChir.length > 0 && (
           <div>
             <label className="label">Protocole à suivre</label>
             <Select
               value=""
               onChange={appliquerProtocole}
-              placeholder="— Choisir un protocole du chirurgien —"
+              placeholder="— Choisir un protocole —"
               options={protocolesChir.map((p, i) => ({
                 value: String(i),
                 label: `${p.intervention || `Protocole ${i + 1}`}${p.duree ? ` — ${p.duree} j` : ""}`,
