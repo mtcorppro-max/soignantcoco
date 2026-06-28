@@ -138,7 +138,7 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   nead_idel: {
-    template: "/NEAD%20idel%202.pdf", presc: { x: 45, y: 80 }, rpps: { x: 45, y: 100 }, patient: { x: 465, y: 82 }, date: { x: 500, y: 312 }, signature: { x: 400, y: 760 },
+    template: "/NEAD%20Idel%202.pdf", presc: { x: 45, y: 80 }, rpps: { x: 45, y: 100 }, patient: { x: 465, y: 82 }, date: { x: 500, y: 312 }, signature: { x: 400, y: 760 },
     champs: [],
   },
 };
