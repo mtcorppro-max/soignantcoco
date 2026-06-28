@@ -33,11 +33,11 @@ export const CONFIGS: Record<string, Conf> = {
   ordo_pharma_npad: {
     template: "/ORDO%20PHARMA%20NPAD.pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, signature: { x: 400, y: 585 },
     champs: [
-      { k: "txt", key: "poches_50", pos: { x: 200, y: 337 } },
-      { k: "txt", key: "poches_100", pos: { x: 200, y: 355 } },
+      { k: "txt", key: "poches_50", pos: { x: 208, y: 337 } },
+      { k: "txt", key: "poches_100", pos: { x: 214, y: 355 } },
       { k: "lignes", key: "nutrition", pos: { x: 54, y: 415 }, lineH: 16 },
-      { k: "txt", key: "qsp_jours", pos: { x: 70, y: 505 } },
-      { k: "txt", key: "renouvelable", pos: { x: 150, y: 524 } },
+      { k: "txt", key: "qsp_jours", pos: { x: 62, y: 505 } },
+      { k: "txt", key: "renouvelable", pos: { x: 159, y: 524 } },
     ],
   },
   ordo_pharma_piccline: {
