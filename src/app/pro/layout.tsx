@@ -8,6 +8,7 @@ import { Logo } from "@/components/Logo";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useProSession } from "@/lib/hooks/useSession";
 import { LIBELLE_ROLE, estCoordOuManager, estRoleService } from "@/lib/roles";
+import { TYPES_ORDO_PHARMACIE, clePharmaVu } from "@/lib/ordonnances";
 import { RechercheSoignants } from "@/components/RechercheSoignants";
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
@@ -83,6 +84,30 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
       .then(({ count }) => setNbASigner(count ?? 0));
   }, [pro, estChir, pathname]);
 
+  // Ordonnances pharmacie signées reçues depuis la dernière visite (badge pharmacie).
+  const [nbOrdoPharma, setNbOrdoPharma] = useState(0);
+  useEffect(() => {
+    if (!pro || !estPharmacie) return;
+    const supabase = createClient();
+    supabase.from("patient").select("id").then(async ({ data: pts }) => {
+      const ids = (pts ?? []).map((p) => p.id as string);
+      if (!ids.length) { setNbOrdoPharma(0); return; }
+      const { data: ords } = await supabase
+        .from("ordonnance")
+        .select("signee_le")
+        .in("patient_id", ids)
+        .in("type", TYPES_ORDO_PHARMACIE as readonly string[])
+        .eq("statut", "signee");
+      let vu = 0;
+      try { vu = Number(localStorage.getItem(clePharmaVu(pro.id))) || 0; } catch { /* */ }
+      const n = (ords ?? []).filter((o) => {
+        const t = o.signee_le ? new Date(o.signee_le as string).getTime() : 0;
+        return t > vu;
+      }).length;
+      setNbOrdoPharma(n);
+    });
+  }, [pro, estPharmacie, pathname]);
+
   // Messages internes non lus (badge Messagerie).
   const [nbMessages, setNbMessages] = useState(0);
   useEffect(() => {
@@ -107,7 +132,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
             <Logo />
             <nav className="hidden items-center gap-0.5 sm:flex">
               {estPharmacie ? (
-                <Onglet href="/pro/pharmacie" icon="clipboard" label="Mes patients" pathname={pathname} />
+                <Onglet href="/pro/pharmacie" icon="clipboard" label="Mes patients" pathname={pathname} badge={nbOrdoPharma} />
               ) : (
                 <>
                   <Onglet href="/pro" icon="dashboard" label="Tableau de bord" pathname={pathname} exact />
@@ -151,7 +176,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-rose-100 bg-white sm:hidden">
         {estPharmacie ? (
-          <NavItem href="/pro/pharmacie" icon="clipboard" label="Mes patients" />
+          <NavItem href="/pro/pharmacie" icon="clipboard" label="Mes patients" badge={nbOrdoPharma} />
         ) : (
           <>
             <NavItem href="/pro" icon="dashboard" label="Tableau" />

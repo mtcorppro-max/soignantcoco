@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
-import { TYPES_ORDO_PHARMACIE } from "@/lib/ordonnances";
+import { TYPES_ORDO_PHARMACIE, clePharmaVu } from "@/lib/ordonnances";
 import { genererPdfOrdo, type OrdoPdf } from "@/lib/genererPdfOrdo";
 
 type PatientPharma = {
@@ -42,6 +42,7 @@ export default function PharmaciePage() {
   const [patients, setPatients] = useState<PatientPharma[]>([]);
   const [ordos, setOrdos] = useState<Ordo[]>([]);
   const [pret, setPret] = useState(false);
+  const [vuLe, setVuLe] = useState(0); // repère epoch lu à l'ouverture (pour marquer « Nouveau »)
 
   const estPharmacie = pro?.role === "pharmacie";
 
@@ -71,6 +72,22 @@ export default function PharmaciePage() {
   }, [pro?.id, estPharmacie]);
 
   useEffect(() => { charger(); }, [charger]);
+
+  // Lit le repère « vu le » à l'ouverture (pour marquer les nouvelles ordonnances).
+  useEffect(() => {
+    if (!estPharmacie || !pro?.id) return;
+    let v = 0;
+    try { v = Number(localStorage.getItem(clePharmaVu(pro.id))) || 0; } catch { /* */ }
+    setVuLe(v);
+  }, [estPharmacie, pro?.id]);
+
+  // Une fois le contenu chargé, marque tout comme vu (efface le badge).
+  useEffect(() => {
+    if (!estPharmacie || !pro?.id || !pret) return;
+    try { localStorage.setItem(clePharmaVu(pro.id), String(Date.now())); } catch { /* */ }
+  }, [estPharmacie, pro?.id, pret]);
+
+  const estNouvelle = (o: Ordo) => !!o.signee_le && new Date(o.signee_le).getTime() > vuLe;
 
   async function voir(o: Ordo, patientNom: string, naissance: string | null) {
     const win = window.open("", "_blank");
@@ -147,6 +164,7 @@ export default function PharmaciePage() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-slate-800">{o.titre}</span>
                           <span className="badge bg-green-100 text-ok">Signée</span>
+                          {estNouvelle(o) && <span className="badge bg-brand text-white">Nouveau</span>}
                         </div>
                         <p className="text-xs text-slate-400">
                           {o.signee_le ? `Signée le ${new Date(o.signee_le).toLocaleDateString("fr-FR")}` : new Date(o.created_at).toLocaleDateString("fr-FR")}

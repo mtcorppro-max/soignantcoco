@@ -206,6 +206,9 @@ export const TYPES_ORDO_PHARMACIE = ["pharma_perf", "ordo_pharma_npad", "ordo_ph
 export const estOrdoPharmacie = (type: string) =>
   (TYPES_ORDO_PHARMACIE as readonly string[]).includes(type);
 
+// Repère « ordonnances pharmacie vues le » (epoch ms) par compte, en localStorage.
+export const clePharmaVu = (proId: string) => `sc_pharma_vu_${proId}`;
+
 // Représentation lisible d'un champ (à partir du contenu complet de l'ordonnance).
 export function valeurLisible(champ: ChampOrdo, contenu: Record<string, unknown>): string {
   if (champ.type === "section") return "";
