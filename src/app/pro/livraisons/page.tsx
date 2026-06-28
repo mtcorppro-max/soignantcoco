@@ -16,6 +16,21 @@ type PatientLite = {
   ville: string | null;
   telephone: string | null;
   statut: string;
+  // Coordonnées
+  date_naissance: string | null;
+  email: string | null;
+  proche_nom: string | null;
+  proche_tel: string | null;
+  // Environnement de soins
+  operation: string | null;
+  date_operation: string | null;
+  chirurgien: string | null;
+  traitement: string | null;
+  pharmacie: string | null;
+  pharmacie_tel: string | null;
+  infirmiere_nom: string | null;
+  infirmiere_tel: string | null;
+  duree_prise_en_charge: number | null;
 };
 
 type Item = { patient: PatientLite; livraison: Livraison | null };
@@ -34,6 +49,52 @@ function adresseComplete(p: PatientLite): string {
   return [p.adresse, [p.code_postal, p.ville].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 }
 // URL Google Maps itinéraire (origine = position de l'appareil) avec étapes ordonnées.
+function Bloc({ titre, children }: { titre: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-bold uppercase tracking-widest text-rose-400">{titre}</p>
+      <div className="grid gap-1.5">{children}</div>
+    </div>
+  );
+}
+function Ligne({ label, value, extra, href }: { label: string; value: string | null; extra?: string | null; href?: string }) {
+  if (!value && !extra) return null;
+  return (
+    <div className="flex justify-between gap-3 text-sm">
+      <span className="shrink-0 text-slate-400">{label}</span>
+      <span className="text-right font-medium text-slate-700">
+        {href ? <a href={href} className="text-brand hover:underline">{value || extra}</a> : value}
+        {extra && value && <span className="text-slate-400"> · {extra}</span>}
+      </span>
+    </div>
+  );
+}
+// Coordonnées patient + environnement de soins (accès livreur).
+function DetailsPatient({ p }: { p: PatientLite }) {
+  const ville = [p.code_postal, p.ville].filter(Boolean).join(" ");
+  const duree = p.duree_prise_en_charge ? `${p.duree_prise_en_charge} jours` : "";
+  return (
+    <div className="grid gap-5 rounded-xl border border-rose-100 bg-rose-50/30 p-3 sm:grid-cols-2">
+      <Bloc titre="Coordonnées">
+        <Ligne label="Naissance" value={formatDate(p.date_naissance)} />
+        <Ligne label="Téléphone" value={p.telephone} href={p.telephone ? `tel:${p.telephone}` : undefined} />
+        <Ligne label="Email" value={p.email} href={p.email ? `mailto:${p.email}` : undefined} />
+        <Ligne label="Adresse" value={p.adresse} />
+        <Ligne label="Ville" value={ville} />
+        <Ligne label="Proche" value={p.proche_nom} extra={p.proche_tel} href={p.proche_tel ? `tel:${p.proche_tel}` : undefined} />
+      </Bloc>
+      <Bloc titre="Environnement de soins">
+        {p.operation && <Ligne label="Opération" value={p.operation} extra={formatDate(p.date_operation)} />}
+        <Ligne label="Prise en charge" value={duree} />
+        <Ligne label="Type de traitement" value={p.traitement} />
+        <Ligne label={p.operation ? "Chirurgien" : "Médecin"} value={p.chirurgien} />
+        <Ligne label="Pharmacie" value={p.pharmacie} extra={p.pharmacie_tel} href={p.pharmacie_tel ? `tel:${p.pharmacie_tel}` : undefined} />
+        <Ligne label="Infirmière libérale" value={p.infirmiere_nom} extra={p.infirmiere_tel} href={p.infirmiere_tel ? `tel:${p.infirmiere_tel}` : undefined} />
+      </Bloc>
+    </div>
+  );
+}
+
 function lienGoogleMaps(pts: PointLivraison[]): string | null {
   if (!pts.length) return null;
   const coords = pts.map((p) => `${p.lat},${p.lon}`);
@@ -53,6 +114,9 @@ export default function LivraisonsPage() {
   const [jour, setJour] = useState(todayIso());
   const [coords, setCoords] = useState<Record<string, LatLng | null>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [ouverts, setOuverts] = useState<Set<string>>(new Set());
+  const toggleDetails = (id: string) =>
+    setOuverts((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const estLivreur = pro?.role === "livreur";
 
@@ -61,7 +125,7 @@ export default function LivraisonsPage() {
     if (!pro?.id || !estLivreur) return;
     const supabase = createClient();
     Promise.all([
-      supabase.from("patient").select("id,nom,adresse,code_postal,ville,telephone,statut").neq("statut", "terminee").order("nom"),
+      supabase.from("patient").select("id,nom,adresse,code_postal,ville,telephone,statut,date_naissance,email,proche_nom,proche_tel,operation,date_operation,chirurgien,traitement,pharmacie,pharmacie_tel,infirmiere_nom,infirmiere_tel,duree_prise_en_charge").neq("statut", "terminee").order("nom"),
       supabase.from("livraison").select("*").eq("livreur_id", pro.id),
     ]).then(([{ data: pts }, { data: livs }]) => {
       const parPatient = new Map((livs ?? []).map((l) => [l.patient_id as string, l as Livraison]));
@@ -197,14 +261,18 @@ export default function LivraisonsPage() {
           <p className="text-sm text-slate-400">Aucune livraison à planifier.</p>
         ) : (
           aPlanifier.map((it) => (
-            <div key={it.patient.id} className="card flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-700">{it.patient.nom}</p>
-                <p className="text-xs text-slate-400">{adresseComplete(it.patient) || "Adresse non renseignée"}</p>
+            <div key={it.patient.id} className="card grid gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-700">{it.patient.nom}</p>
+                  <p className="text-xs text-slate-400">{adresseComplete(it.patient) || "Adresse non renseignée"}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-40"><DateField value={it.livraison?.date_prevue ?? ""} onChange={(v) => v && maj(it.patient.id, { date_prevue: v, statut: "planifiee" })} placeholder="Date de livraison" /></div>
+                  <button onClick={() => toggleDetails(it.patient.id)} className="btn-secondary px-3 py-1.5 text-sm">{ouverts.has(it.patient.id) ? "Masquer" : "Détails"}</button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-40"><DateField value={it.livraison?.date_prevue ?? ""} onChange={(v) => v && maj(it.patient.id, { date_prevue: v, statut: "planifiee" })} placeholder="Date de livraison" /></div>
-              </div>
+              {ouverts.has(it.patient.id) && <DetailsPatient p={it.patient} />}
             </div>
           ))
         )}
@@ -217,16 +285,20 @@ export default function LivraisonsPage() {
           {[...planifiees]
             .sort((a, b) => (a.livraison?.date_prevue ?? "").localeCompare(b.livraison?.date_prevue ?? ""))
             .map((it) => (
-              <div key={it.patient.id} className="card flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold text-slate-700">{it.patient.nom}</p>
-                  <p className="text-xs text-slate-400">{adresseComplete(it.patient) || "Adresse non renseignée"}</p>
+              <div key={it.patient.id} className="card grid gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-700">{it.patient.nom}</p>
+                    <p className="text-xs text-slate-400">{adresseComplete(it.patient) || "Adresse non renseignée"}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="badge bg-rose-100 text-brand">{formatDate(it.livraison?.date_prevue ?? null) || "Sans date"}</span>
+                    <div className="w-36"><DateField value={it.livraison?.date_prevue ?? ""} onChange={(v) => v && maj(it.patient.id, { date_prevue: v, statut: "planifiee" })} placeholder="Replanifier" /></div>
+                    <button onClick={() => maj(it.patient.id, { statut: "livree" })} disabled={busy === it.patient.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">Livrée</button>
+                    <button onClick={() => toggleDetails(it.patient.id)} className="btn-secondary px-3 py-1.5 text-sm">{ouverts.has(it.patient.id) ? "Masquer" : "Détails"}</button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="badge bg-rose-100 text-brand">{formatDate(it.livraison?.date_prevue ?? null) || "Sans date"}</span>
-                  <div className="w-36"><DateField value={it.livraison?.date_prevue ?? ""} onChange={(v) => v && maj(it.patient.id, { date_prevue: v, statut: "planifiee" })} placeholder="Replanifier" /></div>
-                  <button onClick={() => maj(it.patient.id, { statut: "livree" })} disabled={busy === it.patient.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">Livrée</button>
-                </div>
+                {ouverts.has(it.patient.id) && <DetailsPatient p={it.patient} />}
               </div>
             ))}
         </section>
@@ -237,15 +309,19 @@ export default function LivraisonsPage() {
         <section className="grid gap-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-rose-400">Livrées ({livrees.length})</h2>
           {livrees.map((it) => (
-            <div key={it.patient.id} className="card flex flex-wrap items-center justify-between gap-3 opacity-75">
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-700">{it.patient.nom}</p>
-                <p className="text-xs text-slate-400">{adresseComplete(it.patient) || "Adresse non renseignée"}</p>
+            <div key={it.patient.id} className="card grid gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-700">{it.patient.nom}</p>
+                  <p className="text-xs text-slate-400">{adresseComplete(it.patient) || "Adresse non renseignée"}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="badge bg-green-100 text-ok">Livrée ✓</span>
+                  <button onClick={() => maj(it.patient.id, { statut: "planifiee" })} disabled={busy === it.patient.id} className="text-sm font-medium text-brand hover:underline">Annuler</button>
+                  <button onClick={() => toggleDetails(it.patient.id)} className="btn-secondary px-3 py-1.5 text-sm">{ouverts.has(it.patient.id) ? "Masquer" : "Détails"}</button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="badge bg-green-100 text-ok">Livrée ✓</span>
-                <button onClick={() => maj(it.patient.id, { statut: "planifiee" })} disabled={busy === it.patient.id} className="text-sm font-medium text-brand hover:underline">Annuler</button>
-              </div>
+              {ouverts.has(it.patient.id) && <DetailsPatient p={it.patient} />}
             </div>
           ))}
         </section>

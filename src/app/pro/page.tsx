@@ -120,9 +120,10 @@ export default function Dashboard() {
   const estMedecin = pro?.role === "chirurgien";
   const voitAlertes = !estRoleService(pro?.role) && (!estMedecin || !!pro?.recevoir_alertes);
 
-  // La pharmacie n'a pas de tableau de bord : on la renvoie vers son listing.
+  // Pharmacie et livreur n'ont pas de tableau de bord : on les renvoie vers leur espace.
   useEffect(() => {
     if (pro?.role === "pharmacie") router.replace("/pro/pharmacie");
+    else if (pro?.role === "livreur") router.replace("/pro/livraisons");
   }, [pro?.role, router]);
 
   const { patients, parPatient, totalActives, messages, actions } = useMemo<DashData>(() => (
@@ -156,7 +157,7 @@ export default function Dashboard() {
     invalidate("pro:dashboard");
   }
 
-  if (pro?.role === "pharmacie") return null; // redirigée vers /pro/pharmacie
+  if (pro?.role === "pharmacie" || pro?.role === "livreur") return null; // redirigés vers leur espace
 
   return (
     <div className="grid gap-5">

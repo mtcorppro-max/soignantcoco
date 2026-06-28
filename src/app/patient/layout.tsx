@@ -9,7 +9,7 @@ import { usePatientSession } from "@/lib/hooks/useSession";
 
 const NAV = [
   { href: "/patient",          label: "Accueil",  icon: "⌂" },
-  { href: "/patient/chat",     label: "Chat",     icon: "◇" },
+  { href: "/patient/chat",     label: "Infirmière", icon: "◇" },
   { href: "/patient/conseils", label: "Conseils", icon: "✦" },
   { href: "/patient/profil",   label: "Profil",   icon: "☺" },
 ];
