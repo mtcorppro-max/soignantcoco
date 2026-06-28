@@ -13,6 +13,7 @@ type Patient = {
   chirurgien: string | null;
   delegue_nom: string | null;
   agence_id: string | null;
+  traitement: string | null;
   statut: string;
 };
 type Coord = { id: string; nom: string; prenom: string | null; titre: string | null; agence_id: string | null };
@@ -75,11 +76,6 @@ function construireRapport(type: Periode, patients: Patient[], agenceNom: Map<st
   const moyenne = counts.length ? counts.reduce((a, b) => a + b, 0) / counts.length : 0;
 
   const sem = avecDate.filter((p) => finOf(p) === courant.getTime());
-  const grp = (cle: (p: Patient) => string) => {
-    const m = new Map<string, number>();
-    sem.forEach((p) => { const k = cle(p); m.set(k, (m.get(k) ?? 0) + 1); });
-    return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  };
 
   const labelBar = (e: number) => {
     const d = new Date(e);
@@ -87,6 +83,30 @@ function construireRapport(type: Periode, patients: Patient[], agenceNom: Map<st
     if (type === "mois") return d.toLocaleDateString("fr-FR", { month: "short" });
     return String(d.getFullYear());
   };
+
+  // Série par catégorie : pour chaque entité, le nombre de PEC démarrées sur
+  // chacune des nbChart dernières périodes (sert au graphique en ligne + tableau).
+  const chartEnds = ends.slice(-nbChart);
+  const TOP = 8;
+  const serie = (getK: (p: Patient) => string) => {
+    const m = new Map<string, number[]>();
+    avecDate.forEach((p) => {
+      const idx = chartEnds.indexOf(finOf(p));
+      if (idx < 0) return;
+      const k = getK(p);
+      if (!m.has(k)) m.set(k, new Array(nbChart).fill(0));
+      m.get(k)![idx] += 1;
+    });
+    let arr = [...m.entries()].map(([nom, s]) => ({ nom, serie: s, total: s.reduce((a, b) => a + b, 0) }));
+    arr.sort((a, b) => b.total - a.total);
+    if (arr.length > TOP) {
+      const autres = { nom: "Autres", serie: new Array(nbChart).fill(0) as number[], total: 0 };
+      arr.slice(TOP).forEach((r) => { r.serie.forEach((v, i) => (autres.serie[i] += v)); autres.total += r.total; });
+      arr = [...arr.slice(0, TOP), autres];
+    }
+    return arr;
+  };
+
   const labelCourant =
     type === "semaine"
       ? `Semaine du ${new Date(courant.getFullYear(), courant.getMonth(), courant.getDate() - 7).toLocaleDateString("fr-FR")} au ${courant.toLocaleDateString("fr-FR")} (vendredi 17h)`
@@ -97,23 +117,28 @@ function construireRapport(type: Periode, patients: Patient[], agenceNom: Map<st
   const mot = type === "semaine" ? "semaine" : type === "mois" ? "mois" : "année";
   const motMaj = type === "semaine" ? "Semaine" : type === "mois" ? "Mois" : "Année";
   const fenetre = type === "annee" ? "5 ans" : "12 mois";
+  const periodes = chartEnds.map(labelBar);
+  const totalSerie = counts.slice(-nbChart);
 
   return {
-    courant, courantCount, best, worst, moyenne, sem, labelCourant,
+    courant, courantCount, best, worst, moyenne, sem, labelCourant, motMaj, periodes,
     kpi: {
       cette: type === "annee" ? "Cette année" : type === "mois" ? "Ce mois" : "Cette semaine",
       meilleur: type === "annee" ? "Meilleure année" : `Meilleur${type === "semaine" ? "e" : ""} ${mot}`,
       pire: `Pire ${mot}`,
       moyenne: `Moyenne / ${type === "annee" ? "an" : mot} (${fenetre})`,
     },
-    titreBar: `PEC démarrées par ${mot} (${nbChart} ${type === "annee" ? "dernières" : "derni" + (type === "mois" ? "ers" : "ères")})`,
-    motMaj,
-    semaines: ends.slice(-nbChart).map((e, i) => ({ fin: e, count: counts.slice(-nbChart)[i], label: labelBar(e) })),
-    parAgence: grp((p) => (p.agence_id ? (agenceNom.get(p.agence_id) ?? "Agence ?") : "Non rattaché")),
-    parMedecin: grp((p) => p.chirurgien?.trim() || "Non renseigné"),
-    parDelegue: grp((p) => p.delegue_nom?.trim() || "Non renseigné"),
+    categories: [
+      { titre: "Ensemble des prises en charge", lignes: [{ nom: "Total PEC", serie: totalSerie, total: totalSerie.reduce((a, b) => a + b, 0) }] },
+      { titre: "PEC par agence", lignes: serie((p) => (p.agence_id ? (agenceNom.get(p.agence_id) ?? "Agence ?") : "Non rattaché")) },
+      { titre: "PEC par médecin", lignes: serie((p) => p.chirurgien?.trim() || "Non renseigné") },
+      { titre: "PEC par délégué", lignes: serie((p) => p.delegue_nom?.trim() || "Non renseigné") },
+      { titre: "PEC par type de traitement", lignes: serie((p) => p.traitement?.trim() || "Non renseigné") },
+    ],
   };
 }
+
+type LigneCat = { nom: string; serie: number[]; total: number };
 
 export default function PecPage() {
   const pro = useProSession();
@@ -128,7 +153,7 @@ export default function PecPage() {
   useEffect(() => {
     const supabase = createClient();
     Promise.all([
-      supabase.from("patient").select("id,nom,date_operation,duree_prise_en_charge,chirurgien,delegue_nom,agence_id,statut"),
+      supabase.from("patient").select("id,nom,date_operation,duree_prise_en_charge,chirurgien,delegue_nom,agence_id,traitement,statut"),
       supabase.from("professionnel").select("id,nom,prenom,titre,agence_id").eq("role", "coordinatrice"),
       supabase.from("patient_soignant").select("patient_id,professionnel_id"),
       supabase.from("agence").select("id,nom"),
@@ -215,29 +240,48 @@ export default function PecPage() {
     });
     y += 26;
 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...NOIR);
-    doc.text(rapport.titreBar, M, y); y += 6;
-    const n = rapport.semaines.length, cw = Math.min(20, (180 - (n - 1) * 3.5) / n), gap = 3.5, base = y + 38, max = Math.max(1, ...rapport.semaines.map((s) => s.count));
-    rapport.semaines.forEach((s, i) => {
-      const x = M + i * (cw + gap), h = (s.count / max) * 34;
-      doc.setFillColor(...ROSE); doc.rect(x, base - h, cw, h, "F");
-      doc.setFontSize(7); doc.setTextColor(...GRIS);
-      doc.text(String(s.count), x + cw / 2, base - h - 1.5, { align: "center" });
-      doc.text(s.label, x + cw / 2, base + 4, { align: "center" });
-    });
-    y = base + 12;
+    const P = rapport.periodes;
+    const PAL: [number, number, number][] = [[190, 24, 93], [37, 99, 235], [22, 163, 74], [217, 119, 6], [147, 51, 234], [13, 148, 136], [219, 39, 119], [100, 116, 139], [180, 83, 9]];
 
-    const table = (titre: string, rows: [string, number][]) => {
-      if (y > 250) { doc.addPage(); y = M; }
-      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...ROSE); doc.text(titre, M, y); y += 5;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...NOIR);
-      if (!rows.length) { doc.setTextColor(...GRIS); doc.text("Aucune PEC cette semaine", M + 2, y); y += 5; }
-      rows.forEach(([n, c]) => { if (y > 285) { doc.addPage(); y = M; } doc.text(String(n), M + 2, y); doc.text(String(c), 210 - M, y, { align: "right" }); y += 5; });
-      y += 3;
+    // Graphe en ligne + tableau (périodes en colonnes) pour une catégorie.
+    const bloc = (titre: string, lignes: LigneCat[]) => {
+      const chartH = 38, gw = 180, x0 = M + 8;
+      const need = 6 + chartH + 14 + lignes.length * 5 + 14;
+      if (y + need > 285) { doc.addPage(); y = M; }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...NOIR); doc.text(titre, M, y); y += 6;
+      const top2 = y; const b2 = top2 + chartH;
+      const max = Math.max(1, ...lignes.flatMap((l) => l.serie));
+      const xAt = (i: number) => x0 + (P.length <= 1 ? gw / 2 : (i * gw) / (P.length - 1));
+      const yAt = (v: number) => b2 - (v / max) * chartH;
+      doc.setDrawColor(225, 225, 230); doc.line(x0, b2, x0 + gw, b2);
+      doc.setFontSize(6); doc.setTextColor(...GRIS);
+      P.forEach((lab, i) => doc.text(lab, xAt(i), b2 + 3, { align: "center" }));
+      lignes.forEach((l, li) => {
+        const c = PAL[li % PAL.length]; doc.setDrawColor(...c); doc.setFillColor(...c);
+        l.serie.forEach((v, i) => {
+          if (i > 0) doc.line(xAt(i - 1), yAt(l.serie[i - 1]), xAt(i), yAt(v));
+          doc.circle(xAt(i), yAt(v), 0.6, "F");
+        });
+      });
+      y = b2 + 7;
+      // Tableau : entité + colonnes périodes + total
+      const colN = P.length, tw = 210 - 2 * M, c0 = 52, cw2 = (tw - c0 - 14) / colN;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(...GRIS);
+      P.forEach((lab, i) => doc.text(lab, M + c0 + i * cw2 + cw2 / 2, y, { align: "center" }));
+      doc.text("Tot.", 210 - M, y, { align: "right" }); y += 3;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...NOIR);
+      lignes.forEach((l, li) => {
+        if (y > 288) { doc.addPage(); y = M; }
+        const c = PAL[li % PAL.length]; doc.setFillColor(...c); doc.circle(M + 1.5, y - 1.2, 0.9, "F");
+        doc.setTextColor(...NOIR); doc.text(l.nom.length > 28 ? l.nom.slice(0, 27) + "…" : l.nom, M + 4, y);
+        doc.setTextColor(...GRIS);
+        l.serie.forEach((v, i) => doc.text(String(v), M + c0 + i * cw2 + cw2 / 2, y, { align: "center" }));
+        doc.setTextColor(...NOIR); doc.setFont("helvetica", "bold"); doc.text(String(l.total), 210 - M, y, { align: "right" }); doc.setFont("helvetica", "normal");
+        y += 5;
+      });
+      y += 6;
     };
-    table("PEC — par agence", rapport.parAgence);
-    table("PEC — par médecin", rapport.parMedecin);
-    table("PEC — par délégué", rapport.parDelegue);
+    rapport.categories.forEach((cat) => bloc(cat.titre, cat.lignes));
 
     doc.save(`rapport-pec-${periode}-${rapport.courant.toLocaleDateString("fr-FR").replace(/\//g, "-")}.pdf`);
   }
@@ -273,12 +317,10 @@ export default function PecPage() {
           <Kpi label={rapport.kpi.moyenne} value={rapport.moyenne.toFixed(1)} />
         </div>
 
-        <BarChart titre={rapport.titreBar} semaines={rapport.semaines} />
-
-        <div className="grid gap-4 lg:grid-cols-3">
-          <MiniTable titre="Par agence" rows={rapport.parAgence} />
-          <MiniTable titre="Par médecin" rows={rapport.parMedecin} />
-          <MiniTable titre="Par délégué" rows={rapport.parDelegue} />
+        <div className="grid gap-6">
+          {rapport.categories.map((cat) => (
+            <CategorieRapport key={cat.titre} titre={cat.titre} periodes={rapport.periodes} lignes={cat.lignes} />
+          ))}
         </div>
       </section>
 
@@ -362,40 +404,63 @@ function Kpi({ label, value, accent }: { label: string; value: number | string; 
   );
 }
 
-function BarChart({ titre, semaines }: { titre: string; semaines: { fin: number; count: number; label: string }[] }) {
-  const max = Math.max(1, ...semaines.map((s) => s.count));
-  return (
-    <div>
-      <p className="mb-2 text-xs font-medium text-slate-500">{titre}</p>
-      <div className="flex items-end gap-1.5" style={{ height: 120 }}>
-        {semaines.map((s, i) => (
-          <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1">
-            <span className="text-[10px] text-slate-500">{s.count}</span>
-            <div className="w-full rounded-t bg-brand" style={{ height: `${(s.count / max) * 90}px`, minHeight: s.count ? 2 : 0 }} />
-            <span className="text-[9px] capitalize text-slate-400">{s.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const PALETTE = ["#be185d", "#2563eb", "#16a34a", "#d97706", "#9333ea", "#0d9488", "#db2777", "#64748b", "#b45309"];
 
-function MiniTable({ titre, rows }: { titre: string; rows: [string, number][] }) {
+// Graphique en ligne (SVG) + tableau pour une catégorie (entités × périodes).
+function CategorieRapport({ titre, periodes, lignes }: { titre: string; periodes: string[]; lignes: LigneCat[] }) {
+  const W = 720, H = 170, padL = 28, padR = 12, padT = 12, padB = 22;
+  const n = periodes.length;
+  const max = Math.max(1, ...lignes.flatMap((l) => l.serie));
+  const xAt = (i: number) => padL + (n <= 1 ? (W - padL - padR) / 2 : (i * (W - padL - padR)) / (n - 1));
+  const yAt = (v: number) => padT + (1 - v / max) * (H - padT - padB);
+
   return (
     <div className="rounded-xl border border-rose-100 p-3">
-      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-rose-400">{titre}</p>
-      {rows.length === 0 ? (
-        <p className="text-sm text-slate-400">Aucune PEC cette semaine.</p>
-      ) : (
-        <div className="grid gap-1">
-          {rows.map(([n, c]) => (
-            <div key={n} className="flex items-center justify-between text-sm">
-              <span className="truncate text-slate-700">{n}</span>
-              <span className="badge bg-rose-100 text-brand">{c}</span>
-            </div>
+      <p className="mb-2 text-sm font-semibold text-slate-700">{titre}</p>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[520px]" style={{ height: 180 }}>
+          <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="#e5e7eb" />
+          <line x1={padL} y1={padT} x2={padL} y2={H - padB} stroke="#e5e7eb" />
+          <text x={padL - 4} y={yAt(max) + 3} textAnchor="end" fontSize="9" fill="#94a3b8">{max}</text>
+          <text x={padL - 4} y={yAt(0) + 3} textAnchor="end" fontSize="9" fill="#94a3b8">0</text>
+          {periodes.map((lab, i) => (
+            <text key={i} x={xAt(i)} y={H - padB + 12} textAnchor="middle" fontSize="9" fill="#94a3b8">{lab}</text>
           ))}
-        </div>
-      )}
+          {lignes.map((l, li) => {
+            const col = PALETTE[li % PALETTE.length];
+            const d = l.serie.map((v, i) => `${i === 0 ? "M" : "L"}${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
+            return (
+              <g key={l.nom}>
+                <path d={d} fill="none" stroke={col} strokeWidth={1.8} />
+                {l.serie.map((v, i) => <circle key={i} cx={xAt(i)} cy={yAt(v)} r={2} fill={col} />)}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-slate-400">
+              <th className="px-1 py-1 text-left font-medium"> </th>
+              {periodes.map((lab) => <th key={lab} className="px-1 py-1 text-center font-medium">{lab}</th>)}
+              <th className="px-1 py-1 text-right font-semibold">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lignes.map((l, li) => (
+              <tr key={l.nom} className="border-t border-rose-50">
+                <td className="px-1 py-1 text-slate-700">
+                  <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: PALETTE[li % PALETTE.length] }} />
+                  {l.nom}
+                </td>
+                {l.serie.map((v, i) => <td key={i} className="px-1 py-1 text-center text-slate-500">{v}</td>)}
+                <td className="px-1 py-1 text-right font-bold text-brand">{l.total}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
