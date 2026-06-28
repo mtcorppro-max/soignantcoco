@@ -10,6 +10,7 @@ type Conf = {
   template: string;
   presc?: Pt; rpps?: Pt; patient?: Pt; date?: Pt; signature?: Pt;
   blancs?: [number, number, number, number][];
+  textes?: { s: string; pos: Pt; size?: number }[]; // textes statiques redessinés
   champs: Champ[];
 };
 
@@ -32,12 +33,16 @@ export const CONFIGS: Record<string, Conf> = {
   },
   ordo_pharma_npad: {
     template: "/ORDO%20PHARMA%20NPAD.pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, signature: { x: 400, y: 585 },
+    // On masque « jours » / « fois » imprimés et on les redessine plus à droite
+    // pour laisser un vrai espace à la valeur.
+    blancs: [[62, 498, 34, 10], [163, 517, 24, 10]],
+    textes: [{ s: "jours", pos: { x: 98, y: 505 } }, { s: "fois", pos: { x: 192, y: 524 } }],
     champs: [
       { k: "txt", key: "poches_50", pos: { x: 208, y: 337 } },
       { k: "txt", key: "poches_100", pos: { x: 214, y: 355 } },
       { k: "lignes", key: "nutrition", pos: { x: 54, y: 415 }, lineH: 16 },
-      { k: "txt", key: "qsp_jours", pos: { x: 62, y: 505 } },
-      { k: "txt", key: "renouvelable", pos: { x: 159, y: 524 } },
+      { k: "txt", key: "qsp_jours", pos: { x: 66, y: 505 } },
+      { k: "txt", key: "renouvelable", pos: { x: 162, y: 524 } },
     ],
   },
   ordo_pharma_piccline: {
@@ -97,6 +102,7 @@ export async function genererPdfModele(type: string, d: DocOrdoData, mode: "down
   if (!conf) return;
   const { txt, coche, blanc, signer, finaliser } = await ouvrirTemplate(conf.template);
   (conf.blancs ?? []).forEach((b) => blanc(...b));
+  (conf.textes ?? []).forEach((t) => txt(t.s, t.pos, t.size));
   if (conf.presc) txt(nomPrescripteur(d), conf.presc);
   if (conf.rpps && d.prescripteurRpps) txt(d.prescripteurRpps, conf.rpps, 8);
   if (conf.patient) txt(d.patientNom, conf.patient);
