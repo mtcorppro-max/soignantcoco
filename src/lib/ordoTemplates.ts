@@ -2,7 +2,7 @@ import { ouvrirTemplate, nomPrescripteur, frDate, type DocOrdoData, type Pt } fr
 
 // Moteur générique d'ordonnances à modèle (overlay sur CERFA), piloté par config.
 type Champ =
-  | { k: "txt"; key: string; pos: Pt; size?: number; centre?: boolean; masque?: Rect; condPasCoche?: { key: string; option: string } }
+  | { k: "txt"; key: string; pos: Pt; size?: number; centre?: boolean; masque?: Rect; auto?: { key: string; option: string; valeur: string } }
   | { k: "date"; key: string; pos: Pt; size?: number }
   | { k: "lignes"; key: string; pos: Pt; lineH?: number }
   | { k: "radio" | "checks"; key: string; map: Record<string, Pt> }
@@ -125,6 +125,7 @@ export const CONFIGS: Record<string, Conf> = {
   // PDF image (sans couche texte) : en-tête + jours + signature (positions à affiner).
   nead: {
     template: "/NEAD%20Presta.pdf", presc: { x: 45, y: 80 }, rpps: { x: 45, y: 100 }, patient: { x: 465, y: 82 }, date: { x: 500, y: 198 }, signature: { x: 380, y: 765 },
+    blancs: [[86, 712, 17, 15]], // retire le « 14 » imprimé du QSP (durée pilotée par le forfait)
     champs: [
       { k: "checks", key: "produits", map: { "STANDARD": { x: 27, y: 270 }, "HYPERÉNERGÉTIQUE": { x: 27, y: 286 }, "HYPERÉNERGÉTIQUE HP": { x: 27, y: 300 }, "AUTRE": { x: 27, y: 314 } } },
       { k: "checks", key: "fibres", map: { "Fibres STANDARD": { x: 182, y: 270 }, "Fibres HYPERÉNERGÉTIQUE": { x: 182, y: 286 }, "Fibres HP": { x: 182, y: 300 }, "Fibres AUTRE": { x: 182, y: 314 } } },
@@ -136,7 +137,7 @@ export const CONFIGS: Record<string, Conf> = {
       { k: "checks", key: "materiel", map: { "Sets de soins": { x: 20, y: 502 }, "Sonde Naso-Gastrique": { x: 20, y: 529 }, "Set de remplacement (sonde gastrostomie)": { x: 20, y: 556 }, "Bouton de gastrostomie": { x: 20, y: 582 }, "Prolongateur bouton de gastrostomie": { x: 20, y: 608 } } },
       { k: "txt", key: "frequence", pos: { x: 100, y: 663 } },
       { k: "txt", key: "debit", pos: { x: 70, y: 690 } },
-      { k: "txt", key: "qsp", pos: { x: 88, y: 726 }, size: 11, masque: [86, 712, 17, 15], condPasCoche: { key: "mode", option: "Forfait Première Installation" } },
+      { k: "txt", key: "qsp", pos: { x: 88, y: 726 }, size: 11, auto: { key: "mode", option: "Forfait Première Installation", valeur: "14" } },
     ],
   },
   nead_idel: {
@@ -161,11 +162,11 @@ export async function genererPdfModele(type: string, d: DocOrdoData, mode: "down
   const c = d.contenu;
   for (const ch of conf.champs) {
     if (ch.k === "txt") {
-      if (ch.condPasCoche) {
-        const cv = c[ch.condPasCoche.key];
-        if (Array.isArray(cv) && (cv as string[]).includes(ch.condPasCoche.option)) continue;
+      let val = c[ch.key];
+      if (ch.auto) {
+        const cv = c[ch.auto.key];
+        if (Array.isArray(cv) && (cv as string[]).includes(ch.auto.option)) val = ch.auto.valeur;
       }
-      const val = c[ch.key];
       if (ch.masque && val != null && val !== "") blanc(...ch.masque);
       (ch.centre ? txtC : txt)(val, ch.pos, ch.size);
     } else if (ch.k === "date") txt(frDate(c[ch.key]), ch.pos);
