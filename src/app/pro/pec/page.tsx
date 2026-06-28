@@ -138,8 +138,6 @@ function construireRapport(type: Periode, patients: Patient[], agenceNom: Map<st
   };
 }
 
-type LigneCat = { nom: string; serie: number[]; total: number };
-
 export default function PecPage() {
   const pro = useProSession();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -148,7 +146,6 @@ export default function PecPage() {
   const [agenceNom, setAgenceNom] = useState<Map<string, string>>(new Map());
   const [pret, setPret] = useState(false);
   const [detail, setDetail] = useState<{ titre: string; patients: Patient[] } | null>(null);
-  const [periode, setPeriode] = useState<Periode>("semaine");
 
   useEffect(() => {
     const supabase = createClient();
@@ -189,6 +186,7 @@ export default function PecPage() {
     const parMedecin = grouper((p) => p.chirurgien?.trim() || "Non renseigné");
     const parDelegue = grouper((p) => p.delegue_nom?.trim() || "Non renseigné");
     const parAgence = grouper((p) => (p.agence_id ? (agenceNom.get(p.agence_id) ?? "Agence ?") : "Non rattaché"));
+    const parTraitement = grouper((p) => p.traitement?.trim() || "Non renseigné");
 
     const patientsParId = new Map(patients.map((p) => [p.id, p]));
     const parCoord = coords.map((c) => {
@@ -207,12 +205,10 @@ export default function PecPage() {
       parMedecin,
       parDelegue,
       parAgence,
+      parTraitement,
       parCoord,
     };
   }, [patients, coords, liaisons, agenceNom]);
-
-  // ── Rapport périodique (semaine vendredi 17h / mois / année) ──
-  const rapport = useMemo(() => construireRapport(periode, patients, agenceNom), [periode, patients, agenceNom]);
 
   if (pro && pro.niveau > 1) {
     return <div className="card text-sm text-slate-500">La page PEC est réservée aux managers (niveau 1) et à l&apos;administration (niveau 0).</div>;
@@ -221,108 +217,67 @@ export default function PecPage() {
 
   const ouvrir = (titre: string, pts: Patient[]) => setDetail({ titre, patients: pts });
 
-  async function exporterRapport() {
+  // Extraction PDF d'UNE catégorie (tableau OU graphique) sur une période.
+  async function exporterCategorie(catTitre: string, mode: "tableau" | "graphique", per: Periode) {
+    const r = construireRapport(per, patients, agenceNom);
+    const cat = r.categories.find((c) => c.titre === catTitre);
+    if (!cat) return;
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const ROSE: [number, number, number] = [190, 24, 93], NOIR: [number, number, number] = [40, 40, 40], GRIS: [number, number, number] = [90, 90, 90];
-    const M = 15; let y = 18;
-    doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(...NOIR);
-    doc.text(`Rapport ${rapport.motMaj.toLowerCase()} — Prises en charge`, M, y); y += 6;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...GRIS);
-    doc.text(rapport.labelCourant, M, y); y += 9;
-
-    const kpis: [string, string | number][] = [[rapport.kpi.cette, rapport.courantCount], [rapport.kpi.meilleur, rapport.best], [rapport.kpi.pire, rapport.worst], [rapport.kpi.moyenne, rapport.moyenne.toFixed(1)]];
-    kpis.forEach(([l, v], i) => {
-      const x = M + i * 45;
-      doc.setDrawColor(244, 200, 220); doc.roundedRect(x, y, 43, 17, 2, 2);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GRIS); doc.text(String(l), x + 2.5, y + 5, { maxWidth: 39 });
-      doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(...ROSE); doc.text(String(v), x + 2.5, y + 14);
-    });
-    y += 26;
-
-    const P = rapport.periodes;
+    const NOIR: [number, number, number] = [40, 40, 40], GRIS: [number, number, number] = [90, 90, 90];
     const PAL: [number, number, number][] = [[190, 24, 93], [37, 99, 235], [22, 163, 74], [217, 119, 6], [147, 51, 234], [13, 148, 136], [219, 39, 119], [100, 116, 139], [180, 83, 9]];
+    const M = 15; let y = 18;
+    const P = r.periodes, lignes = cat.lignes;
 
-    // Graphe en ligne + tableau (périodes en colonnes) pour une catégorie.
-    const bloc = (titre: string, lignes: LigneCat[]) => {
-      const chartH = 38, gw = 180, x0 = M + 8;
-      const need = 6 + chartH + 14 + lignes.length * 5 + 14;
-      if (y + need > 285) { doc.addPage(); y = M; }
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...NOIR); doc.text(titre, M, y); y += 6;
-      const top2 = y; const b2 = top2 + chartH;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(...NOIR);
+    doc.text(catTitre, M, y); y += 6;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...GRIS);
+    doc.text(r.labelCourant, M, y); y += 10;
+
+    if (mode === "graphique") {
+      const x0 = M + 10, gw = 175, chartH = 75, base = y + chartH;
       const max = Math.max(1, ...lignes.flatMap((l) => l.serie));
       const xAt = (i: number) => x0 + (P.length <= 1 ? gw / 2 : (i * gw) / (P.length - 1));
-      const yAt = (v: number) => b2 - (v / max) * chartH;
-      doc.setDrawColor(225, 225, 230); doc.line(x0, b2, x0 + gw, b2);
-      doc.setFontSize(6); doc.setTextColor(...GRIS);
-      P.forEach((lab, i) => doc.text(lab, xAt(i), b2 + 3, { align: "center" }));
+      const yAt = (v: number) => base - (v / max) * chartH;
+      doc.setDrawColor(220, 220, 225); doc.line(x0, base, x0 + gw, base); doc.line(x0, y, x0, base);
+      doc.setFontSize(7); doc.setTextColor(...GRIS);
+      doc.text(String(max), x0 - 2, y + 2, { align: "right" }); doc.text("0", x0 - 2, base, { align: "right" });
+      P.forEach((lab, i) => doc.text(lab, xAt(i), base + 4, { align: "center" }));
       lignes.forEach((l, li) => {
-        const c = PAL[li % PAL.length]; doc.setDrawColor(...c); doc.setFillColor(...c);
-        l.serie.forEach((v, i) => {
-          if (i > 0) doc.line(xAt(i - 1), yAt(l.serie[i - 1]), xAt(i), yAt(v));
-          doc.circle(xAt(i), yAt(v), 0.6, "F");
-        });
+        const c = PAL[li % PAL.length]; doc.setDrawColor(...c); doc.setFillColor(...c); doc.setLineWidth(0.5);
+        l.serie.forEach((v, i) => { if (i > 0) doc.line(xAt(i - 1), yAt(l.serie[i - 1]), xAt(i), yAt(v)); doc.circle(xAt(i), yAt(v), 0.8, "F"); });
       });
-      y = b2 + 7;
-      // Tableau : entité + colonnes périodes + total
-      const colN = P.length, tw = 210 - 2 * M, c0 = 52, cw2 = (tw - c0 - 14) / colN;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(...GRIS);
-      P.forEach((lab, i) => doc.text(lab, M + c0 + i * cw2 + cw2 / 2, y, { align: "center" }));
-      doc.text("Tot.", 210 - M, y, { align: "right" }); y += 3;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...NOIR);
+      y = base + 12;
+      // Légende
+      doc.setFontSize(8);
       lignes.forEach((l, li) => {
+        if (y > 285) { doc.addPage(); y = M; }
+        const c = PAL[li % PAL.length]; doc.setFillColor(...c); doc.circle(M + 1.5, y - 1.2, 1, "F");
+        doc.setTextColor(...NOIR); doc.text(`${l.nom} (${l.total})`, M + 5, y); y += 5;
+      });
+    } else {
+      const colN = P.length, tw = 210 - 2 * M, c0 = 56, cw2 = (tw - c0 - 14) / colN;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...GRIS);
+      P.forEach((lab, i) => doc.text(lab, M + c0 + i * cw2 + cw2 / 2, y, { align: "center" }));
+      doc.text("Total", 210 - M, y, { align: "right" }); y += 2;
+      doc.setDrawColor(225, 225, 230); doc.line(M, y, 210 - M, y); y += 4;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...NOIR);
+      lignes.forEach((l) => {
         if (y > 288) { doc.addPage(); y = M; }
-        const c = PAL[li % PAL.length]; doc.setFillColor(...c); doc.circle(M + 1.5, y - 1.2, 0.9, "F");
-        doc.setTextColor(...NOIR); doc.text(l.nom.length > 28 ? l.nom.slice(0, 27) + "…" : l.nom, M + 4, y);
+        doc.setTextColor(...NOIR); doc.text(l.nom.length > 30 ? l.nom.slice(0, 29) + "…" : l.nom, M, y);
         doc.setTextColor(...GRIS);
         l.serie.forEach((v, i) => doc.text(String(v), M + c0 + i * cw2 + cw2 / 2, y, { align: "center" }));
         doc.setTextColor(...NOIR); doc.setFont("helvetica", "bold"); doc.text(String(l.total), 210 - M, y, { align: "right" }); doc.setFont("helvetica", "normal");
-        y += 5;
+        y += 5.5;
       });
-      y += 6;
-    };
-    rapport.categories.forEach((cat) => bloc(cat.titre, cat.lignes));
-
-    doc.save(`rapport-pec-${periode}-${rapport.courant.toLocaleDateString("fr-FR").replace(/\//g, "-")}.pdf`);
+    }
+    const slug = catTitre.toLowerCase().replace(/[^a-z]+/g, "-");
+    doc.save(`pec-${slug}-${mode}-${per}.pdf`);
   }
 
   return (
     <div className="grid gap-6">
       <h1 className="text-2xl font-bold text-slate-800">Prises en charge</h1>
-
-      {/* Rapport périodique (semaine vendredi 17h / mois / année) */}
-      <section className="card grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-700">Rapport {rapport.motMaj.toLowerCase()}</h2>
-            <p className="text-xs text-slate-400">{rapport.labelCourant}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-xl border border-rose-200 bg-white p-0.5">
-              {([["semaine", "Semaine"], ["mois", "Mois"], ["annee", "Année"]] as const).map(([v, l]) => (
-                <button key={v} onClick={() => setPeriode(v)} className={`rounded-lg px-3 py-1 text-sm font-medium transition ${periode === v ? "bg-brand text-white" : "text-slate-600 hover:text-brand"}`}>{l}</button>
-              ))}
-            </div>
-            <button onClick={exporterRapport} className="btn-secondary inline-flex items-center gap-2 text-sm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" /></svg>
-              Extraire (PDF)
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Kpi label={rapport.kpi.cette} value={rapport.courantCount} accent />
-          <Kpi label={rapport.kpi.meilleur} value={rapport.best} />
-          <Kpi label={rapport.kpi.pire} value={rapport.worst} />
-          <Kpi label={rapport.kpi.moyenne} value={rapport.moyenne.toFixed(1)} />
-        </div>
-
-        <div className="grid gap-6">
-          {rapport.categories.map((cat) => (
-            <CategorieRapport key={cat.titre} titre={cat.titre} periodes={rapport.periodes} lignes={cat.lignes} />
-          ))}
-        </div>
-      </section>
 
       {/* Chiffres clés — cliquables */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -335,9 +290,10 @@ export default function PecPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Bloc titre="PEC par agence" lignes={stats.parAgence} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} />
-        <Bloc titre="PEC par médecin" lignes={stats.parMedecin} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} />
-        <Bloc titre="PEC par délégué" lignes={stats.parDelegue} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} />
+        <Bloc titre="PEC par agence" lignes={stats.parAgence} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} onExtraire={(m, p) => exporterCategorie("PEC par agence", m, p)} />
+        <Bloc titre="PEC par médecin" lignes={stats.parMedecin} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} onExtraire={(m, p) => exporterCategorie("PEC par médecin", m, p)} />
+        <Bloc titre="PEC par délégué" lignes={stats.parDelegue} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} onExtraire={(m, p) => exporterCategorie("PEC par délégué", m, p)} />
+        <Bloc titre="PEC par type de traitement" lignes={stats.parTraitement} onLigne={(nom, pts) => ouvrir(`PEC — ${nom}`, pts)} onExtraire={(m, p) => exporterCategorie("PEC par type de traitement", m, p)} />
       </div>
 
       <section className="card grid gap-3">
@@ -395,85 +351,6 @@ export default function PecPage() {
   );
 }
 
-function Kpi({ label, value, accent }: { label: string; value: number | string; accent?: boolean }) {
-  return (
-    <div className="rounded-xl border border-rose-100 p-3">
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${accent ? "text-brand" : "text-slate-800"}`}>{value}</p>
-    </div>
-  );
-}
-
-const PALETTE = ["#be185d", "#2563eb", "#16a34a", "#d97706", "#9333ea", "#0d9488", "#db2777", "#64748b", "#b45309"];
-
-// Graphique en ligne (SVG) + tableau pour une catégorie (entités × périodes).
-function CategorieRapport({ titre, periodes, lignes }: { titre: string; periodes: string[]; lignes: LigneCat[] }) {
-  const [voir, setVoir] = useState(false);
-  const W = 720, H = 170, padL = 28, padR = 12, padT = 12, padB = 22;
-  const n = periodes.length;
-  const max = Math.max(1, ...lignes.flatMap((l) => l.serie));
-  const xAt = (i: number) => padL + (n <= 1 ? (W - padL - padR) / 2 : (i * (W - padL - padR)) / (n - 1));
-  const yAt = (v: number) => padT + (1 - v / max) * (H - padT - padB);
-
-  return (
-    <div className="rounded-xl border border-rose-100 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-700">{titre}</p>
-        <button onClick={() => setVoir((v) => !v)} className="btn-secondary inline-flex items-center gap-1.5 px-2.5 py-1 text-xs">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-3.5 w-3.5"><polyline points="4 19 9 13 13 16 20 7" /><path strokeLinecap="round" d="M4 5v14h16" /></svg>
-          {voir ? "Masquer le graphique" : "Voir le graphique"}
-        </button>
-      </div>
-      {voir && (
-      <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[520px]" style={{ height: 180 }}>
-          <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="#e5e7eb" />
-          <line x1={padL} y1={padT} x2={padL} y2={H - padB} stroke="#e5e7eb" />
-          <text x={padL - 4} y={yAt(max) + 3} textAnchor="end" fontSize="9" fill="#94a3b8">{max}</text>
-          <text x={padL - 4} y={yAt(0) + 3} textAnchor="end" fontSize="9" fill="#94a3b8">0</text>
-          {periodes.map((lab, i) => (
-            <text key={i} x={xAt(i)} y={H - padB + 12} textAnchor="middle" fontSize="9" fill="#94a3b8">{lab}</text>
-          ))}
-          {lignes.map((l, li) => {
-            const col = PALETTE[li % PALETTE.length];
-            const d = l.serie.map((v, i) => `${i === 0 ? "M" : "L"}${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
-            return (
-              <g key={l.nom}>
-                <path d={d} fill="none" stroke={col} strokeWidth={1.8} />
-                {l.serie.map((v, i) => <circle key={i} cx={xAt(i)} cy={yAt(v)} r={2} fill={col} />)}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-      )}
-      <div className="mt-2 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-slate-400">
-              <th className="px-1 py-1 text-left font-medium"> </th>
-              {periodes.map((lab) => <th key={lab} className="px-1 py-1 text-center font-medium">{lab}</th>)}
-              <th className="px-1 py-1 text-right font-semibold">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lignes.map((l, li) => (
-              <tr key={l.nom} className="border-t border-rose-50">
-                <td className="px-1 py-1 text-slate-700">
-                  <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: PALETTE[li % PALETTE.length] }} />
-                  {l.nom}
-                </td>
-                {l.serie.map((v, i) => <td key={i} className="px-1 py-1 text-center text-slate-500">{v}</td>)}
-                <td className="px-1 py-1 text-right font-bold text-brand">{l.total}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function Stat({ label, value, accent, onClick }: { label: string; value: number; accent?: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} className="card p-4 text-left transition hover:border-rose-200 hover:shadow-md">
@@ -483,10 +360,37 @@ function Stat({ label, value, accent, onClick }: { label: string; value: number;
   );
 }
 
-function Bloc({ titre, lignes, onLigne }: { titre: string; lignes: [string, Patient[]][]; onLigne: (nom: string, pts: Patient[]) => void }) {
+function ExtraireMenu({ onExtraire }: { onExtraire: (mode: "tableau" | "graphique", periode: Periode) => void }) {
+  const [open, setOpen] = useState<null | "tableau" | "graphique">(null);
+  const periodes: [Periode, string][] = [["semaine", "Dernière semaine"], ["mois", "Dernier mois"], ["annee", "Dernière année"]];
+  return (
+    <div className="flex items-center gap-1.5">
+      {(["tableau", "graphique"] as const).map((mode) => (
+        <div key={mode} className="relative">
+          <button onClick={() => setOpen(open === mode ? null : mode)} className="btn-secondary px-2.5 py-1 text-xs capitalize">{mode}</button>
+          {open === mode && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setOpen(null)} />
+              <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-rose-100 bg-white p-1 shadow-lg">
+                {periodes.map(([p, l]) => (
+                  <button key={p} onClick={() => { setOpen(null); onExtraire(mode, p); }} className="block w-full rounded-lg px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-rose-50">{l}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Bloc({ titre, lignes, onLigne, onExtraire }: { titre: string; lignes: [string, Patient[]][]; onLigne: (nom: string, pts: Patient[]) => void; onExtraire?: (mode: "tableau" | "graphique", periode: Periode) => void }) {
   return (
     <section className="card grid gap-3">
-      <h2 className="text-sm font-semibold text-slate-700">{titre}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-slate-700">{titre}</h2>
+        {onExtraire && <ExtraireMenu onExtraire={onExtraire} />}
+      </div>
       {lignes.length === 0 ? (
         <p className="text-sm text-slate-400">Aucune donnée.</p>
       ) : (
