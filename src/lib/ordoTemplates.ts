@@ -63,7 +63,7 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   ordo_glycemie: {
-    template: "/ORDO%20GLYCEMIE.pdf", ...STD, date: { x: 441, y: 269 }, signature: { x: 390, y: 560 },
+    template: "/ORDO%20GLYCEMIE.pdf", ...STD, date: { x: 444, y: 269 }, signature: { x: 390, y: 560 },
     textes: [{ s: "Autres :", pos: { x: 41, y: 372 } }],
     champs: [
       { k: "lignes", key: "autres", pos: { x: 47, y: 388 }, lineH: 16 },
@@ -71,7 +71,7 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   ordo_taurolock: {
-    template: "/ORDO%20TAUROLOCK.pdf", ...STD, date: { x: 500, y: 269 }, signature: { x: 390, y: 681 },
+    template: "/ORDO%20TAUROLOCK.pdf", ...STD, date: { x: 506, y: 269 }, signature: { x: 390, y: 681 },
     textes: [{ s: "Autres :", pos: { x: 20, y: 432 } }],
     champs: [
       { k: "lignes", key: "autres", pos: { x: 26, y: 448 }, lineH: 16 },
@@ -91,7 +91,7 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   ordo_idel_po: {
-    template: "/ORDO%20IDEL%20PO%20ET%20CONSTANTES.pdf", ...STD, date: { x: 520, y: 270 }, signature: { x: 390, y: 493 },
+    template: "/ORDO%20IDEL%20PO%20ET%20CONSTANTES.pdf", ...STD, date: { x: 532, y: 270 }, signature: { x: 390, y: 493 },
     textes: [{ s: "Autres :", pos: { x: 20, y: 388 } }],
     champs: [
       { k: "lignes", key: "autres", pos: { x: 26, y: 402 }, lineH: 15 },
