@@ -124,15 +124,16 @@ export const CONFIGS: Record<string, Conf> = {
   // PDF image (sans couche texte) : en-tête + jours + signature (positions à affiner).
   nead: {
     template: "/NEAD.pdf", presc: { x: 60, y: 108 }, rpps: { x: 60, y: 128 }, patient: { x: 438, y: 112 }, date: { x: 465, y: 235 }, signature: { x: 400, y: 730 },
+    blancs: [[424, 660, 44, 12]], // masque « jours » (durée libre)
     champs: [
-      { k: "checks", key: "forfaits", map: { "Forfait de première installation": { x: 33, y: 256 }, "Forfait hebdomadaire avec pompe": { x: 33, y: 280 }, "Forfait hebdomadaire sans pompe": { x: 33, y: 303 } } },
-      { k: "checks", key: "standards", map: { "Ligne 1": { x: 33, y: 337 }, "Ligne 2": { x: 33, y: 355 } } },
-      { k: "txt", key: "std1_ml", pos: { x: 140, y: 335 } },
-      { k: "txt", key: "std1_produit", pos: { x: 292, y: 335 } },
-      { k: "txt", key: "std2_ml", pos: { x: 140, y: 353 } },
-      { k: "txt", key: "std2_produit", pos: { x: 292, y: 353 } },
-      { k: "txt", key: "ordonnance_jours", pos: { x: 395, y: 665 } },
-      { k: "txt", key: "a_renouveler", pos: { x: 452, y: 690 } },
+      { k: "checks", key: "forfaits", map: { "Forfait de première installation": { x: 70, y: 268 }, "Forfait hebdomadaire avec pompe": { x: 70, y: 286 }, "Forfait hebdomadaire sans pompe": { x: 70, y: 304 } } },
+      { k: "checks", key: "standards", map: { "Ligne 1": { x: 70, y: 340 }, "Ligne 2": { x: 70, y: 358 } } },
+      { k: "txt", key: "std1_ml", pos: { x: 150, y: 340 } },
+      { k: "txt", key: "std1_produit", pos: { x: 312, y: 340 } },
+      { k: "txt", key: "std2_ml", pos: { x: 150, y: 358 } },
+      { k: "txt", key: "std2_produit", pos: { x: 312, y: 358 } },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 405, y: 669 } },
+      { k: "txt", key: "a_renouveler", pos: { x: 452, y: 696 } },
     ],
   },
   nead_idel: {
