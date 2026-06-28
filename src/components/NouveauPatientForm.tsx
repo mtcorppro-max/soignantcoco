@@ -37,6 +37,15 @@ type Externe = {
 // Nom complet affiché et stocké : « [Titre] Prénom Nom ».
 const nomComplet = (s: Soignant) => [s.titre, s.prenom, s.nom].filter(Boolean).join(" ");
 
+// Ajoute n jours à une date ISO "YYYY-MM-DD" (renvoie "YYYY-MM-DD").
+const ajouterJoursISO = (iso: string, n: number): string => {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 // Traitements à suivre proposés (Post op en tête).
 const TRAITEMENTS = [
   "Post op",
@@ -92,6 +101,7 @@ export function NouveauPatientForm() {
   const [soignants, setSoignants] = useState<Soignant[]>([]);
   const [joursSuivi, setJoursSuivi] = useState<number[]>([]);
   const [seuilsProto, setSeuilsProto] = useState<{ type: string; min: string; max: string }[]>([]);
+  const [sortiePostOp, setSortiePostOp] = useState<number | null>(null); // J+N post-op du protocole
   const [externes, setExternes] = useState<Externe[]>([]);
   const pro = useProSession();
   const [agenceId, setAgenceId] = useState("");
@@ -159,7 +169,15 @@ export function NouveauPatientForm() {
   const appliquerProtocole = (v: string) => {
     const p = protocolesChir[Number(v)];
     if (!p) return;
-    setForm((f) => ({ ...f, operation: p.intervention || f.operation, duree_prise_en_charge: p.duree || "" }));
+    const offset = p.sortie_post_op && !isNaN(Number(p.sortie_post_op)) ? Number(p.sortie_post_op) : null;
+    setSortiePostOp(offset);
+    setForm((f) => ({
+      ...f,
+      operation: p.intervention || f.operation,
+      duree_prise_en_charge: p.duree || "",
+      // Jour de sortie = chirurgie + J+N (si la date de chirurgie est déjà saisie).
+      date_sortie: offset != null && f.date_operation ? ajouterJoursISO(f.date_operation, offset) : f.date_sortie,
+    }));
     setJoursSuivi(p.jours ?? []);
     setSeuilsProto(p.surveiller_constantes ? (p.constantes ?? []) : []);
   };
@@ -224,6 +242,7 @@ export function NouveauPatientForm() {
               setForm({ ...VIDE });
               setJoursSuivi([]);
               setSeuilsProto([]);
+              setSortiePostOp(null);
             }}
             className="btn-secondary flex-1"
           >
@@ -349,7 +368,7 @@ export function NouveauPatientForm() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Jour de la chirurgie</label>
-              <DateField value={form.date_operation} onChange={(v) => setForm((f) => ({ ...f, date_operation: v }))} />
+              <DateField value={form.date_operation} onChange={(v) => setForm((f) => ({ ...f, date_operation: v, date_sortie: sortiePostOp != null && v ? ajouterJoursISO(v, sortiePostOp) : f.date_sortie }))} />
             </div>
             <div>
               <label className="label">Jour de sortie</label>

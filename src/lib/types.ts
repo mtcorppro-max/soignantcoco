@@ -60,6 +60,7 @@ export interface Professionnel {
 export interface ProtocoleConsigne {
   intervention: string;
   duree: string;
+  sortie_post_op?: string; // J+N post-op : nb de jours entre la chirurgie et la sortie
   jours: number[];
   molecules: { nom: string; posologie: string }[];
   pansement: boolean;

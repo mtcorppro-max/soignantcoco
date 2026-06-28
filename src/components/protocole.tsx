@@ -30,6 +30,7 @@ const ANALYSES_BILAN = [
 export type Protocole = {
   intervention: string;
   duree: string;
+  sortie_post_op: string; // nb de jours après la chirurgie où le patient sort (J+N post-op)
   jours: number[];
   molecules: Molecule[];
   pharmacie_per_os: boolean;
@@ -55,6 +56,7 @@ export type Protocole = {
 export const protocoleVide = (): Protocole => ({
   intervention: "",
   duree: "",
+  sortie_post_op: "",
   jours: [],
   molecules: MOLECULES_INIT(),
   pharmacie_per_os: false,
@@ -91,6 +93,7 @@ export function protocoleDepuis(s: Record<string, unknown>): Protocole {
   return {
     intervention: str(s.intervention),
     duree: str(s.duree),
+    sortie_post_op: str(s.sortie_post_op),
     jours: Array.isArray(s.jours) ? (s.jours as number[]) : [],
     molecules: mol(s.molecules),
     pharmacie_per_os: !!s.pharmacie_per_os,
@@ -118,6 +121,7 @@ export function protocoleDepuis(s: Record<string, unknown>): Protocole {
 export const protocolePropre = (p: Protocole) => ({
   intervention: p.intervention.trim(),
   duree: p.duree,
+  sortie_post_op: p.sortie_post_op,
   jours: p.jours,
   molecules: propres(p.molecules),
   pansement: p.pansement,
@@ -190,6 +194,18 @@ export function ProtocoleEditor({
           onChange={(e) => onChange({ intervention: e.target.value })}
           placeholder="ex. Prothèse totale de genou, Hallux Valgus…"
         />
+      </div>
+
+      <div>
+        <label className="label">Sortie après la chirurgie (J+… post-op)</label>
+        <input
+          className="input"
+          value={value.sortie_post_op}
+          onChange={(e) => onChange({ sortie_post_op: e.target.value })}
+          placeholder="ex. 1 = sortie le lendemain de l'opération"
+          inputMode="numeric"
+        />
+        <p className="mt-1 text-xs text-slate-400">Nombre de jours entre la chirurgie et la sortie. À la création d&apos;un patient, le jour de sortie se calcule automatiquement (modifiable).</p>
       </div>
 
       <div>
