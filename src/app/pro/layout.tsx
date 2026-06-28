@@ -120,9 +120,34 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
       .then(({ count }) => setNbMessages(count ?? 0));
   }, [pro, pathname]);
 
-  // Remonte en haut à chaque changement de page (évite la restauration de
-  // scroll qui laissait la fiche patient en bas après un clic depuis le tableau).
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  // Menu « Plus » de la barre mobile (overflow au-delà de 5 entrées).
+  const [menuOuvert, setMenuOuvert] = useState(false);
+
+  // Remonte en haut + referme le menu « Plus » à chaque changement de page.
+  useEffect(() => { window.scrollTo(0, 0); setMenuOuvert(false); }, [pathname]);
+
+  // Entrées de navigation pour la barre mobile, par ordre de priorité.
+  // Les comptes service (livreur/pharmacie) n'ont qu'une seule entrée.
+  type NavEntree = { href: string; icon: string; label: string; badge?: number };
+  const entreesMobile: NavEntree[] = estPharmacie
+    ? [{ href: "/pro/pharmacie", icon: "clipboard", label: "Mes patients", badge: nbOrdoPharma }]
+    : estLivreur
+    ? [{ href: "/pro/livraisons", icon: "truck", label: "Tournée" }]
+    : [
+        { href: "/pro", icon: "dashboard", label: "Tableau" },
+        ...(estCoord ? [{ href: "/pro/suivis", icon: "calendar", label: "Suivis", badge: nbSuivis }] : []),
+        ...(estCoord ? [{ href: "/pro/calendrier", icon: "clipboard", label: "Organisation", badge: nbDemandes }] : []),
+        ...(estChir ? [{ href: "/pro/a-signer", icon: "document", label: "À signer", badge: nbASigner }] : []),
+        { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
+        ...(peutGerer ? [{ href: "/pro/equipe", icon: "users", label: "Équipe" }] : []),
+        ...(estCoord || estChir || peutGerer ? [{ href: "/pro/nouveau", icon: "plus", label: "Nouveau" }] : []),
+        ...(peutPec ? [{ href: "/pro/pec", icon: "chart", label: "PEC" }] : []),
+      ];
+  // Au-delà de 5 entrées : 4 visibles + un bouton « Plus » qui ouvre le reste.
+  const enDebordement = entreesMobile.length > 5;
+  const entreesVisibles = enDebordement ? entreesMobile.slice(0, 4) : entreesMobile;
+  const entreesPlus = enDebordement ? entreesMobile.slice(4) : [];
+  const badgePlus = entreesPlus.reduce((s, e) => s + (e.badge ?? 0), 0);
 
   return (
     <div className="min-h-screen">
@@ -175,34 +200,68 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
 
       <main className="mx-auto max-w-6xl overflow-x-hidden px-4 py-6 pb-24 sm:px-6 sm:pb-6">{children}</main>
 
+      {/* Feuille « Plus » : entrées qui débordent de la barre mobile. */}
+      {menuOuvert && (
+        <>
+          <div className="fixed inset-0 z-40 bg-slate-900/30 sm:hidden" onClick={() => setMenuOuvert(false)} />
+          <div className="fixed inset-x-3 bottom-[4.25rem] z-50 overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-xl sm:hidden">
+            {entreesPlus.map((e) => {
+              const actif = pathname === e.href || (e.href !== "/pro" && pathname.startsWith(e.href));
+              return (
+                <Link
+                  key={e.href}
+                  href={e.href}
+                  prefetch
+                  onClick={() => setMenuOuvert(false)}
+                  className={`flex items-center gap-3 border-b border-rose-50 px-4 py-3.5 text-sm font-medium transition-colors last:border-0 ${
+                    actif ? "bg-rose-50 text-brand" : "text-slate-600 hover:bg-rose-50"
+                  }`}
+                >
+                  <IconeNav name={e.icon} className="h-5 w-5 shrink-0" />
+                  <span>{e.label}</span>
+                  {!!e.badge && e.badge > 0 && (
+                    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold leading-none text-white">{e.badge}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-rose-100 bg-white sm:hidden">
-        {estPharmacie ? (
-          <NavItem href="/pro/pharmacie" icon="clipboard" label="Mes patients" badge={nbOrdoPharma} />
-        ) : estLivreur ? (
-          <NavItem href="/pro/livraisons" icon="truck" label="Tournée" />
-        ) : (
-          <>
-            <NavItem href="/pro" icon="dashboard" label="Tableau" />
-            {estCoord && <NavItem href="/pro/suivis" icon="calendar" label="Suivis" badge={nbSuivis} />}
-            {estCoord && <NavItem href="/pro/calendrier" icon="clipboard" label="Organisation" badge={nbDemandes} />}
-            {estChir && <NavItem href="/pro/a-signer" icon="document" label="À signer" badge={nbASigner} />}
-            {peutGerer && <NavItem href="/pro/equipe" icon="users" label="Équipe" />}
-            <NavItem href="/pro/messagerie" icon="message" label="Messages" badge={nbMessages} />
-            {peutPec && <NavItem href="/pro/pec" icon="chart" label="PEC" />}
-            {(estCoord || estChir || peutGerer) && <NavItem href="/pro/nouveau" icon="plus" label="Nouveau" />}
-          </>
+        {entreesVisibles.map((e) => (
+          <NavItem key={e.href} href={e.href} icon={e.icon} label={e.label} badge={e.badge} pathname={pathname} />
+        ))}
+        {enDebordement && (
+          <button
+            type="button"
+            onClick={() => setMenuOuvert((v) => !v)}
+            className={`relative flex flex-1 flex-col items-center gap-1 py-2 transition-colors ${
+              menuOuvert ? "text-brand" : "text-slate-400 hover:text-brand"
+            }`}
+          >
+            {!menuOuvert && badgePlus > 0 && (
+              <span className="absolute right-1/2 top-0.5 flex h-[15px] min-w-[15px] translate-x-3 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-white">{badgePlus}</span>
+            )}
+            <IconeNav name="ellipsis" className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Plus</span>
+          </button>
         )}
       </nav>
     </div>
   );
 }
 
-function NavItem({ href, icon, label, badge }: { href: string; icon: string; label: string; badge?: number }) {
+function NavItem({ href, icon, label, badge, pathname }: { href: string; icon: string; label: string; badge?: number; pathname?: string }) {
+  const actif = pathname != null && (pathname === href || (href !== "/pro" && pathname.startsWith(href)));
   return (
     <Link
       href={href}
       prefetch={true}
-      className="relative flex flex-1 flex-col items-center gap-1 py-2 text-slate-400 hover:text-brand"
+      className={`relative flex flex-1 flex-col items-center gap-1 py-2 transition-colors ${
+        actif ? "text-brand" : "text-slate-400 hover:text-brand"
+      }`}
     >
       {!!badge && badge > 0 && (
         <span className="absolute right-1/2 top-0.5 flex h-[15px] min-w-[15px] translate-x-3 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-white">{badge}</span>
@@ -255,6 +314,7 @@ function IconeNav({ name, className }: { name: string; className?: string }) {
     message: (<><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /></>),
     document: (<><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h6" /></>),
     truck: (<><path d="M3 6h11v9H3z" /><path d="M14 9h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.6" /><circle cx="17" cy="18" r="1.6" /></>),
+    ellipsis: (<><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" /></>),
   };
   return (
     <svg viewBox="0 0 24 24" className={className} {...p} aria-hidden="true">
