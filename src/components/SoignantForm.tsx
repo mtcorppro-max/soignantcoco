@@ -69,6 +69,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   const [recevoirAlertes, setRecevoirAlertes] = useState(false);
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
   const [agenceId, setAgenceId] = useState("");
+  const [agencesDelegue, setAgencesDelegue] = useState<string[]>([]); // délégué : plusieurs agences
   const [regionId, setRegionId] = useState("");
   const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
   const [regions, setRegions] = useState<{ value: string; label: string }[]>([]);
@@ -102,8 +103,12 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
     setRecevoirAlertes(false);
     setProtocoles([protocoleVide()]);
     setAgenceId("");
+    setAgencesDelegue([]);
     setRegionId("");
   };
+
+  const toggleAgenceDelegue = (id: string) =>
+    setAgencesDelegue((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
   const majProtocole = (i: number, patch: Partial<Protocole>) =>
     setProtocoles((arr) => arr.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
@@ -135,11 +140,19 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
       return;
     }
     const estInfLib = form.role === "infirmiere_liberale";
+    const estPharma = form.role === "pharmacie";
+    const estDelegue = form.role === "delegue";
+    const niveau23 = form.niveau === "2" || form.niveau === "3";
+    const sansAgence = estInfLib || estPharma; // pas de rattachement à une agence
     if (estInfLib && !form.zone_exercice.trim()) {
       setErreur("Indiquez la zone d'exercice de l'infirmière libérale.");
       return;
     }
-    if (!estInfLib && (form.niveau === "2" || form.niveau === "3") && !agenceId) {
+    if (estDelegue && niveau23 && agencesDelegue.length === 0) {
+      setErreur("Choisissez au moins une agence de rattachement.");
+      return;
+    }
+    if (!sansAgence && !estDelegue && niveau23 && !agenceId) {
       setErreur("Choisissez une agence de rattachement (ou créez-en une).");
       return;
     }
@@ -150,7 +163,8 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          agence_id: !estInfLib && (form.niveau === "2" || form.niveau === "3") ? agenceId : null,
+          agence_id: estDelegue && niveau23 ? (agencesDelegue[0] ?? null) : (!sansAgence && niveau23 ? agenceId : null),
+          agences: estDelegue && niveau23 ? agencesDelegue : null,
           region_id: form.niveau === "1" ? regionId : null,
           protocoles: estChirurgien ? protocoles.map(protocolePropre) : [],
           recevoir_alertes: estChirurgien ? recevoirAlertes : false,
@@ -241,7 +255,24 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             />
           </div>
         )}
-        {(form.niveau === "2" || form.niveau === "3") && form.role !== "infirmiere_liberale" && (
+        {(form.niveau === "2" || form.niveau === "3") && form.role === "delegue" && (
+          <div>
+            <label className="label">Agences de rattachement * <span className="font-normal text-slate-400">(plusieurs possibles)</span></label>
+            {agences.length === 0 ? (
+              <p className="text-sm text-slate-400">Aucune agence (créez-en une).</p>
+            ) : (
+              <div className="grid gap-1.5 rounded-xl border border-rose-100 p-3">
+                {agences.map((a) => (
+                  <label key={a.value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={agencesDelegue.includes(a.value)} onChange={() => toggleAgenceDelegue(a.value)} className="accent-brand" />
+                    {a.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {(form.niveau === "2" || form.niveau === "3") && form.role !== "infirmiere_liberale" && form.role !== "pharmacie" && form.role !== "delegue" && (
           <div>
             <label className="label">Agence de rattachement *</label>
             <Select

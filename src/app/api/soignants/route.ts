@@ -130,13 +130,31 @@ export async function POST(request: Request) {
           zone_exercice: role === "infirmiere_liberale" ? texteOuNull(body.zone_exercice) : null,
         };
 
-  // Rattachement : infirmière libérale -> aucun (zone d'exercice) ;
-  // niveau 1 -> région ; niveau 2/3 -> agence ; niveau 0 -> aucun.
+  // Rattachement : infirmière libérale & pharmacie -> aucune agence ;
+  // niveau 1 -> région ; délégué niveau 2/3 -> plusieurs agences ;
+  // autres niveau 2/3 -> une agence ; niveau 0 -> aucun.
   let agenceId: string | null = null;
   let regionId: string | null = null;
+  let agencesList: string[] | null = null;
 
-  if (role === "infirmiere_liberale") {
-    // Pas de rattachement géographique : elle intervient sur une zone.
+  // Une agence est-elle dans le périmètre du créateur ?
+  const agenceDansPerimetre = async (agId: string): Promise<boolean> => {
+    const { data: ag } = await admin
+      .from("agence")
+      .select("id, region_id, region:region_id(prestataire_id)")
+      .eq("id", agId)
+      .maybeSingle();
+    const agPrestataire = (ag?.region as { prestataire_id?: string } | null)?.prestataire_id;
+    let ok = !!ag && agPrestataire === prestataireId;
+    if (ok && !admin_ && niveauCreateur !== 0) {
+      if (pro?.niveau === 2) ok = ag!.id === pro.agence_id;
+      else if (pro?.niveau === 1) ok = ag!.region_id === (pro.region_id ?? null);
+    }
+    return ok;
+  };
+
+  if (role === "infirmiere_liberale" || role === "pharmacie") {
+    // Pas de rattachement à une agence.
   } else if (niveauDemande === 1) {
     regionId = texteOuNull(body.region_id);
     if (!regionId) {
@@ -149,28 +167,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Région hors de votre périmètre." }, { status: 403 });
     }
   } else if (niveauDemande === 2 || niveauDemande === 3) {
-    agenceId = texteOuNull(body.agence_id);
-    if (!agenceId) {
-      await admin.auth.admin.deleteUser(created.user.id);
-      return NextResponse.json({ message: "Agence de rattachement requise." }, { status: 400 });
-    }
-    const { data: ag } = await admin
-      .from("agence")
-      .select("id, region_id, region:region_id(prestataire_id)")
-      .eq("id", agenceId)
-      .maybeSingle();
-    const agPrestataire = (ag?.region as { prestataire_id?: string } | null)?.prestataire_id;
-    let okPerimetre = !!ag && agPrestataire === prestataireId;
-    if (okPerimetre && !admin_ && niveauCreateur !== 0) {
-      if (pro?.niveau === 2) {
-        okPerimetre = ag!.id === pro.agence_id;
-      } else if (pro?.niveau === 1) {
-        okPerimetre = ag!.region_id === (pro.region_id ?? null);
+    if (role === "delegue") {
+      // Le délégué peut être rattaché à plusieurs agences.
+      const arr = Array.isArray(body.agences) ? (body.agences.filter((x: unknown) => typeof x === "string") as string[]) : [];
+      const uniques = [...new Set(arr)];
+      if (uniques.length === 0) {
+        await admin.auth.admin.deleteUser(created.user.id);
+        return NextResponse.json({ message: "Au moins une agence de rattachement est requise." }, { status: 400 });
       }
-    }
-    if (!okPerimetre) {
-      await admin.auth.admin.deleteUser(created.user.id);
-      return NextResponse.json({ message: "Agence hors de votre périmètre." }, { status: 403 });
+      for (const agId of uniques) {
+        if (!(await agenceDansPerimetre(agId))) {
+          await admin.auth.admin.deleteUser(created.user.id);
+          return NextResponse.json({ message: "Agence hors de votre périmètre." }, { status: 403 });
+        }
+      }
+      agencesList = uniques;
+      agenceId = uniques[0];
+    } else {
+      agenceId = texteOuNull(body.agence_id);
+      if (!agenceId) {
+        await admin.auth.admin.deleteUser(created.user.id);
+        return NextResponse.json({ message: "Agence de rattachement requise." }, { status: 400 });
+      }
+      if (!(await agenceDansPerimetre(agenceId))) {
+        await admin.auth.admin.deleteUser(created.user.id);
+        return NextResponse.json({ message: "Agence hors de votre périmètre." }, { status: 403 });
+      }
     }
   }
 
@@ -182,6 +204,7 @@ export async function POST(request: Request) {
     role,
     niveau: niveauDemande,
     agence_id: agenceId,
+    agences: agencesList,
     region_id: regionId,
     ...extras,
   });

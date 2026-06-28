@@ -19,6 +19,8 @@ export default function MonProfil() {
   const [f, setF] = useState<Form>(VIDE);
   const [role, setRole] = useState("");
   const [recevoirAlertes, setRecevoirAlertes] = useState(false);
+  const [agencesList, setAgencesList] = useState<{ value: string; label: string }[]>([]);
+  const [agencesDelegue, setAgencesDelegue] = useState<string[]>([]);
   const [pret, setPret] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -48,6 +50,25 @@ export default function MonProfil() {
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
   const estChir = role === "chirurgien";
   const estInfLib = role === "infirmiere_liberale";
+  const estDelegue = role === "delegue";
+
+  // Délégué : liste des agences + agences actuellement rattachées.
+  useEffect(() => {
+    if (role !== "delegue" || !pro?.id) return;
+    const supabase = createClient();
+    Promise.all([
+      supabase.from("region").select("id,nom"),
+      supabase.from("agence").select("id,nom,region_id"),
+      supabase.from("professionnel").select("agences").eq("id", pro.id).maybeSingle(),
+    ]).then(([{ data: regs }, { data: ags }, { data: me }]) => {
+      const nomRegion = new Map((regs ?? []).map((r) => [r.id as string, r.nom as string]));
+      setAgencesList((ags ?? []).map((a) => ({ value: a.id as string, label: `${nomRegion.get(a.region_id as string) ?? "?"} · ${a.nom}` })));
+      setAgencesDelegue(((me as { agences?: string[] } | null)?.agences) ?? []);
+    });
+  }, [role, pro?.id]);
+
+  const toggleAgence = (id: string) =>
+    setAgencesDelegue((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
   async function sauver() {
     if (!pro?.id) return;
@@ -56,6 +77,7 @@ export default function MonProfil() {
       titre: f.titre, prenom: f.prenom, nom: f.nom, telephone: f.telephone, email: f.email,
       ...(estChir ? { specialite: f.specialite, rpps: f.rpps, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, recevoir_alertes: recevoirAlertes } : {}),
       ...(estInfLib ? { zone_exercice: f.zone_exercice } : {}),
+      ...(estDelegue ? { agences: agencesDelegue } : {}),
     };
     const res = await fetch(`/api/soignants/${pro.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setBusy(false);
@@ -106,6 +128,24 @@ export default function MonProfil() {
           )}
           {estInfLib && (
             <div><label className="label">Zone(s) d&apos;exercice</label><input className="input" value={f.zone_exercice} onChange={set("zone_exercice")} /></div>
+          )}
+          {estDelegue && (
+            <div>
+              <label className="label">Mes agences de rattachement</label>
+              {agencesList.length === 0 ? (
+                <p className="text-sm text-slate-400">Aucune agence disponible.</p>
+              ) : (
+                <div className="grid gap-1.5 rounded-xl border border-rose-100 p-3">
+                  {agencesList.map((a) => (
+                    <label key={a.value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                      <input type="checkbox" checked={agencesDelegue.includes(a.value)} onChange={() => toggleAgence(a.value)} className="accent-brand" />
+                      {a.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p className="mt-1 text-xs text-slate-400">Vous pouvez être rattaché à plusieurs agences.</p>
+            </div>
           )}
 
           {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{err}</p>}

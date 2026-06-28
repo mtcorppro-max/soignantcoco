@@ -94,7 +94,7 @@ export async function PATCH(
   const admin = createAdminClient();
   const { data: cible } = await admin
     .from("professionnel")
-    .select("id, niveau, prestataire_id")
+    .select("id, niveau, prestataire_id, role")
     .eq("id", params.id)
     .maybeSingle();
   if (!cible) return NextResponse.json({ message: "Compte introuvable." }, { status: 404 });
@@ -117,6 +117,23 @@ export async function PATCH(
     if (Array.isArray(body.ordonnances_types)) maj.ordonnances_types = body.ordonnances_types;
     // Réception des alertes patients (opt-in médecin).
     if (typeof body.recevoir_alertes === "boolean") maj.recevoir_alertes = body.recevoir_alertes;
+    // Agences du délégué (rattachement multiple) : modifiable par soi-même ou
+    // un gestionnaire. On ne garde que les agences du prestataire de la cible.
+    if (Array.isArray(body.agences) && cible.role === "delegue") {
+      const arr = [...new Set(body.agences.filter((x: unknown) => typeof x === "string") as string[])];
+      let valides: string[] = [];
+      if (arr.length) {
+        const { data: ags } = await admin
+          .from("agence")
+          .select("id, region:region_id(prestataire_id)")
+          .in("id", arr);
+        valides = (ags ?? [])
+          .filter((a) => (a.region as { prestataire_id?: string } | null)?.prestataire_id === cible.prestataire_id)
+          .map((a) => a.id as string);
+      }
+      maj.agences = valides.length ? valides : null;
+      maj.agence_id = valides[0] ?? null;
+    }
   }
 
   // Niveau / agence / région : réservés aux niveaux 0/1, cibles de niveau ≥ 2, hors soi-même.
