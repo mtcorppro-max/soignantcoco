@@ -173,7 +173,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:px-6 sm:pb-6">{children}</main>
+      <main className="mx-auto max-w-6xl overflow-x-hidden px-4 py-6 pb-24 sm:px-6 sm:pb-6">{children}</main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-rose-100 bg-white sm:hidden">
         {estPharmacie ? (

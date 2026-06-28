@@ -32,7 +32,7 @@ body {
     @apply rounded-2xl border border-rose-100 bg-white p-5 shadow-sm;
   }
   .input {
-    @apply w-full rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-rose-200;
+    @apply w-full min-w-0 rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-rose-200;
   }
   .select {
     @apply input cursor-pointer appearance-none bg-no-repeat pr-10 text-slate-700;

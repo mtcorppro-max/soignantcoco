@@ -155,13 +155,13 @@ export default function LivraisonsPage() {
 
       {/* ── Carte de la tournée du jour ── */}
       <section className="card grid gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="w-full sm:w-auto">
             <label className="label">Jour de tournée</label>
-            <div className="w-48"><DateField value={jour} onChange={setJour} /></div>
+            <div className="w-full sm:w-48"><DateField value={jour} onChange={setJour} /></div>
           </div>
           {urlMaps && (
-            <a href={urlMaps} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center gap-2">🧭 Itinéraire Google Maps</a>
+            <a href={urlMaps} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex w-full items-center justify-center gap-2 sm:w-auto">🧭 Itinéraire Google Maps</a>
           )}
         </div>
 
