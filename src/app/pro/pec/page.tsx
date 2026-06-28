@@ -211,7 +211,8 @@ export default function PecPage() {
     };
   }, [patients, coords, liaisons, agenceNom]);
 
-  if (pro && pro.niveau > 1) {
+  const estDir = pro?.role === "dirigeant";
+  if (pro && pro.niveau > 1 && !estDir) {
     return <div className="card text-sm text-slate-500">La page PEC est réservée aux managers (niveau 1) et à l&apos;administration (niveau 0).</div>;
   }
   if (!pret) return <p className="text-sm text-slate-400">Chargement…</p>;
@@ -278,7 +279,10 @@ export default function PecPage() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-bold text-slate-800">Prises en charge</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Prises en charge</h1>
+        {estDir && <p className="mt-1 text-sm text-slate-500">Vue nationale — toutes les régions et agences.</p>}
+      </div>
 
       {/* Chiffres clés — cliquables */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

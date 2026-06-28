@@ -4,8 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { estEmailAdmin } from "@/lib/admin";
 import { peutOctroyer } from "@/lib/niveaux";
 
-type RolePro = "coordinatrice" | "chirurgien" | "delegue" | "manager" | "infirmiere_liberale" | "livreur" | "pharmacie";
-const ROLES: RolePro[] = ["coordinatrice", "chirurgien", "delegue", "manager", "infirmiere_liberale", "livreur", "pharmacie"];
+type RolePro = "coordinatrice" | "chirurgien" | "delegue" | "manager" | "infirmiere_liberale" | "livreur" | "pharmacie" | "dirigeant";
+const ROLES: RolePro[] = ["coordinatrice", "chirurgien", "delegue", "manager", "infirmiere_liberale", "livreur", "pharmacie", "dirigeant"];
 // Comptes service : ne peuvent pas créer d'autres comptes.
 const estRoleService = (r: string | null | undefined) => r === "livreur" || r === "pharmacie";
 
@@ -69,9 +69,11 @@ export async function POST(request: Request) {
   // est réservé au niveau 0.
   // Un manager est toujours niveau 1 ; une infirmière libérale toujours niveau 3.
   // Niveaux fixes par rôle ; seuls coordinatrice et délégué laissent le choix.
+  // Le dirigeant n'a pas de niveau d'accès opérationnel : on stocke 3
+  // (le plus restrictif) ; sa vue PEC nationale passe par son rôle (RLS 0064).
   const niveauDemande = role === "manager" ? 1
     : role === "livreur" ? 2
-    : (role === "infirmiere_liberale" || role === "pharmacie" || role === "chirurgien") ? 3
+    : (role === "infirmiere_liberale" || role === "pharmacie" || role === "chirurgien" || role === "dirigeant") ? 3
     : ([0, 1, 2, 3].includes(Number(body.niveau)) ? Number(body.niveau) : 3);
   if (!peutOctroyer(niveauCreateur, niveauDemande)) {
     return NextResponse.json(
@@ -83,6 +85,10 @@ export async function POST(request: Request) {
   if (!nom) return NextResponse.json({ message: "Nom requis." }, { status: 400 });
   if (!email) return NextResponse.json({ message: "Email requis." }, { status: 400 });
   if (!ROLES.includes(role)) return NextResponse.json({ message: "Rôle invalide." }, { status: 400 });
+  // Le compte dirigeant n'est créable que par un administrateur (niveau 0).
+  if (role === "dirigeant" && niveauCreateur !== 0) {
+    return NextResponse.json({ message: "Seul un administrateur peut créer un compte dirigeant." }, { status: 403 });
+  }
 
   const motDePasse = texteOuNull(body.motDePasse) ?? genererMotDePasse();
   if (motDePasse.length < 8) {
@@ -156,8 +162,8 @@ export async function POST(request: Request) {
     return ok;
   };
 
-  if (role === "infirmiere_liberale" || role === "pharmacie") {
-    // Pas de rattachement à une agence.
+  if (role === "infirmiere_liberale" || role === "pharmacie" || role === "dirigeant") {
+    // Pas de rattachement à une agence (le dirigeant est national).
   } else if (niveauDemande === 1) {
     regionId = texteOuNull(body.region_id);
     if (!regionId) {

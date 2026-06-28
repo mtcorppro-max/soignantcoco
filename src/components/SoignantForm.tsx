@@ -143,8 +143,9 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
     const estInfLib = form.role === "infirmiere_liberale";
     const estPharma = form.role === "pharmacie";
     const estDelegue = form.role === "delegue";
+    const estDir = form.role === "dirigeant";
     const niveau23 = form.niveau === "2" || form.niveau === "3";
-    const sansAgence = estInfLib || estPharma; // pas de rattachement à une agence
+    const sansAgence = estInfLib || estPharma || estDir; // pas de rattachement à une agence
     if (estInfLib && !form.zone_exercice.trim()) {
       setErreur("Indiquez la zone d'exercice de l'infirmière libérale.");
       return;
@@ -212,7 +213,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
           <label className="label">Rôle *</label>
           <Select
             value={form.role}
-            onChange={(v) => setForm((f) => ({ ...f, role: v, niveau: v === "manager" ? "1" : v === "livreur" ? "2" : (v === "infirmiere_liberale" || v === "pharmacie" || v === "chirurgien") ? "3" : f.niveau }))}
+            onChange={(v) => setForm((f) => ({ ...f, role: v, niveau: v === "manager" ? "1" : v === "livreur" ? "2" : (v === "infirmiere_liberale" || v === "pharmacie" || v === "chirurgien" || v === "dirigeant") ? "3" : f.niveau }))}
             options={[
               { value: "chirurgien", label: "Chirurgien / Médecin" },
               { value: "coordinatrice", label: "Infirmière coordinatrice" },
@@ -221,6 +222,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
               { value: "delegue", label: "Délégué médical" },
               { value: "livreur", label: "Livreur" },
               { value: "pharmacie", label: "Pharmacie" },
+              ...(niveauCreateur === 0 ? [{ value: "dirigeant", label: "Dirigeant" }] : []),
             ]}
           />
         </div>
@@ -273,7 +275,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             )}
           </div>
         )}
-        {(form.niveau === "2" || form.niveau === "3") && form.role !== "infirmiere_liberale" && form.role !== "pharmacie" && form.role !== "delegue" && (
+        {(form.niveau === "2" || form.niveau === "3") && form.role !== "infirmiere_liberale" && form.role !== "pharmacie" && form.role !== "delegue" && form.role !== "dirigeant" && (
           <div>
             <label className="label">Agence de rattachement *</label>
             <Select

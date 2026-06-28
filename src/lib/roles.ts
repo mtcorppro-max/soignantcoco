@@ -8,7 +8,12 @@ export const LIBELLE_ROLE: Record<RolePro, string> = {
   infirmiere_liberale: "Infirmière libérale",
   livreur: "Livreur",
   pharmacie: "Pharmacie",
+  dirigeant: "Dirigeant",
 };
+
+// Compte de direction : pas de gestion de patients ; accès PEC (national) +
+// annuaire « équipe dirigeante » uniquement. Créé seulement par un admin.
+export const estDirigeant = (r: string | undefined | null) => r === "dirigeant";
 
 // Un manager a les mêmes droits qu'une coordinatrice (+ des fonctions en plus).
 export const estCoordOuManager = (r: string | undefined | null) =>
