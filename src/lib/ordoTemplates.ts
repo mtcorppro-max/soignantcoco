@@ -4,7 +4,10 @@ import { ouvrirTemplate, nomPrescripteur, frDate, type DocOrdoData, type Pt } fr
 type Champ =
   | { k: "txt" | "date"; key: string; pos: Pt; size?: number }
   | { k: "lignes"; key: string; pos: Pt; lineH?: number }
-  | { k: "radio" | "checks"; key: string; map: Record<string, Pt> };
+  | { k: "radio" | "checks"; key: string; map: Record<string, Pt> }
+  // Phrase recomposée : {clé} remplacé par la valeur (sinon « ____ ») ;
+  // suffixe ajouté seulement si la case suffixeSiCoche est cochée.
+  | { k: "phrase"; modele: string; pos: Pt; size?: number; suffixe?: string; suffixeSiCoche?: { key: string; option: string } };
 
 type Rect = [number, number, number, number];
 
@@ -100,11 +103,13 @@ export const CONFIGS: Record<string, Conf> = {
   },
   ordo_idel_npad: {
     template: "/ORDO%20IDEL%20NPAD.pdf", ...STD, date: { x: 516, y: 262 }, signature: { x: 470, y: 611 },
-    blancs: [[112, 589, 40, 12], [567, 254, 22, 12]], // « jours » masqué (durée libre) + « Le » collé au bord
+    // « jours » masqué (durée libre) + « Le » collé au bord + ligne de branchement réécrite
+    blancs: [[112, 589, 40, 12], [567, 254, 22, 12], [48, 503, 458, 12]],
     textes: [{ s: "Le", pos: { x: 500, y: 262 } }],
     champs: [
       { k: "radio", key: "voie", map: { "Cathéter central": { x: 31, y: 361 }, "Picc-line": { x: 29, y: 390 }, "Chambre implantable": { x: 31, y: 420 } } },
       { k: "txt", key: "perfusion", pos: { x: 112, y: 465 } },
+      { k: "phrase", pos: { x: 50, y: 511 }, modele: "Avec un branchement à {heure_branchement} et un débranchement à {heure_debranchement}", suffixe: ", administration nocturne", suffixeSiCoche: { key: "nocturne", option: "Administration nocturne" } },
       { k: "txt", key: "ordonnance_jours", pos: { x: 114, y: 597 } },
     ],
   },
@@ -152,6 +157,15 @@ export async function genererPdfModele(type: string, d: DocOrdoData, mode: "down
     } else if (ch.k === "checks") {
       const arr = Array.isArray(c[ch.key]) ? (c[ch.key] as string[]) : [];
       arr.forEach((o) => { if (ch.map[o]) coche(ch.map[o]); });
+    } else if (ch.k === "phrase") {
+      let s = ch.modele.replace(/\{(\w+)\}/g, (_, k) => { const v = c[k]; return v == null || v === "" ? "____" : String(v); });
+      if (ch.suffixe && ch.suffixeSiCoche) {
+        const cond = ch.suffixeSiCoche;
+        const cv = c[cond.key];
+        const ok = Array.isArray(cv) ? (cv as string[]).includes(cond.option) : cv === cond.option || cv === true;
+        if (ok) s += ch.suffixe;
+      } else if (ch.suffixe) s += ch.suffixe;
+      txt(s, ch.pos, ch.size);
     }
   }
   if (conf.signature) await signer(d.signature, conf.signature);

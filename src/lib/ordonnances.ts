@@ -115,6 +115,9 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     champs: [
       { key: "voie", label: "Voie d'abord", type: "radio", options: ["Cathéter central", "Picc-line", "Chambre implantable"] },
       { key: "perfusion", label: "Perfusion de", type: "text" },
+      { key: "heure_branchement", label: "Heure de branchement", type: "text" },
+      { key: "heure_debranchement", label: "Heure de débranchement", type: "text" },
+      { key: "nocturne", label: "Administration nocturne", type: "checkboxes", options: ["Administration nocturne"] },
       { key: "ordonnance_jours", label: "Ordonnances pour (durée, ex. 180 jours ou 6 mois)", type: "text" },
     ],
   },
