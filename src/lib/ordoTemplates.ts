@@ -125,7 +125,7 @@ export const CONFIGS: Record<string, Conf> = {
   // PDF image (sans couche texte) : en-tête + jours + signature (positions à affiner).
   nead: {
     template: "/NEAD%20Presta.pdf", presc: { x: 45, y: 80 }, rpps: { x: 45, y: 100 }, patient: { x: 465, y: 82 }, date: { x: 500, y: 198 }, signature: { x: 380, y: 765 },
-    blancs: [[86, 712, 17, 15]], // retire le « 14 » imprimé du QSP (durée pilotée par le forfait)
+    blancs: [[71, 711, 16, 16]], // retire le « 14 » imprimé du QSP (durée pilotée par le forfait)
     champs: [
       { k: "checks", key: "produits", map: { "STANDARD": { x: 27, y: 270 }, "HYPERÉNERGÉTIQUE": { x: 27, y: 286 }, "HYPERÉNERGÉTIQUE HP": { x: 27, y: 300 }, "AUTRE": { x: 27, y: 314 } } },
       { k: "checks", key: "fibres", map: { "Fibres STANDARD": { x: 182, y: 270 }, "Fibres HYPERÉNERGÉTIQUE": { x: 182, y: 286 }, "Fibres HP": { x: 182, y: 300 }, "Fibres AUTRE": { x: 182, y: 314 } } },
@@ -137,7 +137,7 @@ export const CONFIGS: Record<string, Conf> = {
       { k: "checks", key: "materiel", map: { "Sets de soins": { x: 20, y: 502 }, "Sonde Naso-Gastrique": { x: 20, y: 529 }, "Set de remplacement (sonde gastrostomie)": { x: 20, y: 556 }, "Bouton de gastrostomie": { x: 20, y: 582 }, "Prolongateur bouton de gastrostomie": { x: 20, y: 608 } } },
       { k: "txt", key: "frequence", pos: { x: 100, y: 663 } },
       { k: "txt", key: "debit", pos: { x: 70, y: 690 } },
-      { k: "txt", key: "qsp", pos: { x: 88, y: 726 }, size: 11, auto: { key: "mode", option: "Forfait Première Installation", valeur: "14" } },
+      { k: "txt", key: "qsp", pos: { x: 73, y: 726 }, size: 11, auto: { key: "mode", option: "Forfait Première Installation", valeur: "14" } },
     ],
   },
   nead_idel: {
