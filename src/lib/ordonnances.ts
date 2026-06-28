@@ -74,6 +74,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     champs: [
       { key: "nacl_50", label: "NaCl 0,9% 50 mL (/jour)", type: "number" },
       { key: "nacl_100", label: "NaCl 0,9% 100 mL (/jour)", type: "number" },
+      { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
       { key: "qsp_jours", label: "QSP (jours)", type: "number" },
     ],
   },
@@ -85,12 +86,16 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
   {
     id: "ordo_glycemie",
     label: "Surveillance glycémique (IDEL)",
-    champs: [{ key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "number" }],
+    champs: [
+      { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
+      { key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "number" },
+    ],
   },
   {
     id: "ordo_taurolock",
     label: "Verrou Taurolock (IDEL)",
     champs: [
+      { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
       { key: "qsp_jours", label: "QSP (jours)", type: "number" },
       { key: "a_renouveler", label: "À renouveler (fois)", type: "text" },
     ],
@@ -99,6 +104,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     id: "ordo_idel_po",
     label: "IDEL — PO & constantes",
     champs: [
+      { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
       { key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "number" },
       { key: "a_renouveler", label: "À renouveler (fois)", type: "number" },
     ],
@@ -119,13 +125,17 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
       { key: "options", label: "Forfaits", type: "checkboxes", options: ["Première installation", "12 premières semaines", "Après les 12 premières semaines"] },
       { key: "jours7_avant", label: "Administrée … jours/7 (12 premières sem.)", type: "number" },
       { key: "jours7_apres", label: "Administrée … jours/7 (après 12 sem.)", type: "number" },
+      { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
       { key: "ordonnance_jours", label: "Ordonnances pour (jours)", type: "number" },
     ],
   },
   {
     id: "idel_kyste",
     label: "IDEL — Pansement de kyste",
-    champs: [{ key: "duree_jours", label: "Durée (jours)", type: "number" }],
+    champs: [
+      { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
+      { key: "duree_jours", label: "Durée (jours)", type: "number" },
+    ],
   },
   {
     id: "nead",

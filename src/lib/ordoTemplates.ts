@@ -6,18 +6,27 @@ type Champ =
   | { k: "lignes"; key: string; pos: Pt; lineH?: number }
   | { k: "radio" | "checks"; key: string; map: Record<string, Pt> };
 
+type Rect = [number, number, number, number];
+
 type Conf = {
   template: string;
   presc?: Pt; rpps?: Pt; patient?: Pt; date?: Pt; signature?: Pt;
-  blancs?: [number, number, number, number][];
-  textes?: { s: string; pos: Pt; size?: number }[]; // textes statiques redessinés
+  rppsBarres?: Rect; // zone des |__| de l'identifiant à masquer
+  blancs?: Rect[];
+  textes?: { s: string; pos: Pt; size?: number }[]; // textes statiques (re)dessinés
   champs: Champ[];
 };
 
-const STD = { presc: { x: 70, y: 128 } as Pt, rpps: { x: 90, y: 152 } as Pt, patient: { x: 215, y: 212 } as Pt };
+// En-tête CERFA standard : nom + RPPS dans la case prescripteur (barres masquées), nom patient.
+const STD = {
+  presc: { x: 70, y: 128 } as Pt,
+  rpps: { x: 86, y: 151 } as Pt,
+  patient: { x: 215, y: 212 } as Pt,
+  rppsBarres: [84, 144, 152, 12] as Rect,
+};
 
 export const CONFIGS: Record<string, Conf> = {
-  // Remplace « Pharmacie (perfusion) » — ordonnance bizone ALD.
+  // Remplace « Pharmacie (perfusion) » — ordonnance bizone ALD (cases vides, sans barres).
   pharma_perf: {
     template: "/ORDO%20PHARMA%20(2).pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, date: { x: 52, y: 256 }, signature: { x: 400, y: 615 },
     champs: [
@@ -33,8 +42,6 @@ export const CONFIGS: Record<string, Conf> = {
   },
   ordo_pharma_npad: {
     template: "/ORDO%20PHARMA%20NPAD.pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, signature: { x: 400, y: 585 },
-    // On masque « jours » / « fois » imprimés et on les redessine plus à droite
-    // pour laisser un vrai espace à la valeur.
     blancs: [[62, 498, 34, 10], [163, 517, 24, 10]],
     textes: [{ s: "jours", pos: { x: 98, y: 505 } }, { s: "fois", pos: { x: 192, y: 524 } }],
     champs: [
@@ -47,44 +54,68 @@ export const CONFIGS: Record<string, Conf> = {
   },
   ordo_pharma_piccline: {
     template: "/ORDO%20PHARMA%20PICCLINE.pdf", ...STD, date: { x: 110, y: 283 }, signature: { x: 390, y: 572 },
+    textes: [{ s: "Autres :", pos: { x: 14, y: 415 } }],
     champs: [
-      { k: "txt", key: "nacl_50", pos: { x: 175, y: 353 } },
-      { k: "txt", key: "nacl_100", pos: { x: 175, y: 364 } },
+      { k: "txt", key: "nacl_50", pos: { x: 176, y: 353 } },
+      { k: "txt", key: "nacl_100", pos: { x: 180, y: 364 } },
+      { k: "lignes", key: "autres", pos: { x: 20, y: 428 }, lineH: 15 },
       { k: "txt", key: "qsp_jours", pos: { x: 50, y: 467 } },
     ],
   },
   ordo_glycemie: {
     template: "/ORDO%20GLYCEMIE.pdf", ...STD, date: { x: 441, y: 269 }, signature: { x: 390, y: 560 },
-    champs: [{ k: "txt", key: "ordonnance_jours", pos: { x: 110, y: 461 } }],
+    textes: [{ s: "Autres :", pos: { x: 41, y: 372 } }],
+    champs: [
+      { k: "lignes", key: "autres", pos: { x: 47, y: 388 }, lineH: 16 },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 130, y: 461 } },
+    ],
   },
   ordo_taurolock: {
     template: "/ORDO%20TAUROLOCK.pdf", ...STD, date: { x: 500, y: 269 }, signature: { x: 390, y: 681 },
-    champs: [{ k: "txt", key: "qsp_jours", pos: { x: 50, y: 564 } }, { k: "txt", key: "a_renouveler", pos: { x: 106, y: 576 } }],
+    textes: [{ s: "Autres :", pos: { x: 20, y: 432 } }],
+    champs: [
+      { k: "lignes", key: "autres", pos: { x: 26, y: 448 }, lineH: 16 },
+      { k: "txt", key: "qsp_jours", pos: { x: 50, y: 564 } },
+      { k: "txt", key: "a_renouveler", pos: { x: 106, y: 576 } },
+    ],
   },
   perfadom_npad: {
     template: "/PERFADOM%20NPAD.pdf", ...STD, date: { x: 440, y: 258 }, signature: { x: 390, y: 714 },
+    textes: [{ s: "Autres :", pos: { x: 20, y: 615 } }],
     champs: [
       { k: "checks", key: "options", map: { "Première installation": { x: 31, y: 313 }, "12 premières semaines": { x: 31, y: 343 }, "Après les 12 premières semaines": { x: 29, y: 490 } } },
-      { k: "txt", key: "jours7_avant", pos: { x: 38, y: 388 } },
-      { k: "txt", key: "jours7_apres", pos: { x: 38, y: 549 } },
-      { k: "txt", key: "ordonnance_jours", pos: { x: 100, y: 655 } },
+      { k: "txt", key: "jours7_avant", pos: { x: 40, y: 388 } },
+      { k: "txt", key: "jours7_apres", pos: { x: 40, y: 549 } },
+      { k: "lignes", key: "autres", pos: { x: 26, y: 630 }, lineH: 15 },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 106, y: 655 } },
     ],
   },
   ordo_idel_po: {
     template: "/ORDO%20IDEL%20PO%20ET%20CONSTANTES.pdf", ...STD, date: { x: 520, y: 270 }, signature: { x: 390, y: 493 },
-    champs: [{ k: "txt", key: "ordonnance_jours", pos: { x: 113, y: 430 } }, { k: "txt", key: "a_renouveler", pos: { x: 90, y: 445 } }],
+    textes: [{ s: "Autres :", pos: { x: 20, y: 388 } }],
+    champs: [
+      { k: "lignes", key: "autres", pos: { x: 26, y: 402 }, lineH: 15 },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 113, y: 430 } },
+      { k: "txt", key: "a_renouveler", pos: { x: 90, y: 445 } },
+    ],
   },
   ordo_idel_npad: {
     template: "/ORDO%20IDEL%20NPAD.pdf", ...STD, date: { x: 540, y: 274 }, signature: { x: 470, y: 611 },
+    blancs: [[112, 589, 40, 12]],
+    textes: [{ s: "jours", pos: { x: 142, y: 597 } }],
     champs: [
       { k: "radio", key: "voie", map: { "Cathéter central": { x: 31, y: 361 }, "Picc-line": { x: 29, y: 390 }, "Chambre implantable": { x: 31, y: 420 } } },
       { k: "txt", key: "perfusion", pos: { x: 112, y: 465 } },
-      { k: "txt", key: "ordonnance_jours", pos: { x: 100, y: 597 } },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 114, y: 597 } },
     ],
   },
   idel_kyste: {
     template: "/IDEL%20Kyste1.pdf", presc: { x: 90, y: 100 }, patient: { x: 350, y: 100 }, date: { x: 385, y: 177 }, signature: { x: 310, y: 597 },
-    champs: [{ k: "txt", key: "duree_jours", pos: { x: 80, y: 591 } }],
+    textes: [{ s: "Autres :", pos: { x: 43, y: 548 } }],
+    champs: [
+      { k: "lignes", key: "autres", pos: { x: 49, y: 562 }, lineH: 14 },
+      { k: "txt", key: "duree_jours", pos: { x: 80, y: 591 } },
+    ],
   },
   // PDF image (sans couche texte) : en-tête + jours + signature (positions à affiner).
   nead: {
@@ -101,10 +132,12 @@ export async function genererPdfModele(type: string, d: DocOrdoData, mode: "down
   const conf = CONFIGS[type];
   if (!conf) return;
   const { txt, coche, blanc, signer, finaliser } = await ouvrirTemplate(conf.template);
+  if (conf.rppsBarres) blanc(...conf.rppsBarres);
   (conf.blancs ?? []).forEach((b) => blanc(...b));
   (conf.textes ?? []).forEach((t) => txt(t.s, t.pos, t.size));
+
   if (conf.presc) txt(nomPrescripteur(d), conf.presc);
-  if (conf.rpps && d.prescripteurRpps) txt(d.prescripteurRpps, conf.rpps, 8);
+  if (conf.rpps && d.prescripteurRpps) txt(`N° RPPS : ${d.prescripteurRpps}`, conf.rpps, 8);
   if (conf.patient) txt(d.patientNom, conf.patient);
   if (conf.date) txt(d.date || new Date().toLocaleDateString("fr-FR"), conf.date);
 
