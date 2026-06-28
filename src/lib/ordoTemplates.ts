@@ -21,14 +21,14 @@ type Conf = {
 const STD = {
   presc: { x: 70, y: 128 } as Pt,
   rpps: { x: 86, y: 151 } as Pt,
-  patient: { x: 215, y: 212 } as Pt,
+  patient: { x: 296, y: 205 } as Pt, // centre de la case patient
   rppsBarres: [84, 144, 152, 12] as Rect,
 };
 
 export const CONFIGS: Record<string, Conf> = {
   // Remplace « Pharmacie (perfusion) » — ordonnance bizone ALD (cases vides, sans barres).
   pharma_perf: {
-    template: "/ORDO%20PHARMA%20(2).pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, date: { x: 52, y: 256 }, signature: { x: 400, y: 615 },
+    template: "/ORDO%20PHARMA%20(2).pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 440, y: 92 }, date: { x: 52, y: 256 }, signature: { x: 400, y: 615 },
     champs: [
       { k: "txt", key: "poches_50", pos: { x: 208, y: 386 } },
       { k: "txt", key: "poches_100", pos: { x: 217, y: 405 } },
@@ -41,7 +41,7 @@ export const CONFIGS: Record<string, Conf> = {
     champs: [{ k: "lignes", key: "protocole", pos: { x: 20, y: 330 }, lineH: 13 }],
   },
   ordo_pharma_npad: {
-    template: "/ORDO%20PHARMA%20NPAD.pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, signature: { x: 400, y: 585 },
+    template: "/ORDO%20PHARMA%20NPAD.pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 440, y: 92 }, signature: { x: 400, y: 585 },
     blancs: [[62, 498, 34, 10], [163, 517, 24, 10]],
     textes: [{ s: "jours", pos: { x: 98, y: 505 } }, { s: "fois", pos: { x: 192, y: 524 } }],
     champs: [
@@ -87,7 +87,9 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   ordo_idel_po: {
-    template: "/ORDO%20IDEL%20PO%20ET%20CONSTANTES.pdf", ...STD, date: { x: 532, y: 270 }, signature: { x: 390, y: 493 },
+    template: "/ORDO%20IDEL%20PO%20ET%20CONSTANTES.pdf", ...STD, date: { x: 512, y: 258 }, signature: { x: 390, y: 493 },
+    blancs: [[548, 250, 42, 12]], // masque « Fait le » collé au bord
+    textes: [{ s: "Fait le", pos: { x: 478, y: 258 } }],
     champs: [
       { k: "lignes", key: "autres", pos: { x: 20, y: 390 }, lineH: 15 },
       { k: "txt", key: "ordonnance_jours", pos: { x: 113, y: 430 } },
@@ -95,9 +97,9 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   ordo_idel_npad: {
-    template: "/ORDO%20IDEL%20NPAD.pdf", ...STD, date: { x: 540, y: 274 }, signature: { x: 470, y: 611 },
-    blancs: [[112, 589, 40, 12]],
-    textes: [{ s: "jours", pos: { x: 142, y: 597 } }],
+    template: "/ORDO%20IDEL%20NPAD.pdf", ...STD, date: { x: 516, y: 262 }, signature: { x: 470, y: 611 },
+    blancs: [[112, 589, 40, 12], [567, 254, 22, 12]], // « jours » décalé + « Le » collé au bord
+    textes: [{ s: "jours", pos: { x: 142, y: 597 } }, { s: "Le", pos: { x: 500, y: 262 } }],
     champs: [
       { k: "radio", key: "voie", map: { "Cathéter central": { x: 31, y: 361 }, "Picc-line": { x: 29, y: 390 }, "Chambre implantable": { x: 31, y: 420 } } },
       { k: "txt", key: "perfusion", pos: { x: 112, y: 465 } },
@@ -125,14 +127,14 @@ export const CONFIGS: Record<string, Conf> = {
 export async function genererPdfModele(type: string, d: DocOrdoData, mode: "download" | "bloburl" = "download"): Promise<string | void> {
   const conf = CONFIGS[type];
   if (!conf) return;
-  const { txt, coche, blanc, signer, finaliser } = await ouvrirTemplate(conf.template);
+  const { txt, txtC, coche, blanc, signer, finaliser } = await ouvrirTemplate(conf.template);
   if (conf.rppsBarres) blanc(...conf.rppsBarres);
   (conf.blancs ?? []).forEach((b) => blanc(...b));
   (conf.textes ?? []).forEach((t) => txt(t.s, t.pos, t.size));
 
   if (conf.presc) txt(nomPrescripteur(d), conf.presc);
   if (conf.rpps && d.prescripteurRpps) txt(`N° RPPS : ${d.prescripteurRpps}`, conf.rpps, 8);
-  if (conf.patient) txt(d.patientNom, conf.patient);
+  if (conf.patient) txtC(d.patientNom, conf.patient);
   if (conf.date) txt(d.date || new Date().toLocaleDateString("fr-FR"), conf.date);
 
   const c = d.contenu;

@@ -20,6 +20,12 @@ export async function ouvrirTemplate(path: string) {
     if (s == null || s === "") return;
     page.drawText(String(s), { x: p.x, y: H - p.y, size, font, color: rgb(0.1, 0.1, 0.12) });
   };
+  // Texte centré horizontalement autour de p.x.
+  const txtC = (s: unknown, p: Pt, size = 9) => {
+    if (s == null || s === "") return;
+    const w = font.widthOfTextAtSize(String(s), size);
+    page.drawText(String(s), { x: p.x - w / 2, y: H - p.y, size, font, color: rgb(0.1, 0.1, 0.12) });
+  };
   const coche = (p: Pt) => page.drawText("X", { x: p.x, y: H - p.y, size: 10, font, color: rgb(0.75, 0.1, 0.36) });
   // Masque une zone (rectangle blanc) — yTop = bord haut de la zone.
   const blanc = (x: number, yTop: number, w: number, h: number) => page.drawRectangle({ x, y: H - yTop - h, width: w, height: h, color: rgb(1, 1, 1) });
@@ -37,7 +43,7 @@ export async function ouvrirTemplate(path: string) {
     URL.revokeObjectURL(url);
   };
 
-  return { txt, coche, blanc, signer, finaliser };
+  return { txt, txtC, coche, blanc, signer, finaliser };
 }
 
 export const frDate = (v: unknown) => (v ? new Date(v as string).toLocaleDateString("fr-FR") : "");
