@@ -63,6 +63,7 @@ export const CONFIGS: Record<string, Conf> = {
   },
   ordo_glycemie: {
     template: "/ORDO%20GLYCEMIE.pdf", ...STD, date: { x: 444, y: 269 }, signature: { x: 390, y: 560 },
+    blancs: [[141, 453, 30, 11]], // masque « jours » imprimé (durée libre)
     champs: [
       { k: "lignes", key: "autres", pos: { x: 41, y: 374 }, lineH: 16 },
       { k: "txt", key: "ordonnance_jours", pos: { x: 130, y: 461 } },
@@ -78,6 +79,7 @@ export const CONFIGS: Record<string, Conf> = {
   },
   perfadom_npad: {
     template: "/PERFADOM%20NPAD.pdf", ...STD, date: { x: 440, y: 258 }, signature: { x: 390, y: 714 },
+    blancs: [[120, 647, 28, 11]], // masque « jours » imprimé (durée libre)
     champs: [
       { k: "checks", key: "options", map: { "Première installation": { x: 31, y: 313 }, "12 premières semaines": { x: 31, y: 343 }, "Après les 12 premières semaines": { x: 29, y: 490 } } },
       { k: "txt", key: "jours7_avant", pos: { x: 40, y: 388 } },
@@ -88,7 +90,7 @@ export const CONFIGS: Record<string, Conf> = {
   },
   ordo_idel_po: {
     template: "/ORDO%20IDEL%20PO%20ET%20CONSTANTES.pdf", ...STD, date: { x: 512, y: 258 }, signature: { x: 390, y: 493 },
-    blancs: [[548, 250, 42, 12]], // masque « Fait le » collé au bord
+    blancs: [[548, 250, 42, 12], [128, 422, 30, 11]], // « Fait le » décalé + « jours » masqué (durée libre)
     textes: [{ s: "Fait le", pos: { x: 478, y: 258 } }],
     champs: [
       { k: "lignes", key: "autres", pos: { x: 20, y: 390 }, lineH: 15 },
@@ -98,8 +100,8 @@ export const CONFIGS: Record<string, Conf> = {
   },
   ordo_idel_npad: {
     template: "/ORDO%20IDEL%20NPAD.pdf", ...STD, date: { x: 516, y: 262 }, signature: { x: 470, y: 611 },
-    blancs: [[112, 589, 40, 12], [567, 254, 22, 12]], // « jours » décalé + « Le » collé au bord
-    textes: [{ s: "jours", pos: { x: 142, y: 597 } }, { s: "Le", pos: { x: 500, y: 262 } }],
+    blancs: [[112, 589, 40, 12], [567, 254, 22, 12]], // « jours » masqué (durée libre) + « Le » collé au bord
+    textes: [{ s: "Le", pos: { x: 500, y: 262 } }],
     champs: [
       { k: "radio", key: "voie", map: { "Cathéter central": { x: 31, y: 361 }, "Picc-line": { x: 29, y: 390 }, "Chambre implantable": { x: 31, y: 420 } } },
       { k: "txt", key: "perfusion", pos: { x: 112, y: 465 } },

@@ -88,7 +88,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     label: "Surveillance glycémique (IDEL)",
     champs: [
       { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
-      { key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "number" },
+      { key: "ordonnance_jours", label: "Ordonnance pour (durée, ex. 180 jours ou 6 mois)", type: "text" },
     ],
   },
   {
@@ -105,7 +105,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     label: "IDEL — PO & constantes",
     champs: [
       { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
-      { key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "number" },
+      { key: "ordonnance_jours", label: "Ordonnance pour (durée, ex. 180 jours ou 6 mois)", type: "text" },
       { key: "a_renouveler", label: "À renouveler (fois)", type: "number" },
     ],
   },
@@ -115,7 +115,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     champs: [
       { key: "voie", label: "Voie d'abord", type: "radio", options: ["Cathéter central", "Picc-line", "Chambre implantable"] },
       { key: "perfusion", label: "Perfusion de", type: "text" },
-      { key: "ordonnance_jours", label: "Ordonnances pour (jours)", type: "number" },
+      { key: "ordonnance_jours", label: "Ordonnances pour (durée, ex. 180 jours ou 6 mois)", type: "text" },
     ],
   },
   {
@@ -126,7 +126,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
       { key: "jours7_avant", label: "Administrée … jours/7 (12 premières sem.)", type: "number" },
       { key: "jours7_apres", label: "Administrée … jours/7 (après 12 sem.)", type: "number" },
       { key: "autres", label: "Autres (une par ligne)", type: "textarea" },
-      { key: "ordonnance_jours", label: "Ordonnances pour (jours)", type: "number" },
+      { key: "ordonnance_jours", label: "Ordonnances pour (durée, ex. 180 jours ou 6 mois)", type: "text" },
     ],
   },
   {
@@ -141,7 +141,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     id: "nead",
     label: "NEAD (nutrition entérale)",
     champs: [
-      { key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "number" },
+      { key: "ordonnance_jours", label: "Ordonnance pour (durée, ex. 180 jours ou 6 mois)", type: "text" },
       { key: "a_renouveler", label: "À renouveler (fois)", type: "text" },
     ],
   },
@@ -149,7 +149,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     id: "nead_idel",
     label: "NEAD — IDEL",
     champs: [
-      { key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "number" },
+      { key: "ordonnance_jours", label: "Ordonnance pour (durée, ex. 180 jours ou 6 mois)", type: "text" },
       { key: "a_renouveler", label: "À renouveler (fois)", type: "text" },
     ],
   },
