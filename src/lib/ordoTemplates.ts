@@ -18,12 +18,12 @@ const STD = { presc: { x: 70, y: 128 } as Pt, rpps: { x: 90, y: 152 } as Pt, pat
 export const CONFIGS: Record<string, Conf> = {
   // Remplace « Pharmacie (perfusion) » — ordonnance bizone ALD.
   pharma_perf: {
-    template: "/ORDO%20PHARMA%20(2).pdf", presc: { x: 45, y: 110 }, rpps: { x: 45, y: 140 }, patient: { x: 320, y: 110 }, date: { x: 72, y: 256 }, signature: { x: 400, y: 615 },
+    template: "/ORDO%20PHARMA%20(2).pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, date: { x: 52, y: 256 }, signature: { x: 400, y: 615 },
     champs: [
-      { k: "txt", key: "poches_50", pos: { x: 195, y: 386 } },
-      { k: "txt", key: "poches_100", pos: { x: 205, y: 405 } },
+      { k: "txt", key: "poches_50", pos: { x: 208, y: 386 } },
+      { k: "txt", key: "poches_100", pos: { x: 217, y: 405 } },
       { k: "lignes", key: "molecules", pos: { x: 54, y: 428 }, lineH: 16 },
-      { k: "txt", key: "qsp_jours", pos: { x: 52, y: 555 } },
+      { k: "txt", key: "qsp_jours", pos: { x: 65, y: 555 } },
     ],
   },
   ordo_pst: {
@@ -31,7 +31,7 @@ export const CONFIGS: Record<string, Conf> = {
     champs: [{ k: "lignes", key: "protocole", pos: { x: 20, y: 330 }, lineH: 13 }],
   },
   ordo_pharma_npad: {
-    template: "/ORDO%20PHARMA%20NPAD.pdf", presc: { x: 45, y: 110 }, rpps: { x: 45, y: 140 }, patient: { x: 320, y: 110 }, signature: { x: 400, y: 585 },
+    template: "/ORDO%20PHARMA%20NPAD.pdf", presc: { x: 45, y: 78 }, rpps: { x: 45, y: 98 }, patient: { x: 325, y: 78 }, signature: { x: 400, y: 585 },
     champs: [
       { k: "txt", key: "poches_50", pos: { x: 200, y: 337 } },
       { k: "txt", key: "poches_100", pos: { x: 200, y: 355 } },
