@@ -14,11 +14,12 @@ const POS_ANALYSE: Record<string, Pt> = {
 };
 
 export async function genererPdfOrdoBS(d: DocOrdoData, mode: "download" | "bloburl" = "download"): Promise<string | void> {
-  const { txt, coche, signer, finaliser } = await ouvrirTemplate(TEMPLATE);
+  const { txt, coche, blanc, signer, finaliser } = await ouvrirTemplate(TEMPLATE);
   const c = d.contenu;
 
   txt(nomPrescripteur(d), { x: 70, y: 128 });
-  if (d.prescripteurRpps) txt(d.prescripteurRpps, { x: 88, y: 143 }, 8);
+  blanc(84, 134, 130, 12); // masque les barres |__|__| de l'identifiant
+  if (d.prescripteurRpps) txt(`N° RPPS : ${d.prescripteurRpps}`, { x: 86, y: 143 }, 8);
   txt(d.patientNom, { x: 215, y: 212 });
   txt(d.date || new Date().toLocaleDateString("fr-FR"), { x: 32, y: 308 });
 
@@ -29,7 +30,6 @@ export async function genererPdfOrdoBS(d: DocOrdoData, mode: "download" | "blobu
 
   txt(c.autres, { x: 70, y: 574 });
   txt(frDate(c.a_faire_le), { x: 375, y: 407 });
-  txt(c.ordonnance_jours, { x: 92, y: 698 });
 
   await signer(d.signature, { x: 390, y: 690 });
   return finaliser(mode, "ordonnance-bilan-sanguin.pdf");

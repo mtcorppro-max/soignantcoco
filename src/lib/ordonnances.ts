@@ -45,7 +45,6 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
       { key: "analyses", label: "À doser dans le sang", type: "checkboxes", options: ["NFS", "Plaquettes", "Ionogramme sanguin", "Calcémie", "Urée", "Créatinémie", "Albuminémie", "Pré-albumine", "VS", "CRP", "Transaminases SGOT SGPT", "Gamma GT", "Phosphatases alcalines", "Bilirubine total"] },
       { key: "autres", label: "Autres dosages", type: "text" },
       { key: "a_faire_le", label: "À faire le", type: "date" },
-      { key: "ordonnance_jours", label: "Ordonnance (jours)", type: "number" },
     ],
   },
   {
