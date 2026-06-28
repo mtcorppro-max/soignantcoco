@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type SessionPatient = { id: string; nom: string; code_postal: string | null; user_id: string };
-export type SessionPro = { id: string; nom: string; prenom: string | null; titre: string | null; role: string; niveau: number; agence_id: string | null; region_id: string | null; prestataire_id: string; user_id: string };
+export type SessionPro = { id: string; nom: string; prenom: string | null; titre: string | null; role: string; niveau: number; agence_id: string | null; region_id: string | null; prestataire_id: string; user_id: string; recevoir_alertes: boolean };
 
 const LS_PATIENT = "sc_patient";
-const LS_PRO = "sc_pro5"; // bump : ajout region_id
+const LS_PRO = "sc_pro6"; // bump : ajout recevoir_alertes
 const TTL = 15 * 60 * 1000; // 15 min
 
 type Cached<T> = { v: T; ts: number };
@@ -86,16 +86,40 @@ async function fetchPro(): Promise<SessionPro | null> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
-  const { data } = await supabase
+  // On tente avec recevoir_alertes ; si la colonne n'existe pas encore
+  // (migration 0051 non appliquée), on retombe sur la requête sans ce champ
+  // pour ne jamais casser la connexion.
+  const COLS = "id,nom,prenom,titre,role,niveau,agence_id,region_id,prestataire_id,user_id";
+  let { data, error } = await supabase
     .from("professionnel")
-    .select("id,nom,prenom,titre,role,niveau,agence_id,region_id,prestataire_id,user_id")
+    .select(`${COLS},recevoir_alertes`)
     .eq("user_id", session.user.id)
     .maybeSingle();
+  if (error) {
+    ({ data } = await supabase
+      .from("professionnel")
+      .select(COLS)
+      .eq("user_id", session.user.id)
+      .maybeSingle());
+  }
   if (!data) return null;
-  const p = data as SessionPro;
+  const p = { recevoir_alertes: false, ...(data as object) } as SessionPro;
   memPro = p;
   lsSet(LS_PRO, p);
   return p;
+}
+
+// Met à jour le cache de session pro (mémoire + localStorage) sans refetch.
+// Utile après que l'utilisateur a modifié son propre profil (ex. opt-in alertes)
+// pour que les écrans suivants reflètent la nouvelle valeur sans re-connexion.
+export function patchProSession(patch: Partial<SessionPro>) {
+  if (!memPro) {
+    const cached = lsGet<SessionPro>(LS_PRO);
+    if (cached) memPro = cached;
+  }
+  if (!memPro) return;
+  memPro = { ...memPro, ...patch };
+  lsSet(LS_PRO, memPro);
 }
 
 // Exposer pour invalider le cache à la déconnexion

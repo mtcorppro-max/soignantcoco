@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useProSession } from "@/lib/hooks/useSession";
+import { useProSession, patchProSession } from "@/lib/hooks/useSession";
 import { LIBELLE_ROLE } from "@/lib/roles";
 
 type Form = {
@@ -18,6 +18,7 @@ export default function MonProfil() {
   const pro = useProSession();
   const [f, setF] = useState<Form>(VIDE);
   const [role, setRole] = useState("");
+  const [recevoirAlertes, setRecevoirAlertes] = useState(false);
   const [pret, setPret] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -40,6 +41,10 @@ export default function MonProfil() {
       });
   }, [pro?.id]);
 
+  // Opt-in alertes : valeur issue de la session (pas de colonne dans le select
+  // ci-dessus, pour rester robuste si la migration 0051 n'est pas encore appliquée).
+  useEffect(() => { setRecevoirAlertes(!!pro?.recevoir_alertes); }, [pro?.recevoir_alertes]);
+
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) => setF((s) => ({ ...s, [k]: e.target.value }));
   const estChir = role === "chirurgien";
   const estInfLib = role === "infirmiere_liberale";
@@ -49,12 +54,13 @@ export default function MonProfil() {
     setBusy(true); setErr(null); setMsg(null);
     const body: Record<string, unknown> = {
       titre: f.titre, prenom: f.prenom, nom: f.nom, telephone: f.telephone, email: f.email,
-      ...(estChir ? { specialite: f.specialite, rpps: f.rpps, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel } : {}),
+      ...(estChir ? { specialite: f.specialite, rpps: f.rpps, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, recevoir_alertes: recevoirAlertes } : {}),
       ...(estInfLib ? { zone_exercice: f.zone_exercice } : {}),
     };
     const res = await fetch(`/api/soignants/${pro.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setBusy(false);
     if (!res.ok) { const j = await res.json().catch(() => null); setErr(j?.message ?? `Échec (HTTP ${res.status}).`); return; }
+    if (estChir) patchProSession({ recevoir_alertes: recevoirAlertes });
     setMsg("Profil mis à jour ✓");
   }
 
@@ -89,6 +95,13 @@ export default function MonProfil() {
                 <div><label className="label">Email secr.</label><input className="input" value={f.secretariat_email} onChange={set("secretariat_email")} inputMode="email" /></div>
                 <div><label className="label">Tél. secr.</label><input className="input" value={f.secretariat_tel} onChange={set("secretariat_tel")} inputMode="tel" /></div>
               </div>
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/40 p-3">
+                <input type="checkbox" checked={recevoirAlertes} onChange={(e) => setRecevoirAlertes(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand" />
+                <span className="text-sm text-slate-700">
+                  Recevoir les alertes patients
+                  <span className="block text-xs text-slate-400">Décoché, vous ne recevez pas les alertes patients ni les messages d&apos;organisation interne (astreintes). Cochez pour afficher le centre d&apos;alertes sur votre tableau de bord.</span>
+                </span>
+              </label>
             </>
           )}
           {estInfLib && (

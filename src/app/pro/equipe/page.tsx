@@ -28,10 +28,11 @@ type Soignant = {
   secretariat_email: string | null;
   secretariat_tel: string | null;
   protocoles: ProtocolePdf[] | null;
+  recevoir_alertes: boolean | null;
 };
 
 const COLS =
-  "id,nom,prenom,titre,role,niveau,agence_id,region_id,email,telephone,specialite,rpps,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles";
+  "id,nom,prenom,titre,role,niveau,agence_id,region_id,email,telephone,specialite,rpps,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles,recevoir_alertes";
 
 // Soignant externe (sans compte) — cf. migrations 0040 / 0041 / 0042.
 type Externe = {
@@ -535,6 +536,7 @@ function EditeurSoignant({
     rpps: soignant.rpps ?? "", specialite: soignant.specialite ?? "", cabinets: soignant.cabinets ?? "",
     secretariat_nom: soignant.secretariat_nom ?? "", secretariat_email: soignant.secretariat_email ?? "", secretariat_tel: soignant.secretariat_tel ?? "",
   });
+  const [recevoirAlertes, setRecevoirAlertes] = useState(!!soignant.recevoir_alertes);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [protocoles, setProtocoles] = useState<Protocole[]>(() => (soignant.protocoles ?? []).map((p) => protocoleDepuis(p as unknown as Record<string, unknown>)));
@@ -547,7 +549,7 @@ function EditeurSoignant({
     setBusy(true); setErr(null);
     const body: Record<string, unknown> = {
       telephone: f.telephone, email: f.email,
-      ...(estChir ? { rpps: f.rpps, specialite: f.specialite, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, protocoles: protocoles.map(protocolePropre) } : {}),
+      ...(estChir ? { rpps: f.rpps, specialite: f.specialite, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, protocoles: protocoles.map(protocolePropre), recevoir_alertes: recevoirAlertes } : {}),
       ...(peutAcces ? { niveau: Number(niveau), agence_id: (niveau === "2" || niveau === "3") ? (agenceId || null) : null, region_id: niveau === "1" ? (regionId || null) : null } : {}),
     };
     const res = await fetch(`/api/soignants/${soignant.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -578,6 +580,14 @@ function EditeurSoignant({
               <div><label className="label">Email secr.</label><input className="input" value={f.secretariat_email} onChange={set("secretariat_email")} inputMode="email" /></div>
               <div><label className="label">Tél. secr.</label><input className="input" value={f.secretariat_tel} onChange={set("secretariat_tel")} inputMode="tel" /></div>
             </div>
+
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/40 p-3">
+              <input type="checkbox" checked={recevoirAlertes} onChange={(e) => setRecevoirAlertes(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand" />
+              <span className="text-sm text-slate-700">
+                Recevoir les alertes patients
+                <span className="block text-xs text-slate-400">Par défaut, le médecin ne reçoit pas les alertes patients ni les messages d&apos;organisation interne (astreintes).</span>
+              </span>
+            </label>
 
             <BlocProtocoles protocoles={protocoles} setProtocoles={setProtocoles} />
           </>

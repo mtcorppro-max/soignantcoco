@@ -66,6 +66,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   const niveauxDispo = optionsNiveau(niveauCreateur);
 
   const [form, setForm] = useState({ ...VIDE });
+  const [recevoirAlertes, setRecevoirAlertes] = useState(false);
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
   const [agenceId, setAgenceId] = useState("");
   const [regionId, setRegionId] = useState("");
@@ -98,6 +99,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
 
   const reset = () => {
     setForm({ ...VIDE });
+    setRecevoirAlertes(false);
     setProtocoles([protocoleVide()]);
     setAgenceId("");
     setRegionId("");
@@ -151,6 +153,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
           agence_id: !estInfLib && (form.niveau === "2" || form.niveau === "3") ? agenceId : null,
           region_id: form.niveau === "1" ? regionId : null,
           protocoles: estChirurgien ? protocoles.map(protocolePropre) : [],
+          recevoir_alertes: estChirurgien ? recevoirAlertes : false,
         }),
       });
       const j = await res.json();
@@ -336,6 +339,13 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
               <label className="label">Adresse du lieu d&apos;exercice</label>
               <input className="input" value={form.cabinets} onChange={set("cabinets")} placeholder="Clinique du Parc à Castelnau-le-Lez / …" />
             </div>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/40 p-3">
+              <input type="checkbox" checked={recevoirAlertes} onChange={(e) => setRecevoirAlertes(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand" />
+              <span className="text-sm text-slate-700">
+                Recevoir les alertes patients
+                <span className="block text-xs text-slate-400">Par défaut, le médecin ne reçoit pas les alertes patients ni les messages d&apos;organisation interne (astreintes). Cochez si ce médecin souhaite être destinataire des alertes patients.</span>
+              </span>
+            </label>
           </div>
 
           <div className="grid gap-4 border-t border-rose-100 pt-4">

@@ -117,6 +117,8 @@ export async function POST(request: Request) {
           secretariat_tel: texteOuNull(body.secretariat_tel),
           protocoles: Array.isArray(body.protocoles) && body.protocoles.length > 0 ? body.protocoles : null,
           ordonnances_types: Array.isArray(body.ordonnances_types) ? body.ordonnances_types : [],
+          // Réception des alertes patients : opt-in explicite (défaut : non).
+          recevoir_alertes: body.recevoir_alertes === true,
         }
       : {
           prenom: texteOuNull(body.prenom),

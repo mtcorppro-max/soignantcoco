@@ -114,6 +114,9 @@ export default function Dashboard() {
   const router = useRouter();
   const data = useData<DashData>("pro:dashboard", fetchDashboard);
   const [validesLocal, setValidesLocal] = useState<Set<string>>(new Set());
+  // Un médecin / chirurgien ne reçoit les alertes patients que s'il l'a demandé.
+  const estMedecin = pro?.role === "chirurgien";
+  const voitAlertes = !estMedecin || !!pro?.recevoir_alertes;
 
   const { patients, parPatient, totalActives, messages, actions } = useMemo<DashData>(() => (
     data ?? {
@@ -149,10 +152,10 @@ export default function Dashboard() {
   return (
     <div className="grid gap-5">
       <AstreinteAlerte />
-      <CentreAlertes />
+      {voitAlertes && <CentreAlertes />}
       <div className="flex items-center justify-between border-t border-rose-100 pt-5">
         <h1 className="text-2xl font-bold text-slate-800">Liste de patients</h1>
-        {!data ? (
+        {!voitAlertes ? null : !data ? (
           <div className="h-6 w-32 animate-pulse rounded-full bg-rose-100" />
         ) : totalActives > 0 ? (
           <a href="#centre-alertes" className="badge bg-critique text-white animate-pulse">
