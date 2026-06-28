@@ -79,6 +79,7 @@ const VIDE = {
   duree_prise_en_charge: "",
   chirurgien: "",
   delegue_nom: "",
+  livreur_nom: "",
   traitement: "",
   traitement_autre: "",
   pharmacie: "",
@@ -141,6 +142,7 @@ export function NouveauPatientForm() {
   const delegues = soignants.filter((s) => s.role === "delegue");
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
   const infirmieres = soignants.filter((s) => s.role === "infirmiere_liberale");
+  const livreurs = soignants.filter((s) => s.role === "livreur");
   const externesMed = externes.filter((e) => e.type === "medecin");
   const externesInf = externes.filter((e) => e.type === "infirmiere");
   const nomExterne = (e: Externe) => [e.titre, e.prenom, e.nom].filter(Boolean).join(" ");
@@ -209,7 +211,7 @@ export function NouveauPatientForm() {
   // Le rattachement est déduit du chirurgien, des coordinatrices d'alerte,
   // de l'infirmière et du délégué médical choisis.
   const rattachementsAuto = () => {
-    const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom, form.infirmiere_nom, form.delegue_nom].filter(Boolean);
+    const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom, form.infirmiere_nom, form.delegue_nom, form.livreur_nom].filter(Boolean);
     const ids = soignants.filter((s) => noms.includes(nomComplet(s))).map((s) => s.id);
     return [...new Set(ids)];
   };
@@ -465,6 +467,21 @@ export function NouveauPatientForm() {
                 : []),
             ]}
           />
+        </div>
+        <div>
+          <label className="label">Livreur</label>
+          <Select
+            value={form.livreur_nom}
+            onChange={(v) => setForm((f) => ({ ...f, livreur_nom: v }))}
+            placeholder={livreurs.length ? "— Choisir un livreur —" : "Aucun livreur"}
+            options={[
+              ...livreurs.map((s) => ({ value: nomComplet(s), label: nomComplet(s) })),
+              ...(form.livreur_nom && !livreurs.some((s) => nomComplet(s) === form.livreur_nom)
+                ? [{ value: form.livreur_nom, label: form.livreur_nom }]
+                : []),
+            ]}
+          />
+          <p className="mt-1 text-xs text-slate-400">Le livreur rattaché verra ce patient dans sa tournée et planifiera la livraison.</p>
         </div>
         <div>
           <label className="label">Alerte 1 — infirmière coordinatrice</label>

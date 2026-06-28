@@ -122,7 +122,22 @@ export interface Patient {
   date_sortie: string | null;
   // Délégué médical rattaché (cf. migration 0046)
   delegue_nom: string | null;
+  // Livreur rattaché (cf. migration 0055)
+  livreur_nom: string | null;
   created_at: string;
+}
+
+// Livraison (tournée du livreur) — cf. migration 0056
+export interface Livraison {
+  id: string;
+  patient_id: string;
+  livreur_id: string;
+  prestataire_id: string;
+  date_prevue: string | null;
+  statut: "a_planifier" | "planifiee" | "livree";
+  note: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Seuil {

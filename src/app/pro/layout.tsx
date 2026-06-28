@@ -16,6 +16,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   const estN0 = pro?.niveau === 0; // super-admin plateforme : accès à tout
   const estCoord = estCoordOuManager(pro?.role) || estN0;
   const estChir = pro?.role === "chirurgien" && !estN0;
+  const estLivreur = pro?.role === "livreur" && !estN0;
   // Gérer/créer des comptes & l'équipe : niveau 0, 1 ou 2 (hors chirurgien et
   // hors comptes service livreur/pharmacie)
   const peutGerer = estN0 || (!!pro && pro.niveau <= 2 && pro.role !== "chirurgien" && !estRoleService(pro.role));
@@ -107,6 +108,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
               {estCoord && <Onglet href="/pro/suivis" icon="calendar" label="Suivis" pathname={pathname} badge={nbSuivis} />}
               {estCoord && <Onglet href="/pro/calendrier" icon="clipboard" label="Organisation" pathname={pathname} badge={nbDemandes} />}
               {estChir && <Onglet href="/pro/a-signer" icon="document" label="À signer" pathname={pathname} badge={nbASigner} />}
+              {estLivreur && <Onglet href="/pro/livraisons" icon="truck" label="Tournée" pathname={pathname} />}
               {peutGerer && <Onglet href="/pro/equipe" icon="users" label="Équipe soignante" pathname={pathname} />}
               <Onglet href="/pro/messagerie" icon="message" label="Messagerie" pathname={pathname} badge={nbMessages} />
               {peutPec && <Onglet href="/pro/pec" icon="chart" label="PEC" pathname={pathname} />}
@@ -144,6 +146,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         {estCoord && <NavItem href="/pro/suivis" icon="calendar" label="Suivis" badge={nbSuivis} />}
         {estCoord && <NavItem href="/pro/calendrier" icon="clipboard" label="Organisation" badge={nbDemandes} />}
         {estChir && <NavItem href="/pro/a-signer" icon="document" label="À signer" badge={nbASigner} />}
+        {estLivreur && <NavItem href="/pro/livraisons" icon="truck" label="Tournée" />}
         {peutGerer && <NavItem href="/pro/equipe" icon="users" label="Équipe" />}
         <NavItem href="/pro/messagerie" icon="message" label="Messages" badge={nbMessages} />
         {peutPec && <NavItem href="/pro/pec" icon="chart" label="PEC" />}
@@ -210,6 +213,7 @@ function IconeNav({ name, className }: { name: string; className?: string }) {
     plus: (<><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></>),
     message: (<><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /></>),
     document: (<><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h6" /></>),
+    truck: (<><path d="M3 6h11v9H3z" /><path d="M14 9h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.6" /><circle cx="17" cy="18" r="1.6" /></>),
   };
   return (
     <svg viewBox="0 0 24 24" className={className} {...p} aria-hidden="true">

@@ -103,6 +103,7 @@ export async function POST(request: Request) {
       traitement: body.traitement || null,
       date_sortie: body.date_sortie || null,
       delegue_nom: body.delegue_nom || null,
+      livreur_nom: body.livreur_nom || null,
       // Agence : celle choisie, sinon l'agence du créateur (pour la visibilité niveau 1/2)
       agence_id: (typeof body.agence_id === "string" && body.agence_id) || pro.agence_id || null,
     })

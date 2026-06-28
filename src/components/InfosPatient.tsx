@@ -20,7 +20,7 @@ const nomComplet = (s: { titre: string | null; prenom: string | null; nom: strin
 // Champs administratifs éditables de la fiche patient.
 const CHAMPS = [
   "date_naissance", "telephone", "email", "adresse", "code_postal", "ville",
-  "operation", "date_operation", "duree_prise_en_charge", "traitement", "chirurgien", "delegue_nom", "pharmacie", "pharmacie_tel", "infirmiere_nom", "infirmiere_tel",
+  "operation", "date_operation", "duree_prise_en_charge", "traitement", "chirurgien", "delegue_nom", "livreur_nom", "pharmacie", "pharmacie_tel", "infirmiere_nom", "infirmiere_tel",
   "proche_nom", "proche_tel",
   "alerte_1_nom", "tel_alerte_1", "alerte_2_nom", "tel_alerte_2",
 ] as const;
@@ -110,6 +110,7 @@ export function InfosPatient({
   const delegues = soignants.filter((s) => s.role === "delegue");
   const chirurgiens = soignants.filter((s) => s.role === "chirurgien");
   const infirmieres = soignants.filter((s) => s.role === "infirmiere_liberale");
+  const livreurs = soignants.filter((s) => s.role === "livreur");
   const externesMed = externes.filter((e) => e.type === "medecin");
   const externesInf = externes.filter((e) => e.type === "infirmiere");
 
@@ -200,8 +201,9 @@ export function InfosPatient({
       return;
     }
 
-    // Rattachement déduit du chirurgien + des coordinatrices d'alerte choisis.
-    const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom, form.infirmiere_nom].filter(Boolean);
+    // Rattachement déduit du chirurgien + des coordinatrices d'alerte + de
+    // l'infirmière, du délégué et du livreur choisis.
+    const noms = [form.chirurgien, form.alerte_1_nom, form.alerte_2_nom, form.infirmiere_nom, form.delegue_nom, form.livreur_nom].filter(Boolean);
     const ids = [...new Set(soignants.filter((s) => noms.includes(nomComplet(s))).map((s) => s.id))];
     // On resynchronise : suppression puis réinsertion (droits coordinatrice/niveau 1).
     await supabase.from("patient_soignant").delete().eq("patient_id", patient.id);
@@ -332,6 +334,7 @@ export function InfosPatient({
             )}
           </div>
           <SelectSoignant label="Délégué médical (rattaché)" value={form.delegue_nom} soignants={delegues} onChange={(v) => setVal("delegue_nom", v)} />
+          <SelectSoignant label="Livreur (rattaché)" value={form.livreur_nom} soignants={livreurs} onChange={(v) => setVal("livreur_nom", v)} />
           <SelectSoignant label="Alerte 1 — infirmière coordinatrice" value={form.alerte_1_nom} soignants={coordinatrices} onChange={choisirAlerte("alerte_1_nom", "tel_alerte_1")} />
           <SelectSoignant label="Alerte 2 — infirmière coordinatrice" value={form.alerte_2_nom} soignants={coordinatrices} onChange={choisirAlerte("alerte_2_nom", "tel_alerte_2")} />
         </div>
@@ -413,6 +416,7 @@ export function InfosPatient({
               extra={vue.infirmiere_tel}
               href={vue.infirmiere_tel ? `tel:${vue.infirmiere_tel}` : undefined}
             />
+            <Ligne label="Livreur" value={vue.livreur_nom} />
             <Ligne
               label={vue.alerte_1_nom ? `Alerte 1 · ${vue.alerte_1_nom}` : "N° alerte 1"}
               value={vue.tel_alerte_1}
