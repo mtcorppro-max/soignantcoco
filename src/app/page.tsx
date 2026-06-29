@@ -220,7 +220,7 @@ export default function Landing() {
             </p>
             <p className="mx-auto mt-5 max-w-2xl leading-relaxed text-slate-500">
               Chacun a sa vue, ses droits, ses outils. Cloisonnement strict des
-              données par région et par agence — sécurité jusqu&apos;à la base de
+              données par région et par agence. Sécurité jusqu&apos;à la base de
               données.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
