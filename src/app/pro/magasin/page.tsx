@@ -15,8 +15,10 @@ type Ligne = {
   reserve: number;
   seuil: number;
   location: boolean;
+  maintenanceJours: number;
+  locationMax: number | null;
 };
-type ArtEmbed = { designation: string; est_location: boolean };
+type ArtEmbed = { designation: string; est_location: boolean; maintenance_jours: number; location_max_jours: number | null };
 type StockRow = {
   id: string;
   article_code: string;
@@ -34,6 +36,7 @@ export default function MagasinPage() {
   const [pret, setPret] = useState(false);
   const [q, setQ] = useState("");
   const [stockBas, setStockBas] = useState(false);
+  const [locOnly, setLocOnly] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const peutAcceder = pro?.role === "magasinier" || pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
@@ -49,7 +52,7 @@ export default function MagasinPage() {
       for (let from = 0; ; from += chunk) {
         const { data, error } = await supabase
           .from("stock")
-          .select("id,article_code,quantite,en_commande,seuil_alerte,article:article_code(designation,est_location)")
+          .select("id,article_code,quantite,en_commande,seuil_alerte,article:article_code(designation,est_location,maintenance_jours,location_max_jours)")
           .order("article_code")
           .range(from, from + chunk - 1);
         if (error || !data) break;
@@ -73,6 +76,8 @@ export default function MagasinPage() {
             seuil: s.seuil_alerte ?? 0,
             designation: a?.designation ?? "",
             location: !!a?.est_location,
+            maintenanceJours: a?.maintenance_jours ?? 365,
+            locationMax: a?.location_max_jours ?? null,
           };
         })
       );
@@ -81,14 +86,16 @@ export default function MagasinPage() {
   }, [pro, peutAcceder]);
 
   const nbBas = useMemo(() => lignes.filter((l) => !l.location && l.quantite <= l.seuil).length, [lignes]);
+  const nbLoc = useMemo(() => lignes.filter((l) => l.location).length, [lignes]);
 
   const filtrees = useMemo(() => {
     const t = q.trim().toLowerCase();
     let r = lignes;
     if (t) r = r.filter((l) => l.code.toLowerCase().includes(t) || l.designation.toLowerCase().includes(t));
     if (stockBas) r = r.filter((l) => !l.location && l.quantite <= l.seuil);
+    if (locOnly) r = r.filter((l) => l.location);
     return r;
-  }, [lignes, q, stockBas]);
+  }, [lignes, q, stockBas, locOnly]);
 
   async function maj(l: Ligne, champ: "quantite" | "seuil_alerte", val: number) {
     if (isNaN(val) || val < 0) return;
@@ -111,6 +118,18 @@ export default function MagasinPage() {
     setSavingId(null);
     if (error) { alert("Échec : " + error.message); return; }
     setLignes((arr) => arr.map((x) => (x.id === l.id ? { ...x, location: val } : x)));
+  }
+
+  // Règles de location par article : intervalle de maintenance / durée max (0 = pas de limite).
+  async function majRegle(l: Ligne, champ: "maintenance_jours" | "location_max_jours", val: number) {
+    if (isNaN(val) || val < 0) return;
+    const actuel = champ === "maintenance_jours" ? l.maintenanceJours : (l.locationMax ?? 0);
+    if (val === actuel) return;
+    setSavingId(l.id);
+    const { error } = await createClient().from("article").update({ [champ]: val }).eq("code", l.code);
+    setSavingId(null);
+    if (error) { alert("Échec : " + error.message); return; }
+    setLignes((arr) => arr.map((x) => (x.id === l.id ? { ...x, ...(champ === "maintenance_jours" ? { maintenanceJours: val } : { locationMax: val }) } : x)));
   }
 
   if (pro && !peutAcceder) {
@@ -146,6 +165,15 @@ export default function MagasinPage() {
         >
           <IconeAlerte /> Stock bas{nbBas > 0 ? ` (${nbBas})` : ""}
         </button>
+        {peutEditer && (
+          <button
+            onClick={() => setLocOnly((v) => !v)}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${locOnly ? "border-sky-300 bg-sky-100 text-sky-700" : "border-rose-200 bg-white text-slate-600 hover:bg-rose-50"}`}
+            title="Articles marqués « matériel de location » — à vérifier/ajuster"
+          >
+            Location{nbLoc > 0 ? ` (${nbLoc})` : ""}
+          </button>
+        )}
         <button
           onClick={() => {
             const sel = filtrees.slice(0, 200);
@@ -183,10 +211,30 @@ export default function MagasinPage() {
                 </div>
                 {peutEditer ? (
                   l.location ? (
-                    <div className="flex shrink-0 items-center gap-3 text-xs">
-                      <Link href="/pro/parc" className="text-sky-600 hover:underline">Géré au parc →</Link>
-                      <button onClick={() => majLocation(l, false)} className="text-slate-400 hover:text-critique">Retirer « location »</button>
-                      <span className="text-slate-400">{savingId === l.id ? "…" : ""}</span>
+                    <div className="flex shrink-0 flex-wrap items-end justify-end gap-3">
+                      <label className="text-xs text-slate-400">
+                        Maintenance (j)
+                        <input
+                          type="number" min={0} defaultValue={l.maintenanceJours}
+                          onBlur={(e) => majRegle(l, "maintenance_jours", parseInt(e.target.value, 10))}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="input mt-0.5 w-20 text-right"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-400" title="Durée de location au-delà de laquelle une alerte se déclenche (0 = pas de limite)">
+                        Durée max (j)
+                        <input
+                          type="number" min={0} defaultValue={l.locationMax ?? 0}
+                          onBlur={(e) => majRegle(l, "location_max_jours", parseInt(e.target.value, 10))}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="input mt-0.5 w-20 text-right"
+                        />
+                      </label>
+                      <div className="flex items-center gap-3 pb-2 text-xs">
+                        <Link href="/pro/parc" className="text-sky-600 hover:underline">Parc →</Link>
+                        <button onClick={() => majLocation(l, false)} className="text-slate-400 hover:text-critique">Retirer</button>
+                        <span className="text-slate-400">{savingId === l.id ? "…" : ""}</span>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex shrink-0 flex-wrap items-end gap-3">
