@@ -211,14 +211,14 @@ export default function Landing() {
         </section>
 
         {/* ── Huit rôles ──────────────────────────────────────── */}
-        <section className="bg-rose-900 py-20">
+        <section className="bg-white py-20">
           <div className="mx-auto max-w-3xl px-6 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-rose-300">Une plateforme, tous les métiers</p>
-            <h2 className="mt-2 text-3xl font-bold text-white md:text-4xl">Huit rôles, un seul outil.</h2>
-            <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-relaxed text-white/90">
+            <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Une plateforme, tous les métiers</p>
+            <h2 className="mt-2 text-3xl font-bold text-slate-800 md:text-4xl">Huit rôles, un seul outil.</h2>
+            <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-relaxed text-slate-700">
               {ROLES.join(" · ")}
             </p>
-            <p className="mx-auto mt-5 max-w-2xl leading-relaxed text-rose-200">
+            <p className="mx-auto mt-5 max-w-2xl leading-relaxed text-slate-500">
               Chacun a sa vue, ses droits, ses outils. Cloisonnement strict des
               données par région et par agence — sécurité jusqu&apos;à la base de
               données.
