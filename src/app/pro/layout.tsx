@@ -148,6 +148,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         { href: "/pro", icon: "dashboard", label: "Tableau" },
         ...(estCoord ? [{ href: "/pro/suivis", icon: "calendar", label: "Suivis", badge: nbSuivis }] : []),
         ...(estCoord ? [{ href: "/pro/calendrier", icon: "clipboard", label: "Organisation", badge: nbDemandes }] : []),
+        ...(estCoord ? [{ href: "/pro/livraisons", icon: "truck", label: "Ma tournée" }] : []),
         ...(estChir ? [{ href: "/pro/a-signer", icon: "document", label: "À signer", badge: nbASigner }] : []),
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
         ...(peutGerer ? [{ href: "/pro/equipe", icon: "users", label: "Équipe" }] : []),
@@ -184,6 +185,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                   <Onglet href="/pro" icon="dashboard" label="Tableau de bord" pathname={pathname} exact />
                   {estCoord && <Onglet href="/pro/suivis" icon="calendar" label="Suivis" pathname={pathname} badge={nbSuivis} />}
                   {estCoord && <Onglet href="/pro/calendrier" icon="clipboard" label="Organisation" pathname={pathname} badge={nbDemandes} />}
+                  {estCoord && <Onglet href="/pro/livraisons" icon="truck" label="Ma tournée" pathname={pathname} />}
                   {estChir && <Onglet href="/pro/a-signer" icon="document" label="À signer" pathname={pathname} badge={nbASigner} />}
                   {peutGerer && <Onglet href="/pro/equipe" icon="users" label="Équipe soignante" pathname={pathname} />}
                   <Onglet href="/pro/messagerie" icon="message" label="Messagerie" pathname={pathname} badge={nbMessages} />

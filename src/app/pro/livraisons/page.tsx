@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
+import { estCoordOuManager } from "@/lib/roles";
 import { DateField } from "@/components/DateField";
 import { CarteLivraisons, type PointLivraison } from "@/components/CarteLivraisons";
 import { geocodeAdresse, type LatLng } from "@/lib/geocode";
@@ -13,6 +15,7 @@ type PatientLite = {
   adresse: string | null;
   code_postal: string | null;
   ville: string | null;
+  agence_id: string | null;
   telephone: string | null;
   date_naissance: string | null;
   email: string | null;
@@ -64,10 +67,11 @@ function lienGoogleMaps(pts: PointLivraison[]): string | null {
 }
 
 const PATIENT_COLS =
-  "id,nom,adresse,code_postal,ville,telephone,date_naissance,email,proche_nom,proche_tel,operation,date_operation,chirurgien,traitement,pharmacie,pharmacie_tel,infirmiere_nom,infirmiere_tel,duree_prise_en_charge";
+  "id,nom,adresse,code_postal,ville,agence_id,telephone,date_naissance,email,proche_nom,proche_tel,operation,date_operation,chirurgien,traitement,pharmacie,pharmacie_tel,infirmiere_nom,infirmiere_tel,duree_prise_en_charge";
 
 export default function LivraisonsPage() {
   const pro = useProSession();
+  const router = useRouter();
   const [livs, setLivs] = useState<Liv[]>([]);
   const [pret, setPret] = useState(false);
   const [jour, setJour] = useState(todayIso());
@@ -78,20 +82,25 @@ export default function LivraisonsPage() {
     setOuverts((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const estLivreur = pro?.role === "livreur";
+  const estCoord = estCoordOuManager(pro?.role);
+  // Livreurs ET coordinatrices/managers peuvent effectuer des livraisons.
+  const peutLivrer = estLivreur || estCoord;
 
   const charger = useCallback(async () => {
-    if (!pro?.id || !estLivreur) return;
+    if (!pro?.id || !peutLivrer) return;
     const { data } = await createClient()
       .from("livraison")
       .select(`id,patient_id,livreur_id,statut,date_prevue,patient:patient_id(${PATIENT_COLS})`)
       .order("date_prevue", { ascending: true });
     setLivs((data ?? []) as unknown as Liv[]);
     setPret(true);
-  }, [pro?.id, estLivreur]);
+  }, [pro?.id, peutLivrer]);
   useEffect(() => { charger(); }, [charger]);
 
-  // Pool de l'agence (non prises) et mes livraisons.
-  const pool = livs.filter((l) => l.statut === "a_programmer" && !l.livreur_id);
+  // Pool : livraisons à programmer non prises. Cloisonné à l'agence du compte
+  // (coordinatrice/livreur niveau 2) ; un manager (sans agence) voit son périmètre.
+  const dansMonAgence = (l: Liv) => !pro?.agence_id || patientDe(l)?.agence_id === pro.agence_id;
+  const pool = livs.filter((l) => l.statut === "a_programmer" && !l.livreur_id && dansMonAgence(l));
   const miennes = livs.filter((l) => l.livreur_id === pro?.id && l.statut !== "a_programmer");
   const planifiees = miennes.filter((l) => l.statut === "planifiee" || l.statut === "a_planifier");
   const livrees = miennes.filter((l) => l.statut === "livree");
@@ -140,8 +149,32 @@ export default function LivraisonsPage() {
   // Prendre en charge une livraison du pool.
   const prendre = (id: string) => maj(id, { livreur_id: pro?.id ?? null, statut: "planifiee" });
 
-  if (pro && !estLivreur) {
-    return <div className="card text-sm text-slate-500">La tournée de livraison est réservée aux comptes livreur.</div>;
+  // Coordinatrice : valide la livraison PUIS ouvre un suivi à remplir en direct.
+  async function livrerEtSuivre(l: Liv) {
+    setBusy(l.id);
+    const { error } = await createClient()
+      .from("livraison")
+      .update({ statut: "livree", updated_at: new Date().toISOString() })
+      .eq("id", l.id);
+    setBusy(null);
+    if (error) { alert("Échec : " + error.message); return; }
+    router.push(`/pro/patients/${l.patient_id}?suivi=1`);
+  }
+
+  // Boutons de clôture : « Livré » + « Livré + suivi » pour la coordinatrice,
+  // « Livrée » seul pour le livreur.
+  const boutonsFin = (l: Liv) =>
+    estCoord ? (
+      <>
+        <button onClick={() => maj(l.id, { statut: "livree" })} disabled={busy === l.id} className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-50">Livré</button>
+        <button onClick={() => livrerEtSuivre(l)} disabled={busy === l.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">{busy === l.id ? "…" : "Livré + suivi"}</button>
+      </>
+    ) : (
+      <button onClick={() => maj(l.id, { statut: "livree" })} disabled={busy === l.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">{busy === l.id ? "…" : "Livrée"}</button>
+    );
+
+  if (pro && !peutLivrer) {
+    return <div className="card text-sm text-slate-500">La tournée de livraison est réservée aux livreurs et aux coordinatrices.</div>;
   }
 
   return (
@@ -183,9 +216,9 @@ export default function LivraisonsPage() {
                       <p className="truncate text-xs text-slate-400">{adresseComplete(p) || "Adresse non renseignée"}{c === null && " · introuvable sur la carte"}</p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                     {p.telephone && <a href={`tel:${p.telephone}`} className="rounded-lg border border-rose-200 px-2 py-1.5 text-sm text-brand hover:bg-rose-50">Appeler</a>}
-                    <button onClick={() => maj(l.id, { statut: "livree" })} disabled={busy === l.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">{busy === l.id ? "…" : "Livrée"}</button>
+                    {boutonsFin(l)}
                   </div>
                 </li>
               );
@@ -242,7 +275,7 @@ export default function LivraisonsPage() {
                       <span className="badge w-fit bg-rose-100 text-brand">{formatDate(l.date_prevue) || "Sans date"}</span>
                       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                         <div className="w-full sm:w-36"><DateField value={l.date_prevue ?? ""} onChange={(v) => v && maj(l.id, { date_prevue: v, statut: "planifiee" })} placeholder="Date" /></div>
-                        <button onClick={() => maj(l.id, { statut: "livree" })} disabled={busy === l.id} className="btn-primary flex-1 px-3 py-1.5 text-sm disabled:opacity-50 sm:flex-none">Livrée</button>
+                        {boutonsFin(l)}
                         <button onClick={() => toggleDetails(p.id)} className="btn-secondary flex-1 px-3 py-1.5 text-sm sm:flex-none">{ouverts.has(p.id) ? "Masquer" : "Détails"}</button>
                       </div>
                     </div>

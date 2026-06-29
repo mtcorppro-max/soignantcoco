@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { genererPdfSuivi } from "@/lib/pdfSuivi";
@@ -42,6 +42,7 @@ export function SuiviPatient({
   const [ouvert, setOuvert] = useState(false);
   const [form, setForm] = useState({ ...VIDE });
   const [busy, setBusy] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -103,6 +104,20 @@ export function SuiviPatient({
     setSelection([]);
     setOuvert(true);
   }
+
+  // Ouverture automatique du suivi quand on arrive avec « ?suivi=1 »
+  // (depuis « Livré + suivi » de la tournée). Nettoie l'URL ensuite.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("suivi") !== "1") return;
+    ouvrir();
+    const url = new URL(window.location.href);
+    url.searchParams.delete("suivi");
+    window.history.replaceState({}, "", url.toString());
+    setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function enregistrer() {
     setBusy(true);
@@ -171,7 +186,7 @@ export function SuiviPatient({
   }
 
   return (
-    <section className="grid gap-3">
+    <section ref={sectionRef} className="grid grid-cols-1 gap-3 scroll-mt-20">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-600">Suivis</h2>
         {!ouvert && (
