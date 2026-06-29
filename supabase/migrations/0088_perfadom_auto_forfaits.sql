@@ -63,7 +63,7 @@ on conflict (mode, type_forfait, palier) do update set lpp_code = excluded.lpp_c
 create or replace function public.appliquer_forfaits_ordonnance(p_ord uuid)
 returns integer language plpgsql security definer set search_path = public as $$
 declare
-  c jsonb; v_pat uuid; v_mode text; n int; per text; palier text; v_dd date; v_df date; rec record; v_n int := 0;
+  c jsonb; v_pat uuid; v_mode text; n int; per text; v_palier text; v_dd date; v_df date; rec record; v_n int := 0;
 begin
   select contenu, patient_id into c, v_pat from public.ordonnance
     where id = p_ord and type = 'perfusion_domicile' and statut = 'signee';
@@ -74,9 +74,9 @@ begin
   n := coalesce(nullif(regexp_replace(coalesce(c->>'frequence_nb', ''), '\D', '', 'g'), '')::int, 1);
   per := lower(coalesce(c->>'frequence_periode', ''));
   if per like 'semaine%' then
-    palier := case when n <= 1 then '1/s' when n <= 3 then '2a3/s' when n <= 6 then '4a6/s' else '1/j' end;
+    v_palier := case when n <= 1 then '1/s' when n <= 3 then '2a3/s' when n <= 6 then '4a6/s' else '1/j' end;
   else
-    palier := case when n <= 1 then '1/j' when n = 2 then '2/j' when n = 3 then '3/j' else '>3/j' end;
+    v_palier := case when n <= 1 then '1/j' when n = 2 then '2/j' when n = 3 then '3/j' else '>3/j' end;
   end if;
 
   v_dd := nullif(c->>'date_debut', '')::date;
@@ -90,7 +90,7 @@ begin
     select pf.lpp_code from public.perfadom_forfait pf
     where pf.mode = v_mode
       and ( (pf.type_forfait in ('installation', 'suivi') and pf.palier = '')
-         or (pf.type_forfait = 'consommables' and pf.palier = palier) )
+         or (pf.type_forfait = 'consommables' and pf.palier = v_palier) )
   loop
     if not exists (select 1 from public.patient_forfait x where x.patient_id = v_pat and x.lpp_code = rec.lpp_code and x.actif) then
       insert into public.patient_forfait (patient_id, lpp_code, date_debut, date_fin, actif)
