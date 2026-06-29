@@ -147,7 +147,10 @@ export default function FacturationPage() {
           <h1 className="text-2xl font-bold text-slate-800">Facturation prévisionnelle Sécu</h1>
           <p className="mt-1 text-sm text-slate-500">Estimation du chiffre d&apos;affaires. <span className="font-medium text-attention">Outil prévisionnel</span> — n&apos;envoie rien à la Sécu.</p>
         </div>
-        <Link href="/pro/pec" className="btn-secondary text-sm">← PEC</Link>
+        <div className="flex items-center gap-2">
+          {(pro?.niveau === 0 || pro?.role === "dirigeant") && <Link href="/pro/pec/facturation/tarifs" className="btn-secondary text-sm">Tarifs LPP ⚙</Link>}
+          <Link href="/pro/pec" className="btn-secondary text-sm">← PEC</Link>
+        </div>
       </div>
 
       {!pret ? (
