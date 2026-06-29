@@ -183,10 +183,9 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         ...(estChir ? [{ href: "/pro/a-signer", icon: "document", label: "À signer", badge: nbASigner }] : []),
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
         ...(peutGerer ? [{ href: "/pro/equipe", icon: "users", label: "Équipe" }] : []),
+        ...(estCoord || estChir || peutGerer ? [{ href: "/pro/nouveau", icon: "plus", label: "Nouveau" }] : []),
         ...(peutPec ? [{ href: "/pro/pec", icon: "chart", label: "PEC" }] : []),
       ];
-  // « Nouveau » sort de la barre mobile → bouton flottant rond en bas à droite.
-  const peutNouveau = estCoord || estChir || peutGerer;
   // Au-delà de 5 entrées : 4 visibles + un bouton « Plus » qui ouvre le reste.
   const enDebordement = entreesMobile.length > 5;
   const entreesVisibles = enDebordement ? entreesMobile.slice(0, 4) : entreesMobile;
@@ -291,18 +290,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
             })}
           </div>
         </>
-      )}
-
-      {/* Bouton flottant « Nouveau » (mobile) — toujours visible en bas à droite. */}
-      {peutNouveau && (
-        <Link
-          href="/pro/nouveau"
-          prefetch
-          aria-label="Nouveau"
-          className="fixed bottom-[4.75rem] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-rose-900/30 transition hover:bg-brand-dark active:scale-95 sm:hidden"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" className="h-7 w-7" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        </Link>
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-rose-100 bg-white sm:hidden">
