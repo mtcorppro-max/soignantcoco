@@ -187,7 +187,7 @@ export default function MagasinPage() {
         )}
       </div>
 
-      {pret && lignes.length > 0 && (
+      {pret && peutEditer && lignes.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50/60 px-3 py-2 text-sm">
           {selection.size > 0 ? (
             <>
@@ -217,13 +217,15 @@ export default function MagasinPage() {
             return (
               <div key={l.id} className={`card grid gap-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center ${selection.has(l.code) ? "border-brand bg-rose-50/40" : bas ? "border-amber-200 bg-amber-50/40" : ""}`}>
                 <div className="flex min-w-0 items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={selection.has(l.code)}
-                    onChange={() => toggleSel(l.code)}
-                    className="mt-1 h-4 w-4 shrink-0 accent-brand"
-                    title="Sélectionner pour impression QR"
-                  />
+                  {peutEditer && (
+                    <input
+                      type="checkbox"
+                      checked={selection.has(l.code)}
+                      onChange={() => toggleSel(l.code)}
+                      className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                      title="Sélectionner pour impression QR"
+                    />
+                  )}
                   <div className="min-w-0">
                     <p className="break-words font-medium text-slate-700">
                       {l.designation}
@@ -235,13 +237,15 @@ export default function MagasinPage() {
                       {l.en_commande > 0 && <span className="ml-2 text-sky-600">· {l.en_commande} en commande</span>}
                       {l.reserve > 0 && <span className="ml-2 text-rose-500">· {l.reserve} réservé(s)</span>}
                     </p>
-                    <button
-                      onClick={() => genererEtiquettes([{ code: l.code, designation: l.designation }])}
-                      className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
-                      title="Imprimer l'étiquette QR de cet article"
-                    >
-                      <IconeTag /> Imprimer QRCODE
-                    </button>
+                    {peutEditer && (
+                      <button
+                        onClick={() => genererEtiquettes([{ code: l.code, designation: l.designation }])}
+                        className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                        title="Imprimer l'étiquette QR de cet article"
+                      >
+                        <IconeTag /> Imprimer QRCODE
+                      </button>
+                    )}
                   </div>
                 </div>
                 {peutEditer ? (
