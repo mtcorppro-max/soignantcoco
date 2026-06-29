@@ -161,19 +161,19 @@ export default function Dashboard() {
   if (pro?.role === "pharmacie" || pro?.role === "livreur" || pro?.role === "dirigeant") return null; // redirigés vers leur espace
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-1 gap-5">
       <AstreinteAlerte />
       {voitAlertes && <CentreAlertes />}
-      <div className="flex items-center justify-between border-t border-rose-100 pt-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rose-100 pt-5">
         <h1 className="text-2xl font-bold text-slate-800">Liste de patients</h1>
         {!voitAlertes ? null : !data ? (
           <div className="h-6 w-32 animate-pulse rounded-full bg-rose-100" />
         ) : totalActives > 0 ? (
-          <a href="#centre-alertes" className="badge bg-critique text-white animate-pulse">
+          <a href="#centre-alertes" className="badge shrink-0 bg-critique text-white animate-pulse">
             {totalActives} alerte(s) active(s)
           </a>
         ) : (
-          <span className="badge bg-green-100 text-ok">Aucune alerte active</span>
+          <span className="badge shrink-0 bg-green-100 text-ok">Aucune alerte active</span>
         )}
       </div>
 
@@ -186,7 +186,7 @@ export default function Dashboard() {
       ) : (
         <>
           {/* ── Cartes mobile ── */}
-          <div className="grid gap-3 md:hidden">
+          <div className="grid grid-cols-1 gap-3 md:hidden">
             {patients.length === 0 && (
               <p className="rounded-2xl border border-rose-100 bg-white px-4 py-8 text-center text-slate-400">
                 Aucun patient. Créez-en un depuis « Nouveau patient ».

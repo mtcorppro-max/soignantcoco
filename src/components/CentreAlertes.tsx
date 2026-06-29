@@ -31,7 +31,7 @@ export function CentreAlertes() {
   };
 
   return (
-    <section id="centre-alertes" className="grid gap-4">
+    <section id="centre-alertes" className="grid grid-cols-1 gap-4">
       <div>
         <h2 className="text-xl font-bold text-slate-800">Centre d&apos;alertes</h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -57,7 +57,7 @@ export function CentreAlertes() {
       ) : alertes.length === 0 ? (
         <div className="card text-center text-slate-400">Aucune alerte en cours. 🌿</div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {alertes.map((a) => (
             <AlerteCard key={a.id} alerte={a} peutTraiter={peutTraiter} proId={pro?.id ?? ""} onUpdated={recharger} />
           ))}
