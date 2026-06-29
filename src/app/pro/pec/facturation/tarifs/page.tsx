@@ -103,7 +103,7 @@ export default function TarifsLppPage() {
                 onBlur={(e) => { const v = e.target.value.trim(); if (v !== l.libelle) maj(l.code, { libelle: v }); }}
               />
               <div className="flex flex-wrap items-end gap-3">
-                <label className="text-xs text-slate-400">
+                <label className="flex flex-col text-xs text-slate-400">
                   Prix TTC (€)
                   <input
                     type="number" step="0.01" min={0} defaultValue={l.prix_ttc ?? ""}
@@ -112,11 +112,11 @@ export default function TarifsLppPage() {
                     className="input mt-0.5 w-28 text-right"
                   />
                 </label>
-                <label className="text-xs text-slate-400">
+                <label className="flex flex-col text-xs text-slate-400">
                   Périodicité
                   <div className="mt-0.5 w-40"><Select value={l.periodicite} onChange={(v) => maj(l.code, { periodicite: v })} options={PERIODICITES} /></div>
                 </label>
-                <label className="text-xs text-slate-400">
+                <label className="flex flex-col text-xs text-slate-400">
                   Famille
                   <div className="mt-0.5 w-44"><Select value={l.famille ?? ""} onChange={(v) => maj(l.code, { famille: v || null })} options={FAMILLES} /></div>
                 </label>

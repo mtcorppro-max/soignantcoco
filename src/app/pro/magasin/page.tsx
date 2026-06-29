@@ -251,7 +251,7 @@ export default function MagasinPage() {
                 {peutEditer ? (
                   l.location ? (
                     <div className="flex shrink-0 flex-wrap items-end justify-end gap-3">
-                      <label className="text-xs text-slate-400" title="Intervalle de maintenance préventive — 0 = aucune (ex. attelles, machines cryo)">
+                      <label className="flex flex-col text-xs text-slate-400" title="Intervalle de maintenance préventive — 0 = aucune (ex. attelles, machines cryo)">
                         Maintenance (j)
                         <input
                           type="number" min={0} defaultValue={l.maintenanceJours}
@@ -260,7 +260,7 @@ export default function MagasinPage() {
                           className="input mt-0.5 w-20 text-right"
                         />
                       </label>
-                      <label className="text-xs text-slate-400" title="Durée de location au-delà de laquelle une alerte se déclenche (0 = pas de limite)">
+                      <label className="flex flex-col text-xs text-slate-400" title="Durée de location au-delà de laquelle une alerte se déclenche (0 = pas de limite)">
                         Durée max (j)
                         <input
                           type="number" min={0} defaultValue={l.locationMax ?? 0}
@@ -277,7 +277,7 @@ export default function MagasinPage() {
                     </div>
                   ) : (
                     <div className="flex shrink-0 flex-wrap items-end gap-3">
-                      <label className="text-xs text-slate-400">
+                      <label className="flex flex-col text-xs text-slate-400">
                         Disponible
                         <input
                           type="number" min={0} defaultValue={l.quantite}
@@ -286,7 +286,7 @@ export default function MagasinPage() {
                           className="input mt-0.5 w-20 text-right"
                         />
                       </label>
-                      <label className="text-xs text-slate-400">
+                      <label className="flex flex-col text-xs text-slate-400">
                         Seuil
                         <input
                           type="number" min={0} defaultValue={l.seuil}
