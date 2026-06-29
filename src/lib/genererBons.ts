@@ -106,3 +106,27 @@ export async function genererBonLivraison(
   }
   doc.save(`bon-livraison-${info.reference}${signature ? "-signe" : ""}.pdf`);
 }
+
+// Planche d'étiquettes QR (une par article) — le QR encode la référence,
+// scannée à la préparation pour cocher le panier.
+export async function genererEtiquettes(articles: { code: string; designation: string }[]) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const COLS = 3, RANGS = 8, CW = 63, CH = 33, X0 = 9, Y0 = 12;
+  for (let i = 0; i < articles.length; i++) {
+    if (i > 0 && i % (COLS * RANGS) === 0) doc.addPage();
+    const a = articles[i];
+    const idx = i % (COLS * RANGS);
+    const x = X0 + (idx % COLS) * CW;
+    const y = Y0 + Math.floor(idx / COLS) * CH;
+    try {
+      const qr = await QRCode.toDataURL(a.code, { margin: 0, width: 120 });
+      doc.addImage(qr, "PNG", x, y, 22, 22);
+    } catch { /* QR non bloquant */ }
+    doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...NOIR);
+    const des = a.designation.length > 46 ? a.designation.slice(0, 45) + "…" : a.designation;
+    doc.text(des, x + 24, y + 4, { maxWidth: CW - 25 });
+    doc.setFontSize(8); doc.setTextColor(...GRIS);
+    doc.text(a.code, x + 24, y + 20);
+  }
+  doc.save("etiquettes-qr.pdf");
+}

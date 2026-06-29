@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
+import { genererEtiquettes } from "@/lib/genererBons";
 
 type Ligne = {
   id: string;
@@ -127,6 +128,17 @@ export default function MagasinPage() {
           className={`shrink-0 rounded-xl border px-3 py-2 text-sm font-medium transition ${stockBas ? "border-amber-300 bg-amber-100 text-attention" : "border-rose-200 bg-white text-slate-600 hover:bg-rose-50"}`}
         >
           ⚠️ Stock bas{nbBas > 0 ? ` (${nbBas})` : ""}
+        </button>
+        <button
+          onClick={() => {
+            const sel = filtrees.slice(0, 200);
+            if (filtrees.length > 200 && !confirm(`${filtrees.length} articles filtrés. Générer les étiquettes des 200 premiers ? (affinez la recherche pour cibler)`)) return;
+            genererEtiquettes(sel.map((l) => ({ code: l.code, designation: l.designation })));
+          }}
+          className="shrink-0 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-rose-50"
+          title="Planche d'étiquettes QR (une par article) à imprimer"
+        >
+          🏷️ Étiquettes QR
         </button>
       </div>
 

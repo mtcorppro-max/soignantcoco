@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { SignaturePad } from "@/components/SignaturePad";
+import { Scanner } from "@/components/Scanner";
 import { genererBonCommande, genererBonLivraison, type BonLigne, type BonPatient } from "@/lib/genererBons";
 
 type Patient = { nom: string; adresse: string | null; code_postal: string | null; ville: string | null; telephone: string | null; agence_id: string | null };
@@ -32,6 +33,9 @@ export default function PreparationsPage() {
   const [pret, setPret] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [signer, setSigner] = useState<Liv | null>(null);
+  const [scanArticle, setScanArticle] = useState<Liv | null>(null);
+  const [scanBon, setScanBon] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const peutAcceder = pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
 
@@ -81,6 +85,33 @@ export default function PreparationsPage() {
     charger();
   }
 
+  // Scan d'un article → coche la ligne correspondante du panier en cours.
+  function scanArticleScan(texte: string) {
+    const liv = livs.find((x) => x.id === scanArticle?.id);
+    if (!liv) return;
+    const code = texte.trim();
+    const ligne = liv.lignes.find((x) => x.article_code === code);
+    if (ligne && !ligne.prepare) togglePrepare(ligne.id, true);
+  }
+  // Scan d'un bon de livraison (QR = URL avec ?l=) → met en évidence la livraison.
+  function scanBonScan(texte: string) {
+    let l = "";
+    try { l = new URL(texte).searchParams.get("l") ?? ""; } catch { l = ""; }
+    setScanBon(false);
+    if (l) setOpenId(l); else alert("QR non reconnu.");
+  }
+  // Ouverture via ?l= (depuis un QR scanné par l'appareil photo natif).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const l = new URLSearchParams(window.location.search).get("l");
+    if (l) setOpenId(l);
+  }, []);
+  useEffect(() => {
+    if (!openId || !pret) return;
+    const el = document.getElementById("liv-" + openId);
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  }, [openId, pret]);
+
   if (pro && !peutAcceder) {
     return <div className="card text-sm text-slate-500">La préparation de commande est réservée aux coordinatrices et aux livreurs.</div>;
   }
@@ -94,13 +125,16 @@ export default function PreparationsPage() {
     const nbPrep = l.lignes.filter((x) => x.prepare).length;
     const editable = l.statut === "planifiee";
     return (
-      <div key={l.id} className="card grid grid-cols-1 gap-3">
+      <div key={l.id} id={`liv-${l.id}`} className={`card grid grid-cols-1 gap-3 ${openId === l.id ? "ring-2 ring-brand ring-offset-2" : ""}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="font-semibold text-slate-700">{p?.nom ?? "Patient"}</p>
             <p className="text-xs text-slate-400">Bon n° {ref(l)} · {l.lignes.length} article(s) · préparés {nbPrep}/{l.lignes.length}</p>
           </div>
-          <button onClick={() => genererBonCommande({ reference: ref(l) }, bonPatient(p), bonLignes(l))} className="btn-secondary px-3 py-1.5 text-sm">📄 Bon de commande</button>
+          <div className="flex flex-wrap items-center gap-2">
+            {editable && <button onClick={() => setScanArticle(l)} className="btn-secondary px-3 py-1.5 text-sm">📷 Scanner</button>}
+            <button onClick={() => genererBonCommande({ reference: ref(l) }, bonPatient(p), bonLignes(l))} className="btn-secondary px-3 py-1.5 text-sm">📄 Bon de commande</button>
+          </div>
         </div>
 
         {/* Panier / picking */}
@@ -139,9 +173,12 @@ export default function PreparationsPage() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Préparation de commande</h1>
-        <p className="mt-1 text-sm text-slate-500">Préparez le panier, validez (bon de livraison), livrez avec signature.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Préparation de commande</h1>
+          <p className="mt-1 text-sm text-slate-500">Préparez le panier, validez (bon de livraison), livrez avec signature.</p>
+        </div>
+        <button onClick={() => setScanBon(true)} className="btn-secondary text-sm">📷 Scanner un bon</button>
       </div>
 
       {!pret ? (
@@ -157,6 +194,8 @@ export default function PreparationsPage() {
       )}
 
       {signer && <SignaturePad onValider={confirmerLivraison} onAnnuler={() => setSigner(null)} />}
+      {scanArticle && <Scanner continu titre="Scanner les articles" onScan={scanArticleScan} onClose={() => setScanArticle(null)} />}
+      {scanBon && <Scanner titre="Scanner un bon de livraison" onScan={scanBonScan} onClose={() => setScanBon(false)} />}
     </div>
   );
 }
