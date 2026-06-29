@@ -5,11 +5,17 @@ import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { SignaturePad } from "@/components/SignaturePad";
 import { Scanner } from "@/components/Scanner";
-import { EquipementsLivraison } from "@/components/EquipementsLivraison";
+import { Select } from "@/components/Select";
 import { genererBonCommande, genererBonLivraison, type BonLigne, type BonPatient } from "@/lib/genererBons";
 
 type Patient = { nom: string; adresse: string | null; code_postal: string | null; ville: string | null; telephone: string | null; agence_id: string | null };
-type Ligne = { id: string; article_code: string; quantite: number; prepare: boolean; article: { designation: string } | { designation: string }[] | null };
+type ArtEmbed = { designation: string; est_location: boolean };
+type Ligne = {
+  id: string; article_code: string; quantite: number; prepare: boolean; equipement_id: string | null;
+  article: ArtEmbed | ArtEmbed[] | null;
+  equipement: { numero_serie: string } | { numero_serie: string }[] | null;
+};
+type Dispo = { id: string; numero_serie: string; article_code: string };
 type Liv = {
   id: string; patient_id: string; statut: string; date_prevue: string | null;
   signataire: string | null; livree_le: string | null;
@@ -34,8 +40,10 @@ function bip(ok: boolean) {
   } catch { /* audio non dispo */ }
 }
 
-type EquipRecup = { id: string; numero_serie: string; type: { nom: string } | { nom: string }[] | null; patient: { nom: string } | { nom: string }[] | null };
+type EquipRecup = { id: string; numero_serie: string; article: { designation: string } | { designation: string }[] | null; patient: { nom: string } | { nom: string }[] | null };
 const nomDe = (v: { nom: string } | { nom: string }[] | null) => (Array.isArray(v) ? v[0]?.nom : v?.nom) ?? "";
+const estLoc = (a: ArtEmbed | ArtEmbed[] | null) => !!(Array.isArray(a) ? a[0]?.est_location : a?.est_location);
+const serie = (v: { numero_serie: string } | { numero_serie: string }[] | null) => (Array.isArray(v) ? v[0]?.numero_serie : v?.numero_serie) ?? "";
 
 const patientDe = (l: Liv) => (Array.isArray(l.patient) ? l.patient[0] : l.patient) ?? null;
 const desig = (a: Ligne["article"]) => (Array.isArray(a) ? a[0]?.designation : a?.designation) ?? "";
@@ -58,6 +66,7 @@ export default function PreparationsPage() {
   const [scanBon, setScanBon] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [aRecup, setARecup] = useState<EquipRecup[]>([]);
+  const [dispos, setDispos] = useState<Dispo[]>([]);
   const peutRecup = pro?.role === "livreur" || pro?.role === "magasinier" || pro?.niveau === 0;
   const [feedback, setFeedback] = useState<{ type: "ok" | "info" | "erreur"; msg: string } | null>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -70,7 +79,7 @@ export default function PreparationsPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("livraison")
-      .select("id,patient_id,statut,date_prevue,signataire,livree_le,patient:patient_id(nom,adresse,code_postal,ville,telephone,agence_id),lignes:livraison_ligne(id,article_code,quantite,prepare,article:article_code(designation))")
+      .select("id,patient_id,statut,date_prevue,signataire,livree_le,patient:patient_id(nom,adresse,code_postal,ville,telephone,agence_id),lignes:livraison_ligne(id,article_code,quantite,prepare,equipement_id,article:article_code(designation,est_location),equipement:equipement_id(numero_serie))")
       .in("statut", ["planifiee", "preparee", "livree"])
       .order("date_prevue", { ascending: true });
     let arr = (data ?? []) as unknown as Liv[];
@@ -80,16 +89,38 @@ export default function PreparationsPage() {
     // Matériel de location chez les patients (à récupérer).
     const { data: eq } = await supabase
       .from("equipement")
-      .select("id,numero_serie,type:type_id(nom),patient:patient_actuel_id(nom)")
+      .select("id,numero_serie,article:article_code(designation),patient:patient_actuel_id(nom)")
       .eq("statut", "chez_patient");
     setARecup((eq ?? []) as unknown as EquipRecup[]);
+    // Appareils disponibles (affectation par le magasinier).
+    if (pro?.role === "magasinier" || pro?.niveau === 0) {
+      const { data: d } = await supabase.from("equipement").select("id,numero_serie,article_code").eq("statut", "disponible");
+      setDispos((d ?? []) as Dispo[]);
+    }
     setPret(true);
-  }, [pro?.agence_id]);
+  }, [pro?.agence_id, pro?.role, pro?.niveau]);
   useEffect(() => { if (pro && peutAcceder) charger(); else if (pro) setPret(true); }, [pro, peutAcceder, charger]);
 
   async function togglePrepare(ligneId: string, v: boolean) {
     await createClient().from("livraison_ligne").update({ prepare: v }).eq("id", ligneId);
     setLivs((arr) => arr.map((l) => ({ ...l, lignes: l.lignes.map((x) => (x.id === ligneId ? { ...x, prepare: v } : x)) })));
+  }
+  // Affecte un appareil (n° de série) à une ligne de location.
+  async function affecterSerie(livId: string, ligne: Ligne, equipementId: string) {
+    const supabase = createClient();
+    const auteur = [pro?.prenom, pro?.nom].filter(Boolean).join(" ") || null;
+    const r = await supabase.from("livraison_ligne").update({ equipement_id: equipementId }).eq("id", ligne.id);
+    if (r.error) { alert("Échec : " + r.error.message); return; }
+    await supabase.from("equipement").update({ statut: "affecte", livraison_id: livId, updated_at: new Date().toISOString() }).eq("id", equipementId);
+    await supabase.from("equipement_mouvement").insert({ equipement_id: equipementId, type_mouvement: "affectation", livraison_id: livId, auteur_id: pro?.id ?? null, auteur_nom: auteur });
+    setDispos((arr) => arr.filter((d) => d.id !== equipementId));
+    charger();
+  }
+  async function desaffecterSerie(ligne: Ligne) {
+    const supabase = createClient();
+    if (ligne.equipement_id) await supabase.from("equipement").update({ statut: "disponible", livraison_id: null }).eq("id", ligne.equipement_id);
+    await supabase.from("livraison_ligne").update({ equipement_id: null }).eq("id", ligne.id);
+    charger();
   }
 
   const urlQR = (l: Liv) => `${typeof window !== "undefined" ? window.location.origin : ""}/pro/preparations?l=${l.id}`;
@@ -104,7 +135,7 @@ export default function PreparationsPage() {
   }
 
   async function validerPrep(l: Liv) {
-    const restants = l.lignes.filter((x) => !x.prepare).length;
+    const restants = l.lignes.filter((x) => (estLoc(x.article) ? !x.equipement_id : !x.prepare)).length;
     if (restants > 0 && !confirm(`${restants} article(s) non coché(s). Valider la préparation quand même ?`)) return;
     setBusy(l.id);
     const { error } = await createClient().from("livraison").update({ statut: "preparee", updated_at: new Date().toISOString() }).eq("id", l.id);
@@ -135,16 +166,29 @@ export default function PreparationsPage() {
     clearTimeout(feedbackTimer.current);
     feedbackTimer.current = setTimeout(() => setFeedback(null), 1400);
   }
-  // Scan d'un article → coche la ligne correspondante du panier en cours.
+  // Scan du panier en cours : code article → coche un consommable ; n° de série → affecte un appareil de location.
   function scanArticleScan(texte: string) {
     const liv = livs.find((x) => x.id === scanArticle?.id);
     if (!liv) return;
     const code = texte.trim();
-    const ligne = liv.lignes.find((x) => x.article_code === code);
-    if (!ligne) { retour("erreur", `Hors panier : ${code}`); return; }
-    if (ligne.prepare) { retour("info", `Déjà coché : ${desig(ligne.article)}`); return; }
-    togglePrepare(ligne.id, true);
-    retour("ok", `✓ ${desig(ligne.article)}`);
+    // Consommable : QR = code article.
+    const ligne = liv.lignes.find((x) => x.article_code === code && !estLoc(x.article));
+    if (ligne) {
+      if (ligne.prepare) { retour("info", `Déjà coché : ${desig(ligne.article)}`); return; }
+      togglePrepare(ligne.id, true);
+      retour("ok", `✓ ${desig(ligne.article)}`);
+      return;
+    }
+    // Location : QR = n° de série d'un appareil disponible.
+    const eq = dispos.find((d) => d.numero_serie === code);
+    if (eq) {
+      const cible = liv.lignes.find((x) => estLoc(x.article) && x.article_code === eq.article_code && !x.equipement_id);
+      if (!cible) { retour("erreur", `Aucune ligne location pour ${code}`); return; }
+      affecterSerie(liv.id, cible, eq.id);
+      retour("ok", `✓ N° ${code} affecté`);
+      return;
+    }
+    retour("erreur", `Hors panier : ${code}`);
   }
   // Scan d'un bon de livraison (QR = URL avec ?l=) → met en évidence la livraison.
   function scanBonScan(texte: string) {
@@ -184,7 +228,7 @@ export default function PreparationsPage() {
 
   const carte = (l: Liv) => {
     const p = patientDe(l);
-    const nbPrep = l.lignes.filter((x) => x.prepare).length;
+    const nbPrep = l.lignes.filter((x) => (estLoc(x.article) ? !!x.equipement_id : x.prepare)).length;
     const editable = l.statut === "planifiee" && estMag;
     return (
       <div key={l.id} id={`liv-${l.id}`} className={`card grid grid-cols-1 gap-3 ${openId === l.id ? "ring-2 ring-brand ring-offset-2" : ""}`}>
@@ -200,23 +244,37 @@ export default function PreparationsPage() {
           </div>
         </div>
 
-        {/* Panier / picking */}
+        {/* Panier / picking (consommables = cocher ; location = affecter un n° de série) */}
         <div className="grid grid-cols-1 gap-1.5">
-          {l.lignes.map((x) => (
-            <label key={x.id} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-1.5 text-sm ${x.prepare ? "border-green-200 bg-green-50/50" : "border-rose-100"}`}>
-              <span className="flex min-w-0 items-center gap-2">
-                <input type="checkbox" checked={x.prepare} disabled={!editable} onChange={(e) => togglePrepare(x.id, e.target.checked)} className="h-4 w-4 accent-brand" />
-                <span className="min-w-0">
-                  <span className="block truncate text-slate-700">{desig(x.article)}</span>
-                  <span className="block text-xs text-slate-400">Réf. {x.article_code}</span>
+          {l.lignes.map((x) => {
+            const loc = estLoc(x.article);
+            const ok = loc ? !!x.equipement_id : x.prepare;
+            return (
+              <div key={x.id} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-1.5 text-sm ${ok ? "border-green-200 bg-green-50/50" : loc ? "border-sky-100" : "border-rose-100"}`}>
+                <span className="flex min-w-0 items-center gap-2">
+                  {!loc && <input type="checkbox" checked={x.prepare} disabled={!editable} onChange={(e) => togglePrepare(x.id, e.target.checked)} className="h-4 w-4 accent-brand" />}
+                  <span className="min-w-0">
+                    <span className="block truncate text-slate-700">{desig(x.article)}{loc && <span className="ml-1 rounded bg-sky-100 px-1 text-[10px] font-medium text-sky-700">location</span>}</span>
+                    <span className="block text-xs text-slate-400">Réf. {x.article_code}{loc && x.equipement_id ? ` · N° ${serie(x.equipement)}` : ""}</span>
+                  </span>
                 </span>
-              </span>
-              <span className="shrink-0 font-semibold text-slate-700">×{x.quantite}</span>
-            </label>
-          ))}
+                <span className="flex shrink-0 items-center gap-2">
+                  {loc ? (
+                    !editable ? (
+                      <span className="text-xs text-slate-500">{x.equipement_id ? `N° ${serie(x.equipement)}` : "à affecter"}</span>
+                    ) : x.equipement_id ? (
+                      <button onClick={() => desaffecterSerie(x)} className="text-xs text-critique hover:underline">retirer</button>
+                    ) : (
+                      <div className="w-40"><Select value="" onChange={(v) => v && affecterSerie(l.id, x, v)} placeholder="Affecter n° série" options={dispos.filter((d) => d.article_code === x.article_code).map((d) => ({ value: d.id, label: d.numero_serie }))} /></div>
+                    )
+                  ) : (
+                    <span className="font-semibold text-slate-700">×{x.quantite}</span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
         </div>
-
-        <EquipementsLivraison livraisonId={l.id} mode={estMag && l.statut === "planifiee" ? "preparation" : "lecture"} />
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           {l.statut === "planifiee" && estMag && (
@@ -268,7 +326,7 @@ export default function PreparationsPage() {
           {aRecup.map((eq) => (
             <div key={eq.id} className="card flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium text-slate-700">{nomDe(eq.type)} · <span className="font-mono text-sm text-slate-500">{eq.numero_serie}</span></p>
+                <p className="font-medium text-slate-700">{(Array.isArray(eq.article) ? eq.article[0]?.designation : eq.article?.designation) ?? "Équipement"} · <span className="font-mono text-sm text-slate-500">{eq.numero_serie}</span></p>
                 <p className="text-xs text-slate-400">Chez {nomDe(eq.patient) || "—"}</p>
               </div>
               {peutRecup && (

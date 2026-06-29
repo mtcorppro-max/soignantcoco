@@ -7,7 +7,7 @@ import { useProSession } from "@/lib/hooks/useSession";
 
 type Eq = {
   id: string; numero_serie: string; statut: string; prochaine_maintenance: string | null;
-  type: { nom: string } | { nom: string }[] | null;
+  article: { designation: string } | { designation: string }[] | null;
   agence: { nom: string } | { nom: string }[] | null;
 };
 const un = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] : v) ?? null;
@@ -29,7 +29,7 @@ export default function MaintenancePage() {
   const charger = useCallback(async () => {
     const { data } = await createClient()
       .from("equipement")
-      .select("id,numero_serie,statut,prochaine_maintenance,type:type_id(nom),agence:agence_id(nom)")
+      .select("id,numero_serie,statut,prochaine_maintenance,article:article_code(designation),agence:agence_id(nom)")
       .neq("statut", "hors_service")
       .not("prochaine_maintenance", "is", null)
       .order("prochaine_maintenance", { ascending: true });
@@ -74,7 +74,7 @@ export default function MaintenancePage() {
             {g.items.map((e) => (
               <Link key={e.id} href={`/pro/parc/${e.id}`} className="card flex flex-wrap items-center justify-between gap-3 transition hover:border-rose-200 hover:shadow-md">
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-700">{un(e.type)?.nom} · <span className="font-mono text-sm text-slate-500">{e.numero_serie}</span></p>
+                  <p className="font-medium text-slate-700">{un(e.article)?.designation} · <span className="font-mono text-sm text-slate-500">{e.numero_serie}</span></p>
                   {estN0 && <p className="text-xs text-slate-400">{un(e.agence)?.nom}</p>}
                 </div>
                 <span className={`text-sm font-medium ${g.cls}`}>{fmt(e.prochaine_maintenance)}</span>

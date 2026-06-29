@@ -8,85 +8,78 @@ import { Select } from "@/components/Select";
 import { STATUTS } from "@/lib/parc";
 import { genererEtiquettes } from "@/lib/genererBons";
 
-type TypeEq = { id: string; nom: string; maintenance_jours: number; location_max_jours: number | null };
+type ArtLoc = { code: string; designation: string; maintenance_jours: number; location_max_jours: number | null };
 type Equip = {
   id: string; numero_serie: string; statut: string; prochaine_maintenance: string | null; chez_patient_depuis: string | null;
-  type: { nom: string; location_max_jours: number | null } | { nom: string; location_max_jours: number | null }[] | null;
+  article: { designation: string; location_max_jours: number | null } | { designation: string; location_max_jours: number | null }[] | null;
   patient: { nom: string } | { nom: string }[] | null;
   agence: { id: string; nom: string } | { id: string; nom: string }[] | null;
-  type_id: string; agence_id: string;
+  article_code: string; agence_id: string;
 };
 
 const un = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] : v) ?? null;
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleDateString("fr-FR") : "—");
 const todayIso = () => new Date().toISOString().slice(0, 10);
-function addDaysIso(jours: number) {
-  const d = new Date(); d.setDate(d.getDate() + jours);
-  return d.toISOString().slice(0, 10);
-}
+function addDaysIso(jours: number) { const d = new Date(); d.setDate(d.getDate() + jours); return d.toISOString().slice(0, 10); }
 
 export default function ParcPage() {
   const pro = useProSession();
   const [equips, setEquips] = useState<Equip[]>([]);
-  const [types, setTypes] = useState<TypeEq[]>([]);
+  const [arts, setArts] = useState<ArtLoc[]>([]);
   const [pret, setPret] = useState(false);
-  const [fType, setFType] = useState("");
+  const [fArticle, setFArticle] = useState("");
   const [fStatut, setFStatut] = useState("");
   const [fAgence, setFAgence] = useState("");
   const [retard, setRetard] = useState(false);
   const [longue, setLongue] = useState(false);
   const estN0 = pro?.niveau === 0;
-  // Formulaire d'ajout
   const [ajout, setAjout] = useState(false);
   const [nSerie, setNSerie] = useState("");
-  const [typeAjout, setTypeAjout] = useState("");
+  const [artAjout, setArtAjout] = useState("");
   const [busy, setBusy] = useState(false);
 
   const peutGerer = pro?.role === "magasinier" || pro?.niveau === 0;
 
   const charger = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: eq }, { data: ty }] = await Promise.all([
-      supabase.from("equipement").select("id,numero_serie,statut,prochaine_maintenance,chez_patient_depuis,type_id,agence_id,type:type_id(nom,location_max_jours),patient:patient_actuel_id(nom),agence:agence_id(id,nom)").order("numero_serie"),
-      supabase.from("equipement_type").select("id,nom,maintenance_jours,location_max_jours").order("nom"),
+    const [{ data: eq }, { data: a }] = await Promise.all([
+      supabase.from("equipement").select("id,numero_serie,statut,prochaine_maintenance,chez_patient_depuis,article_code,agence_id,article:article_code(designation,location_max_jours),patient:patient_actuel_id(nom),agence:agence_id(id,nom)").order("numero_serie"),
+      supabase.from("article").select("code,designation,maintenance_jours,location_max_jours").eq("est_location", true).order("designation"),
     ]);
     setEquips((eq ?? []) as unknown as Equip[]);
-    setTypes((ty ?? []) as TypeEq[]);
+    setArts((a ?? []) as ArtLoc[]);
     setPret(true);
   }, []);
   useEffect(() => { if (pro && peutGerer) charger(); else if (pro) setPret(true); }, [pro, peutGerer, charger]);
 
   const enRetard = (e: Equip) => !!e.prochaine_maintenance && e.prochaine_maintenance < todayIso() && e.statut !== "hors_service";
   const locTropLongue = (e: Equip) => {
-    const max = un(e.type)?.location_max_jours;
+    const max = un(e.article)?.location_max_jours;
     if (e.statut !== "chez_patient" || !e.chez_patient_depuis || !max) return false;
     return (Date.now() - new Date(e.chez_patient_depuis).getTime()) / 86_400_000 > max;
   };
 
-  const filtres = useMemo(() => {
-    return equips.filter((e) =>
-      (!fType || e.type_id === fType) &&
-      (!fStatut || e.statut === fStatut) &&
-      (!fAgence || e.agence_id === fAgence) &&
-      (!retard || enRetard(e)) &&
-      (!longue || locTropLongue(e))
-    );
-  }, [equips, fType, fStatut, fAgence, retard, longue]);
+  const filtres = useMemo(() => equips.filter((e) =>
+    (!fArticle || e.article_code === fArticle) &&
+    (!fStatut || e.statut === fStatut) &&
+    (!fAgence || e.agence_id === fAgence) &&
+    (!retard || enRetard(e)) &&
+    (!longue || locTropLongue(e))
+  ), [equips, fArticle, fStatut, fAgence, retard, longue]);
 
   const nbRetard = equips.filter(enRetard).length;
   const nbLongue = equips.filter(locTropLongue).length;
-  // Agences présentes (filtre réservé au niveau 0, multi-agence).
   const agences = estN0
     ? [...new Map(equips.map((e) => [un(e.agence)?.id, un(e.agence)?.nom]).filter(([id]) => id) as [string, string][]).entries()].map(([value, label]) => ({ value, label }))
     : [];
 
   async function ajouter() {
-    if (!nSerie.trim() || !typeAjout || !pro?.agence_id) return;
-    const ty = types.find((t) => t.id === typeAjout);
+    if (!nSerie.trim() || !artAjout || !pro?.agence_id) return;
+    const a = arts.find((x) => x.code === artAjout);
     setBusy(true);
     const { data, error } = await createClient().from("equipement").insert({
-      agence_id: pro.agence_id, type_id: typeAjout, numero_serie: nSerie.trim(),
-      statut: "disponible", prochaine_maintenance: addDaysIso(ty?.maintenance_jours ?? 365),
+      agence_id: pro.agence_id, article_code: artAjout, numero_serie: nSerie.trim(),
+      statut: "disponible", prochaine_maintenance: addDaysIso(a?.maintenance_jours ?? 365),
     }).select("id").single();
     if (!error && data) {
       await createClient().from("equipement_mouvement").insert({
@@ -96,7 +89,7 @@ export default function ParcPage() {
     }
     setBusy(false);
     if (error) { alert("Échec : " + error.message); return; }
-    setNSerie(""); setTypeAjout(""); setAjout(false); charger();
+    setNSerie(""); setArtAjout(""); setAjout(false); charger();
   }
 
   if (pro && !peutGerer) {
@@ -137,18 +130,18 @@ export default function ParcPage() {
         <div className="card grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <div>
             <label className="label">N° de série</label>
-            <input className="input" value={nSerie} onChange={(e) => setNSerie(e.target.value)} placeholder="ex. CO2-00128" />
+            <input className="input" value={nSerie} onChange={(e) => setNSerie(e.target.value)} placeholder="ex. POMPE-00128" />
           </div>
           <div>
-            <label className="label">Type</label>
-            <Select value={typeAjout} onChange={setTypeAjout} placeholder="— Choisir —" options={types.map((t) => ({ value: t.id, label: t.nom }))} />
+            <label className="label">Article (matériel de location)</label>
+            <Select value={artAjout} onChange={setArtAjout} placeholder="— Choisir —" options={arts.map((a) => ({ value: a.code, label: a.designation }))} />
           </div>
-          <button onClick={ajouter} disabled={busy || !nSerie.trim() || !typeAjout} className="btn-primary py-2.5 disabled:opacity-50">{busy ? "…" : "Ajouter"}</button>
+          <button onClick={ajouter} disabled={busy || !nSerie.trim() || !artAjout} className="btn-primary py-2.5 disabled:opacity-50">{busy ? "…" : "Ajouter"}</button>
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="w-44"><Select value={fType} onChange={setFType} placeholder="Tous les types" options={[{ value: "", label: "Tous les types" }, ...types.map((t) => ({ value: t.id, label: t.nom }))]} /></div>
+        <div className="w-48"><Select value={fArticle} onChange={setFArticle} placeholder="Tous les articles" options={[{ value: "", label: "Tous les articles" }, ...arts.map((a) => ({ value: a.code, label: a.designation }))]} /></div>
         <div className="w-44"><Select value={fStatut} onChange={setFStatut} placeholder="Tous les statuts" options={[{ value: "", label: "Tous les statuts" }, ...Object.entries(STATUTS).map(([v, s]) => ({ value: v, label: s.label }))]} /></div>
         {estN0 && agences.length > 0 && (
           <div className="w-48"><Select value={fAgence} onChange={setFAgence} placeholder="Toutes les agences" options={[{ value: "", label: "Toutes les agences" }, ...agences]} /></div>
@@ -160,7 +153,7 @@ export default function ParcPage() {
           Location longue{nbLongue > 0 ? ` (${nbLongue})` : ""}
         </button>
         <button
-          onClick={() => { if (filtres.length) genererEtiquettes(filtres.map((e) => ({ code: e.numero_serie, designation: un(e.type)?.nom ?? "" }))); }}
+          onClick={() => { if (filtres.length) genererEtiquettes(filtres.map((e) => ({ code: e.numero_serie, designation: un(e.article)?.designation ?? "" }))); }}
           className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-rose-50"
           title="Étiquettes QR (n° de série) à coller sur le matériel"
         >
@@ -171,7 +164,7 @@ export default function ParcPage() {
       {!pret ? (
         <p className="text-sm text-slate-400">Chargement…</p>
       ) : filtres.length === 0 ? (
-        <p className="text-sm text-slate-400">{equips.length === 0 ? "Aucun équipement. Ajoutez-en un." : "Aucun équipement ne correspond aux filtres."}</p>
+        <p className="text-sm text-slate-400">{equips.length === 0 ? "Aucun équipement. Ajoutez-en un (article marqué « location »)." : "Aucun équipement ne correspond aux filtres."}</p>
       ) : (
         <div className="grid grid-cols-1 gap-2">
           {filtres.map((e) => {
@@ -180,7 +173,7 @@ export default function ParcPage() {
             return (
               <Link key={e.id} href={`/pro/parc/${e.id}`} className={`card flex flex-wrap items-center justify-between gap-3 transition hover:border-rose-200 hover:shadow-md ${r ? "border-rose-200 bg-rose-50/40" : ""}`}>
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-700">{un(e.type)?.nom ?? "Équipement"} · <span className="font-mono text-sm text-slate-500">{e.numero_serie}</span></p>
+                  <p className="font-semibold text-slate-700">{un(e.article)?.designation ?? "Équipement"} · <span className="font-mono text-sm text-slate-500">{e.numero_serie}</span></p>
                   <p className="text-xs text-slate-400">
                     {estN0 && un(e.agence) ? `${un(e.agence)?.nom} · ` : ""}{un(e.patient) ? `Chez ${un(e.patient)?.nom}` : "—"} · Prochaine maintenance : {fmt(e.prochaine_maintenance)}
                   </p>

@@ -10,7 +10,7 @@ import { STATUTS } from "@/lib/parc";
 type Equip = {
   id: string; numero_serie: string; statut: string; etat: string | null;
   chez_patient_depuis: string | null; derniere_maintenance: string | null; prochaine_maintenance: string | null;
-  type: { nom: string; maintenance_jours: number } | { nom: string; maintenance_jours: number }[] | null;
+  article: { designation: string; maintenance_jours: number } | { designation: string; maintenance_jours: number }[] | null;
   patient: { nom: string } | { nom: string }[] | null;
 };
 type Mvt = { id: string; type_mouvement: string; date: string; etat: string | null; note: string | null; auteur_nom: string | null; patient: { nom: string } | { nom: string }[] | null };
@@ -41,7 +41,7 @@ export default function FicheEquipement() {
   const charger = useCallback(async () => {
     const supabase = createClient();
     const [{ data: e }, { data: m }] = await Promise.all([
-      supabase.from("equipement").select("id,numero_serie,statut,etat,chez_patient_depuis,derniere_maintenance,prochaine_maintenance,type:type_id(nom,maintenance_jours),patient:patient_actuel_id(nom)").eq("id", id).maybeSingle(),
+      supabase.from("equipement").select("id,numero_serie,statut,etat,chez_patient_depuis,derniere_maintenance,prochaine_maintenance,article:article_code(designation,maintenance_jours),patient:patient_actuel_id(nom)").eq("id", id).maybeSingle(),
       supabase.from("equipement_mouvement").select("id,type_mouvement,date,etat,note,auteur_nom,patient:patient_id(nom)").eq("equipement_id", id).order("date", { ascending: false }),
     ]);
     setEq((e ?? null) as unknown as Equip | null);
@@ -69,7 +69,7 @@ export default function FicheEquipement() {
 
   const mettreEnMaintenance = () => majStatut("en_maintenance", {}, "mise_maintenance");
   const finMaintenance = () => {
-    const j = un(eq!.type)?.maintenance_jours ?? 365;
+    const j = un(eq!.article)?.maintenance_jours ?? 365;
     majStatut("disponible", { derniere_maintenance: todayIso(), prochaine_maintenance: addDaysIso(j) }, "fin_maintenance");
   };
   const reformer = () => { if (confirm("Réformer cet équipement (hors service définitif) ?")) majStatut("hors_service", {}, "reforme"); };
@@ -88,7 +88,7 @@ export default function FicheEquipement() {
       <div className="card grid gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold text-slate-800">{un(eq.type)?.nom ?? "Équipement"}</h1>
+            <h1 className="text-xl font-bold text-slate-800">{un(eq.article)?.designation ?? "Équipement"}</h1>
             <p className="font-mono text-sm text-slate-500">N° {eq.numero_serie}</p>
           </div>
           <span className={`badge ${st.cls}`}>{st.label}</span>

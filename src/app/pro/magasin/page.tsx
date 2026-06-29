@@ -14,14 +14,16 @@ type Ligne = {
   en_commande: number;
   reserve: number;
   seuil: number;
+  location: boolean;
 };
+type ArtEmbed = { designation: string; est_location: boolean };
 type StockRow = {
   id: string;
   article_code: string;
   quantite: number;
   en_commande: number;
   seuil_alerte: number;
-  article: { designation: string } | { designation: string }[] | null;
+  article: ArtEmbed | ArtEmbed[] | null;
 };
 
 const AFFICHAGE_MAX = 100;
@@ -47,7 +49,7 @@ export default function MagasinPage() {
       for (let from = 0; ; from += chunk) {
         const { data, error } = await supabase
           .from("stock")
-          .select("id,article_code,quantite,en_commande,seuil_alerte,article:article_code(designation)")
+          .select("id,article_code,quantite,en_commande,seuil_alerte,article:article_code(designation,est_location)")
           .order("article_code")
           .range(from, from + chunk - 1);
         if (error || !data) break;
@@ -60,27 +62,31 @@ export default function MagasinPage() {
         ((res ?? []) as { article_code: string; qte: number }[]).map((r) => [r.article_code, Number(r.qte)])
       );
       setLignes(
-        all.map((s) => ({
-          id: s.id,
-          code: s.article_code,
-          quantite: s.quantite,
-          en_commande: s.en_commande ?? 0,
-          reserve: reserveParArticle.get(s.article_code) ?? 0,
-          seuil: s.seuil_alerte ?? 0,
-          designation: (Array.isArray(s.article) ? s.article[0]?.designation : s.article?.designation) ?? "",
-        }))
+        all.map((s) => {
+          const a = Array.isArray(s.article) ? s.article[0] : s.article;
+          return {
+            id: s.id,
+            code: s.article_code,
+            quantite: s.quantite,
+            en_commande: s.en_commande ?? 0,
+            reserve: reserveParArticle.get(s.article_code) ?? 0,
+            seuil: s.seuil_alerte ?? 0,
+            designation: a?.designation ?? "",
+            location: !!a?.est_location,
+          };
+        })
       );
       setPret(true);
     })();
   }, [pro, peutAcceder]);
 
-  const nbBas = useMemo(() => lignes.filter((l) => l.quantite <= l.seuil).length, [lignes]);
+  const nbBas = useMemo(() => lignes.filter((l) => !l.location && l.quantite <= l.seuil).length, [lignes]);
 
   const filtrees = useMemo(() => {
     const t = q.trim().toLowerCase();
     let r = lignes;
     if (t) r = r.filter((l) => l.code.toLowerCase().includes(t) || l.designation.toLowerCase().includes(t));
-    if (stockBas) r = r.filter((l) => l.quantite <= l.seuil);
+    if (stockBas) r = r.filter((l) => !l.location && l.quantite <= l.seuil);
     return r;
   }, [lignes, q, stockBas]);
 
@@ -96,6 +102,15 @@ export default function MagasinPage() {
     setSavingId(null);
     if (error) { alert("Échec : " + error.message); return; }
     setLignes((arr) => arr.map((x) => (x.id === l.id ? { ...x, ...(champ === "quantite" ? { quantite: val } : { seuil: val }) } : x)));
+  }
+
+  // Marque/retire un article comme « matériel de location » (sérialisé → parc).
+  async function majLocation(l: Ligne, val: boolean) {
+    setSavingId(l.id);
+    const { error } = await createClient().from("article").update({ est_location: val }).eq("code", l.code);
+    setSavingId(null);
+    if (error) { alert("Échec : " + error.message); return; }
+    setLignes((arr) => arr.map((x) => (x.id === l.id ? { ...x, location: val } : x)));
   }
 
   if (pro && !peutAcceder) {
@@ -151,13 +166,14 @@ export default function MagasinPage() {
       ) : (
         <div className="grid grid-cols-1 gap-2">
           {affichees.map((l) => {
-            const bas = l.quantite <= l.seuil;
+            const bas = !l.location && l.quantite <= l.seuil;
             return (
               <div key={l.id} className={`card grid gap-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center ${bas ? "border-amber-200 bg-amber-50/40" : ""}`}>
                 <div className="min-w-0">
                   <p className="break-words font-medium text-slate-700">
                     {l.designation}
-                    {bas && <span className="ml-2 badge bg-amber-100 text-attention">Stock bas</span>}
+                    {l.location && <span className="ml-2 badge bg-sky-100 text-sky-700">Location</span>}
+                    {!l.location && bas && <span className="ml-2 badge bg-amber-100 text-attention">Stock bas</span>}
                   </p>
                   <p className="text-xs text-slate-400">
                     Réf. {l.code}
@@ -166,31 +182,46 @@ export default function MagasinPage() {
                   </p>
                 </div>
                 {peutEditer ? (
-                  <div className="flex shrink-0 flex-wrap items-end gap-3">
-                    <label className="text-xs text-slate-400">
-                      Disponible
-                      <input
-                        type="number" min={0} defaultValue={l.quantite}
-                        onBlur={(e) => maj(l, "quantite", parseInt(e.target.value, 10))}
-                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                        className="input mt-0.5 w-20 text-right"
-                      />
-                    </label>
-                    <label className="text-xs text-slate-400">
-                      Seuil
-                      <input
-                        type="number" min={0} defaultValue={l.seuil}
-                        onBlur={(e) => maj(l, "seuil_alerte", parseInt(e.target.value, 10))}
-                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                        className="input mt-0.5 w-16 text-right"
-                      />
-                    </label>
-                    <span className="pb-2 text-xs text-slate-400">{savingId === l.id ? "…" : ""}</span>
-                  </div>
+                  l.location ? (
+                    <div className="flex shrink-0 items-center gap-3 text-xs">
+                      <Link href="/pro/parc" className="text-sky-600 hover:underline">Géré au parc →</Link>
+                      <button onClick={() => majLocation(l, false)} className="text-slate-400 hover:text-critique">Retirer « location »</button>
+                      <span className="text-slate-400">{savingId === l.id ? "…" : ""}</span>
+                    </div>
+                  ) : (
+                    <div className="flex shrink-0 flex-wrap items-end gap-3">
+                      <label className="text-xs text-slate-400">
+                        Disponible
+                        <input
+                          type="number" min={0} defaultValue={l.quantite}
+                          onBlur={(e) => maj(l, "quantite", parseInt(e.target.value, 10))}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="input mt-0.5 w-20 text-right"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-400">
+                        Seuil
+                        <input
+                          type="number" min={0} defaultValue={l.seuil}
+                          onBlur={(e) => maj(l, "seuil_alerte", parseInt(e.target.value, 10))}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          className="input mt-0.5 w-16 text-right"
+                        />
+                      </label>
+                      <button onClick={() => majLocation(l, true)} className="pb-2 text-xs text-sky-600 hover:underline" title="Matériel sérialisé suivi dans le parc">Marquer « location »</button>
+                      <span className="pb-2 text-xs text-slate-400">{savingId === l.id ? "…" : ""}</span>
+                    </div>
+                  )
                 ) : (
                   <div className="shrink-0 text-right">
-                    <p className="text-lg font-bold text-slate-800">{l.quantite}</p>
-                    <p className="text-xs text-slate-400">dispo · seuil {l.seuil}</p>
+                    {l.location ? (
+                      <span className="badge bg-sky-100 text-sky-700">Parc</span>
+                    ) : (
+                      <>
+                        <p className="text-lg font-bold text-slate-800">{l.quantite}</p>
+                        <p className="text-xs text-slate-400">dispo · seuil {l.seuil}</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

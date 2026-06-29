@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { estCoordOuManager } from "@/lib/roles";
 import { Select } from "@/components/Select";
-import { EquipementsLivraison } from "@/components/EquipementsLivraison";
 
 type Pro = { nom: string; prenom: string | null; titre: string | null };
 type Livraison = { id: string; livreur_id: string | null; statut: string; date_prevue: string | null; created_at: string; livreur: Pro | Pro[] | null };
@@ -175,7 +174,6 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
               )}
               </div>
               {peutGerer && <LignesLivraison livraisonId={l.id} editable={peutPanier && l.statut !== "livree"} />}
-              {peutGerer && <EquipementsLivraison livraisonId={l.id} mode={peutPanier && l.statut !== "livree" ? "demande" : "lecture"} />}
             </div>
           ))}
         </div>
@@ -187,9 +185,9 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
 // Articles attachés à une livraison (sortie de stock). Réservé tant que la
 // livraison n'est pas livrée ; décrémenté du stock au passage « Livrée ».
 function LignesLivraison({ livraisonId, editable }: { livraisonId: string; editable: boolean }) {
-  type LigneArt = { id: string; article_code: string; quantite: number; designation: string };
+  type LigneArt = { id: string; article_code: string; quantite: number; designation: string; location: boolean };
   type ArtRow = { code: string; designation: string };
-  type SelLigne = { id: string; article_code: string; quantite: number; article: { designation: string } | { designation: string }[] | null };
+  type SelLigne = { id: string; article_code: string; quantite: number; article: { designation: string; est_location: boolean } | { designation: string; est_location: boolean }[] | null };
   const [lignes, setLignes] = useState<LigneArt[]>([]);
   const [recherche, setRecherche] = useState("");
   const [resultats, setResultats] = useState<ArtRow[]>([]);
@@ -198,13 +196,13 @@ function LignesLivraison({ livraisonId, editable }: { livraisonId: string; edita
   const charger = useCallback(async () => {
     const { data } = await createClient()
       .from("livraison_ligne")
-      .select("id,article_code,quantite,article:article_code(designation)")
+      .select("id,article_code,quantite,article:article_code(designation,est_location)")
       .eq("livraison_id", livraisonId);
     setLignes(
-      ((data ?? []) as unknown as SelLigne[]).map((r) => ({
-        id: r.id, article_code: r.article_code, quantite: r.quantite,
-        designation: (Array.isArray(r.article) ? r.article[0]?.designation : r.article?.designation) ?? "",
-      }))
+      ((data ?? []) as unknown as SelLigne[]).map((r) => {
+        const a = Array.isArray(r.article) ? r.article[0] : r.article;
+        return { id: r.id, article_code: r.article_code, quantite: r.quantite, designation: a?.designation ?? "", location: !!a?.est_location };
+      })
     );
   }, [livraisonId]);
   useEffect(() => { charger(); }, [charger]);
@@ -245,7 +243,7 @@ function LignesLivraison({ livraisonId, editable }: { livraisonId: string; edita
         <div className="mt-1 grid grid-cols-1 gap-1">
           {lignes.map((l) => (
             <div key={l.id} className="flex items-center justify-between gap-2 text-xs">
-              <span className="min-w-0 truncate text-slate-600">{l.designation}</span>
+              <span className="min-w-0 truncate text-slate-600">{l.designation}{l.location && <span className="ml-1 rounded bg-sky-100 px-1 text-[10px] font-medium text-sky-700">location</span>}</span>
               <div className="flex shrink-0 items-center gap-1">
                 {editable ? (
                   <>
