@@ -65,7 +65,11 @@ const POS_MODE: Record<string, { x: number; y: number }> = {
 const frDate = (v: unknown) => (v ? new Date(v as string).toLocaleDateString("fr-FR") : "");
 
 export async function genererPdfPerfusionDomicile(d: PerfDomicileData, mode: "download" | "bloburl" = "download"): Promise<string | void> {
-  const tplBytes = await fetch(TEMPLATE).then((r) => r.arrayBuffer());
+  const res = await fetch(TEMPLATE, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Modèle d'ordonnance introuvable (${res.status}).`);
+  const tplBytes = await res.arrayBuffer();
+  const tete = String.fromCharCode(...new Uint8Array(tplBytes.slice(0, 5)));
+  if (tete !== "%PDF-") throw new Error("Le modèle n'a pas pu être chargé (réponse inattendue). Réessayez après avoir vidé le cache / rechargé l'app.");
   const tpl = await PDFDocument.load(tplBytes);
   const out = await PDFDocument.create();
   const [page] = await out.copyPages(tpl, [0]);
