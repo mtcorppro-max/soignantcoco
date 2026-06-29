@@ -28,6 +28,8 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
   // Coordinatrice / manager / plateforme, mais aussi l'infirmière libérale qui
   // suit le patient : tous peuvent programmer une livraison.
   const peutGerer = estCoordOuManager(pro?.role) || pro?.niveau === 0 || pro?.role === "infirmiere_liberale";
+  // Composition du panier (articles) : réservée aux coordinatrices (+ plateforme).
+  const peutPanier = pro?.role === "coordinatrice" || pro?.niveau === 0;
 
   // Livreurs et coordinatrices de l'agence du patient, désignables comme livreur.
   const [livreurs, setLivreurs] = useState<{ value: string; label: string }[]>([]);
@@ -171,7 +173,7 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
                 <button onClick={() => supprimer(l.id)} className="rounded-lg border border-rose-200 px-2 py-1 text-xs text-critique hover:bg-red-50">Supprimer</button>
               )}
               </div>
-              {peutGerer && <LignesLivraison livraisonId={l.id} editable={l.statut !== "livree"} />}
+              {peutGerer && <LignesLivraison livraisonId={l.id} editable={peutPanier && l.statut !== "livree"} />}
             </div>
           ))}
         </div>
