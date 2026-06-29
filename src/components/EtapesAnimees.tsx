@@ -20,7 +20,7 @@ const ETAPES = [
     icon: "chat",
     titre: "Suivi, échanges & ordonnances",
     description:
-      "L'équipe échange avec le patient par messagerie sécurisée, valide les suivis planifiés. Le chirurgien génère et signe électroniquement les ordonnances CERFA depuis son protocole — envoyées automatiquement à la pharmacie.",
+      "L'équipe échange avec le patient par messagerie sécurisée, valide les suivis planifiés. Le chirurgien génère et signe électroniquement les ordonnances CERFA depuis son protocole, envoyées automatiquement à la pharmacie.",
   },
   {
     icon: "truck",
