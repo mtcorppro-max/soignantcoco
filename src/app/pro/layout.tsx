@@ -125,6 +125,27 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
       .then(({ count }) => setNbMessages(count ?? 0));
   }, [pro, pathname]);
 
+  // Alertes parc matériel (maintenance en retard + location trop longue) — badge magasinier.
+  const [nbParc, setNbParc] = useState(0);
+  useEffect(() => {
+    if (!pro || !estMagasinier) return;
+    createClient()
+      .from("equipement")
+      .select("statut,prochaine_maintenance,chez_patient_depuis,type:type_id(location_max_jours)")
+      .then(({ data }) => {
+        const today = new Date().toISOString().slice(0, 10);
+        let n = 0;
+        (data ?? []).forEach((e) => {
+          const x = e as { statut: string; prochaine_maintenance: string | null; chez_patient_depuis: string | null; type: { location_max_jours: number | null } | { location_max_jours: number | null }[] | null };
+          if (x.statut === "hors_service") return;
+          if (x.prochaine_maintenance && x.prochaine_maintenance < today) { n++; return; }
+          const max = (Array.isArray(x.type) ? x.type[0]?.location_max_jours : x.type?.location_max_jours) ?? null;
+          if (x.statut === "chez_patient" && x.chez_patient_depuis && max && (Date.now() - new Date(x.chez_patient_depuis).getTime()) / 86_400_000 > max) n++;
+        });
+        setNbParc(n);
+      });
+  }, [pro, estMagasinier, pathname]);
+
   // Menu « Plus » de la barre mobile (overflow au-delà de 5 entrées).
   const [menuOuvert, setMenuOuvert] = useState(false);
 
@@ -152,7 +173,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
     ? [
         { href: "/pro/magasin", icon: "box", label: "Magasin" },
         { href: "/pro/preparations", icon: "prep", label: "Préparations" },
-        { href: "/pro/parc", icon: "parc", label: "Parc" },
+        { href: "/pro/parc", icon: "parc", label: "Parc", badge: nbParc },
       ]
     : [
         { href: "/pro", icon: "dashboard", label: "Tableau" },
@@ -198,7 +219,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                 <>
                   <Onglet href="/pro/magasin" icon="box" label="Magasin" pathname={pathname} />
                   <Onglet href="/pro/preparations" icon="prep" label="Préparations" pathname={pathname} />
-                  <Onglet href="/pro/parc" icon="parc" label="Parc" pathname={pathname} />
+                  <Onglet href="/pro/parc" icon="parc" label="Parc" pathname={pathname} badge={nbParc} />
                 </>
               ) : (
                 <>
