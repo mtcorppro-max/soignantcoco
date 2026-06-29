@@ -219,11 +219,11 @@ export default function LivraisonsPage() {
   const boutonsFin = (l: Liv) =>
     estCoord ? (
       <>
-        <button onClick={() => setSigner(l)} disabled={busy === l.id} className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-50">Livrer (signature)</button>
+        <button onClick={() => setSigner(l)} disabled={busy === l.id} className="btn-secondary px-3 py-1.5 text-sm disabled:opacity-50">Bon de livraison</button>
         <button onClick={() => livrerEtSuivre(l)} disabled={busy === l.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">{busy === l.id ? "…" : "Livré + suivi"}</button>
       </>
     ) : (
-      <button onClick={() => setSigner(l)} disabled={busy === l.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">Livrer (signature)</button>
+      <button onClick={() => setSigner(l)} disabled={busy === l.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">Bon de livraison</button>
     );
 
   if (pro && !peutLivrer) {
