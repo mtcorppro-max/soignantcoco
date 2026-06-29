@@ -35,6 +35,8 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
   const peutGerer = estCoordOuManager(pro?.role) || pro?.niveau === 0 || pro?.role === "infirmiere_liberale";
   // Composition du panier (articles) : réservée aux coordinatrices (+ plateforme).
   const peutPanier = pro?.role === "coordinatrice" || pro?.niveau === 0;
+  // Annuler/supprimer une livraison : coordinatrice / manager / plateforme.
+  const peutSupprimer = estCoordOuManager(pro?.role) || pro?.niveau === 0;
 
   // Livreurs et coordinatrices de l'agence du patient, désignables comme livreur.
   const [livreurs, setLivreurs] = useState<{ value: string; label: string }[]>([]);
@@ -102,9 +104,9 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
     }
     return base;
   };
-  // Régénère le bon de livraison (avec le détail de la commande + la signature
-  // du patient stockée) — pour retrouver/réimprimer un bon déjà signé.
-  async function telechargerBon(l: Livraison) {
+  // (Re)génère le bon de livraison (détail de la commande + signature du patient
+  // stockée). mode "bloburl" = aperçu sans téléchargement.
+  async function genererBon(l: Livraison, mode: "save" | "bloburl" = "save") {
     const supabase = createClient();
     const [{ data: lignesData }, { data: pat }] = await Promise.all([
       supabase.from("livraison_ligne").select("article_code,quantite,article:article_code(designation)").eq("livraison_id", l.id),
@@ -116,14 +118,24 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
     const bonP: BonPatient = { nom: p?.nom ?? "Patient", adresse: p?.adresse ?? null, code_postal: p?.code_postal ?? null, ville: p?.ville ?? null, telephone: p?.telephone ?? null };
     const url = `${typeof window !== "undefined" ? window.location.origin : ""}/pro/preparations?l=${l.id}`;
     const sig = l.signature ? { image: l.signature, nom: l.signataire || "—", date: l.livree_le ? new Date(l.livree_le) : new Date() } : null;
-    await genererBonLivraison({ reference: l.id.slice(0, 8).toUpperCase() }, bonP, lignes, url, sig);
+    return genererBonLivraison({ reference: l.id.slice(0, 8).toUpperCase() }, bonP, lignes, url, sig, mode);
+  }
+  // Aperçu PDF dans un onglet (sans téléchargement). Onglet ouvert au clic pour
+  // éviter le blocage popup, puis chargé une fois le PDF prêt.
+  async function apercuBon(l: Livraison) {
+    const win = window.open("", "_blank");
+    const u = await genererBon(l, "bloburl");
+    if (typeof u === "string" && win) win.location.href = u;
+    else win?.close();
   }
 
-  async function supprimer(id: string) {
-    if (!confirm("Supprimer cette livraison à programmer ?")) return;
-    const { error } = await createClient().from("livraison").delete().eq("id", id);
+  // Annule/supprime une livraison non livrée (le matériel affecté est libéré par trigger).
+  async function supprimer(l: Livraison) {
+    if (l.statut === "livree") return;
+    if (!confirm("Annuler et supprimer cette livraison ?")) return;
+    const { error } = await createClient().from("livraison").delete().eq("id", l.id);
     if (error) { alert("Échec : " + error.message); return; }
-    setLivraisons((arr) => arr.filter((l) => l.id !== id));
+    setLivraisons((arr) => arr.filter((x) => x.id !== l.id));
   }
 
   const badge = (s: string) =>
@@ -191,12 +203,17 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
                 )}
                 {l.date_prevue && <span className="text-slate-500">· {fmt(l.date_prevue)}</span>}
               </div>
-              {peutGerer && l.statut === "a_programmer" && (
-                <button onClick={() => supprimer(l.id)} className="rounded-lg border border-rose-200 px-2 py-1 text-xs text-critique hover:bg-red-50">Supprimer</button>
-              )}
-              {l.statut === "livree" && (
-                <button onClick={() => telechargerBon(l)} className="rounded-lg border border-rose-200 px-2 py-1 text-xs font-medium text-brand hover:bg-rose-50">Bon de livraison (PDF)</button>
-              )}
+              <div className="flex shrink-0 items-center gap-1.5">
+                {l.statut === "livree" && (
+                  <>
+                    <button onClick={() => apercuBon(l)} className="rounded-lg border border-rose-200 px-2 py-1 text-brand hover:bg-rose-50" title="Aperçu du bon (sans télécharger)"><Oeil /></button>
+                    <button onClick={() => genererBon(l)} className="rounded-lg border border-rose-200 px-2 py-1 text-xs font-medium text-brand hover:bg-rose-50">Bon de livraison (PDF)</button>
+                  </>
+                )}
+                {peutSupprimer && l.statut !== "livree" && (
+                  <button onClick={() => supprimer(l)} className="rounded-lg border border-rose-200 px-2 py-1 text-xs text-critique hover:bg-red-50">Supprimer</button>
+                )}
+              </div>
               </div>
               {peutGerer && <LignesLivraison livraisonId={l.id} editable={peutPanier && l.statut !== "livree"} />}
             </div>
@@ -204,6 +221,15 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
         </div>
       )}
     </section>
+  );
+}
+
+function Oeil() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
   );
 }
 
