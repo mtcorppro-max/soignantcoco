@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { estCoordOuManager } from "@/lib/roles";
+import { Select } from "@/components/Select";
 
 type Pro = { nom: string; prenom: string | null; titre: string | null };
 type Livraison = { id: string; livreur_id: string | null; statut: string; date_prevue: string | null; created_at: string; livreur: Pro | Pro[] | null };
@@ -24,7 +25,13 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
   const pro = useProSession();
   const [livraisons, setLivraisons] = useState<Livraison[]>([]);
   const [busy, setBusy] = useState(false);
-  const peutGerer = estCoordOuManager(pro?.role) || pro?.niveau === 0;
+  // Coordinatrice / manager / plateforme, mais aussi l'infirmière libérale qui
+  // suit le patient : tous peuvent programmer une livraison.
+  const peutGerer = estCoordOuManager(pro?.role) || pro?.niveau === 0 || pro?.role === "infirmiere_liberale";
+
+  // Livreurs et coordinatrices de l'agence du patient, désignables comme livreur.
+  const [livreurs, setLivreurs] = useState<{ value: string; label: string }[]>([]);
+  const [choix, setChoix] = useState(""); // "" = laisser au pool
 
   const charger = useCallback(async () => {
     const { data } = await createClient()
@@ -36,11 +43,38 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
   }, [patientId]);
   useEffect(() => { charger(); }, [charger]);
 
+  // Liste des livreurs/coordinatrices de l'agence du patient (pour l'assignation).
+  useEffect(() => {
+    if (!peutGerer) return;
+    const supabase = createClient();
+    (async () => {
+      const { data: pat } = await supabase.from("patient").select("agence_id").eq("id", patientId).maybeSingle();
+      let q = supabase.from("professionnel").select("id,nom,prenom,titre,role,agence_id").in("role", ["livreur", "coordinatrice"]);
+      const agence = (pat as { agence_id?: string | null } | null)?.agence_id ?? null;
+      if (agence) q = q.eq("agence_id", agence);
+      const { data: pros } = await q.order("nom");
+      setLivreurs(
+        (pros ?? []).map((p) => ({
+          value: p.id as string,
+          label: `${[p.titre, p.prenom, p.nom].filter(Boolean).join(" ")} · ${p.role === "livreur" ? "Livreur" : "Coordinatrice"}`,
+        }))
+      );
+    })();
+  }, [patientId, peutGerer]);
+
   async function programmer() {
     setBusy(true);
-    const { error } = await createClient().from("livraison").insert({ patient_id: patientId, prestataire_id: prestataireId, statut: "a_programmer" });
+    // Livreur choisi → assignation directe (planifiée) ; sinon → pool (à programmer).
+    const payload = {
+      patient_id: patientId,
+      prestataire_id: prestataireId,
+      statut: choix ? "planifiee" : "a_programmer",
+      livreur_id: choix || null,
+    };
+    const { error } = await createClient().from("livraison").insert(payload);
     setBusy(false);
     if (error) { alert("Échec : " + error.message); return; }
+    setChoix("");
     charger();
   }
   async function supprimer(id: string) {
@@ -60,13 +94,24 @@ export function LivraisonPatient({ patientId, prestataireId }: { patientId: stri
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-slate-600">Livraisons</h2>
         {peutGerer && (
-          <button onClick={programmer} disabled={busy} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">
-            {busy ? "…" : "Programmer une livraison"}
-          </button>
+          <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
+            <div className="w-full sm:w-56">
+              <label className="mb-1 block text-xs font-medium text-slate-500">Qui livre ?</label>
+              <Select
+                value={choix}
+                onChange={setChoix}
+                placeholder="— Laisser au pool —"
+                options={[{ value: "", label: "— Laisser au pool —" }, ...livreurs]}
+              />
+            </div>
+            <button onClick={programmer} disabled={busy} className="btn-primary px-3 py-2 text-sm disabled:opacity-50">
+              {busy ? "…" : "Programmer"}
+            </button>
+          </div>
         )}
       </div>
       {livraisons.length === 0 ? (
-        <p className="text-sm text-slate-400">Aucune livraison. {peutGerer ? "Cliquez sur « Programmer une livraison » pour qu'un livreur la prenne en charge." : ""}</p>
+        <p className="text-sm text-slate-400">Aucune livraison. {peutGerer ? "Choisissez un livreur (ou laissez au pool de l'agence) puis « Programmer »." : ""}</p>
       ) : (
         <div className="grid gap-2">
           {livraisons.map((l) => (
