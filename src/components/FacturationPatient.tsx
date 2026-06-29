@@ -6,7 +6,12 @@ import { useProSession } from "@/lib/hooks/useSession";
 import { Select } from "@/components/Select";
 
 type Forfait = { id: string; lpp_code: string; date_debut: string; date_fin: string; actif: boolean; lpp: { libelle: string; prix_ttc: number | null; periodicite: string } | { libelle: string; prix_ttc: number | null; periodicite: string }[] | null };
-type LppF = { code: string; libelle: string; prix_ttc: number | null; periodicite: string };
+type LppF = { code: string; libelle: string; prix_ttc: number | null; periodicite: string; famille: string | null };
+const FAMILLES = [
+  { value: "perfusion", label: "Perfusion (PERFADOM)" },
+  { value: "nead", label: "Nutrition entérale (NEAD)" },
+  { value: "npad", label: "Nutrition parentérale (NPAD)" },
+];
 
 const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const un = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] : v) ?? null;
@@ -35,6 +40,7 @@ export function FacturationPatient({ patientId }: { patientId: string }) {
   const [forfaits, setForfaits] = useState<Forfait[]>([]);
   const [lppF, setLppF] = useState<LppF[]>([]);
   const [pec, setPec] = useState<{ debut: string | null; fin: string | null }>({ debut: null, fin: null });
+  const [fam, setFam] = useState("");
   const [ajout, setAjout] = useState("");
   const [pret, setPret] = useState(false);
   const peut = !!pro && (pro.niveau <= 1 || ["dirigeant", "coordinatrice"].includes(pro.role));
@@ -59,7 +65,7 @@ export function FacturationPatient({ patientId }: { patientId: string }) {
 
   useEffect(() => { if (peut) { loadLpp(); charger(); } }, [peut, charger]);
   async function loadLpp() {
-    const { data } = await createClient().from("lpp").select("code,libelle,prix_ttc,periodicite").neq("periodicite", "unitaire").order("libelle");
+    const { data } = await createClient().from("lpp").select("code,libelle,prix_ttc,periodicite,famille").neq("periodicite", "unitaire").not("famille", "is", null).order("libelle");
     setLppF((data ?? []) as LppF[]);
   }
 
@@ -69,7 +75,7 @@ export function FacturationPatient({ patientId }: { patientId: string }) {
     const fin = pec.fin ?? new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10);
     const { error } = await createClient().from("patient_forfait").insert({ patient_id: patientId, lpp_code: ajout, date_debut: debut, date_fin: fin, actif: true });
     if (error) { alert("Échec : " + error.message); return; }
-    setAjout(""); charger();
+    setAjout(""); setFam(""); charger();
   }
   async function retirer(id: string) {
     if (!confirm("Retirer ce forfait de la prise en charge ?")) return;
@@ -119,8 +125,11 @@ export function FacturationPatient({ patientId }: { patientId: string }) {
         })}
         {peutGerer && (
           <div className="mt-1 flex flex-wrap items-end gap-2">
-            <div className="w-72"><Select value={ajout} onChange={setAjout} placeholder="Ajouter un forfait…" options={[{ value: "", label: "Ajouter un forfait…" }, ...lppF.map((l) => ({ value: l.code, label: `${l.libelle.slice(0, 60)} — ${l.prix_ttc ? eur(l.prix_ttc) : "?"} ${PER[l.periodicite]}` }))]} /></div>
-            <button onClick={ajouter} disabled={!ajout} className="btn-primary px-3 py-2 text-sm disabled:opacity-50">Ajouter</button>
+            <div className="w-52"><Select value={fam} onChange={(v) => { setFam(v); setAjout(""); }} placeholder="Type de forfait…" options={[{ value: "", label: "Type de forfait…" }, ...FAMILLES]} /></div>
+            {fam && (
+              <div className="w-72"><Select value={ajout} onChange={setAjout} placeholder="Choisir le forfait…" options={[{ value: "", label: "Choisir le forfait…" }, ...lppF.filter((l) => l.famille === fam).map((l) => ({ value: l.code, label: `${l.libelle.replace(/^[^—]*— /, "").slice(0, 55)} — ${l.prix_ttc ? eur(l.prix_ttc) : "?"} ${PER[l.periodicite]}` }))]} /></div>
+            )}
+            {fam && <button onClick={ajouter} disabled={!ajout} className="btn-primary px-3 py-2 text-sm disabled:opacity-50">Ajouter</button>}
           </div>
         )}
       </div>
