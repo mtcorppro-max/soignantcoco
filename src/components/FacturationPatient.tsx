@@ -13,7 +13,7 @@ const FAMILLES = [
   { value: "npad", label: "Nutrition parentérale (NPAD)" },
 ];
 
-const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const un = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] : v) ?? null;
 const PER: Record<string, string> = { installation: "installation", journalier: "/ jour", hebdomadaire: "/ semaine", mensuel: "/ mois", unitaire: "" };
 

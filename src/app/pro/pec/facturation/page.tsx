@@ -15,7 +15,7 @@ type Facture = {
   agence: { nom: string } | { nom: string }[] | null;
 };
 
-const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const eur2 = (n: number) => n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const moisCourt = (d: Date) => d.toLocaleDateString("fr-FR", { month: "short" });
 const mkey = (s: string | null) => (s ? s.slice(0, 7) : "");
