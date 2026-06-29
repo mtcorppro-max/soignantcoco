@@ -174,17 +174,6 @@ export default function MagasinPage() {
             Location{nbLoc > 0 ? ` (${nbLoc})` : ""}
           </button>
         )}
-        <button
-          onClick={() => {
-            const sel = filtrees.slice(0, 200);
-            if (filtrees.length > 200 && !confirm(`${filtrees.length} articles filtrés. Générer les étiquettes des 200 premiers ? (affinez la recherche pour cibler)`)) return;
-            genererEtiquettes(sel.map((l) => ({ code: l.code, designation: l.designation })));
-          }}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-rose-50"
-          title="Planche d'étiquettes QR (une par article) à imprimer"
-        >
-          <IconeTag /> Étiquettes QR
-        </button>
       </div>
 
       {!pret ? (
@@ -208,6 +197,13 @@ export default function MagasinPage() {
                     {l.en_commande > 0 && <span className="ml-2 text-sky-600">· {l.en_commande} en commande</span>}
                     {l.reserve > 0 && <span className="ml-2 text-rose-500">· {l.reserve} réservé(s)</span>}
                   </p>
+                  <button
+                    onClick={() => genererEtiquettes([{ code: l.code, designation: l.designation }])}
+                    className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                    title="Imprimer l'étiquette QR de cet article"
+                  >
+                    <IconeTag /> Imprimer QRCODE
+                  </button>
                 </div>
                 {peutEditer ? (
                   l.location ? (
