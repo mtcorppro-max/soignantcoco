@@ -23,6 +23,8 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   const estPharmacie = pro?.role === "pharmacie" && !estN0;
   // Le dirigeant : pas de tableau de bord ; PEC (nationale) + équipe dirigeante.
   const estDirigeant = pro?.role === "dirigeant" && !estN0;
+  // Le magasinier : gère le stock et prépare les commandes (Magasin + Préparations).
+  const estMagasinier = pro?.role === "magasinier" && !estN0;
   // Gérer/créer des comptes & l'équipe : niveau 0, 1 ou 2 (hors chirurgien et
   // hors comptes service livreur/pharmacie)
   const peutGerer = estN0 || (!!pro && pro.niveau <= 2 && pro.role !== "chirurgien" && !estRoleService(pro.role));
@@ -146,6 +148,11 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         { href: "/pro/pec", icon: "chart", label: "PEC" },
         { href: "/pro/equipe-dirigeante", icon: "users", label: "Équipe dirigeante" },
       ]
+    : estMagasinier
+    ? [
+        { href: "/pro/magasin", icon: "box", label: "Magasin" },
+        { href: "/pro/preparations", icon: "prep", label: "Préparations" },
+      ]
     : [
         { href: "/pro", icon: "dashboard", label: "Tableau" },
         ...(estCoord ? [{ href: "/pro/suivis", icon: "calendar", label: "Suivis", badge: nbSuivis }] : []),
@@ -185,6 +192,11 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                 <>
                   <Onglet href="/pro/pec" icon="chart" label="PEC" pathname={pathname} />
                   <Onglet href="/pro/equipe-dirigeante" icon="users" label="Équipe dirigeante" pathname={pathname} />
+                </>
+              ) : estMagasinier ? (
+                <>
+                  <Onglet href="/pro/magasin" icon="box" label="Magasin" pathname={pathname} />
+                  <Onglet href="/pro/preparations" icon="prep" label="Préparations" pathname={pathname} />
                 </>
               ) : (
                 <>

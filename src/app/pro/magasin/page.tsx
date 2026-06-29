@@ -34,7 +34,9 @@ export default function MagasinPage() {
   const [stockBas, setStockBas] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const peutAcceder = pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
+  const peutAcceder = pro?.role === "magasinier" || pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
+  // Seul le magasinier (ou la plateforme) modifie le stock ; les autres consultent.
+  const peutEditer = pro?.role === "magasinier" || pro?.niveau === 0;
 
   useEffect(() => {
     if (!pro || !peutAcceder) { if (pro) setPret(true); return; }
@@ -97,7 +99,7 @@ export default function MagasinPage() {
   }
 
   if (pro && !peutAcceder) {
-    return <div className="card text-sm text-slate-500">Le magasin est réservé aux coordinatrices et aux livreurs.</div>;
+    return <div className="card text-sm text-slate-500">Le magasin est réservé au magasinier, aux coordinatrices et aux livreurs.</div>;
   }
 
   const affichees = filtrees.slice(0, AFFICHAGE_MAX);
@@ -112,7 +114,7 @@ export default function MagasinPage() {
             Stock de votre agence — {lignes.length} référence(s), {total} unité(s) disponibles.
           </p>
         </div>
-        <Link href="/pro/reappro" className="btn-secondary text-sm">Réapprovisionnement →</Link>
+        {peutEditer && <Link href="/pro/reappro" className="btn-secondary text-sm">Réapprovisionnement →</Link>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -163,27 +165,34 @@ export default function MagasinPage() {
                     {l.reserve > 0 && <span className="ml-2 text-rose-500">· {l.reserve} réservé(s)</span>}
                   </p>
                 </div>
-                <div className="flex shrink-0 flex-wrap items-end gap-3">
-                  <label className="text-xs text-slate-400">
-                    Disponible
-                    <input
-                      type="number" min={0} defaultValue={l.quantite}
-                      onBlur={(e) => maj(l, "quantite", parseInt(e.target.value, 10))}
-                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                      className="input mt-0.5 w-20 text-right"
-                    />
-                  </label>
-                  <label className="text-xs text-slate-400">
-                    Seuil
-                    <input
-                      type="number" min={0} defaultValue={l.seuil}
-                      onBlur={(e) => maj(l, "seuil_alerte", parseInt(e.target.value, 10))}
-                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                      className="input mt-0.5 w-16 text-right"
-                    />
-                  </label>
-                  <span className="pb-2 text-xs text-slate-400">{savingId === l.id ? "…" : ""}</span>
-                </div>
+                {peutEditer ? (
+                  <div className="flex shrink-0 flex-wrap items-end gap-3">
+                    <label className="text-xs text-slate-400">
+                      Disponible
+                      <input
+                        type="number" min={0} defaultValue={l.quantite}
+                        onBlur={(e) => maj(l, "quantite", parseInt(e.target.value, 10))}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="input mt-0.5 w-20 text-right"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-400">
+                      Seuil
+                      <input
+                        type="number" min={0} defaultValue={l.seuil}
+                        onBlur={(e) => maj(l, "seuil_alerte", parseInt(e.target.value, 10))}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="input mt-0.5 w-16 text-right"
+                      />
+                    </label>
+                    <span className="pb-2 text-xs text-slate-400">{savingId === l.id ? "…" : ""}</span>
+                  </div>
+                ) : (
+                  <div className="shrink-0 text-right">
+                    <p className="text-lg font-bold text-slate-800">{l.quantite}</p>
+                    <p className="text-xs text-slate-400">dispo · seuil {l.seuil}</p>
+                  </div>
+                )}
               </div>
             );
           })}

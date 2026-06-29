@@ -4,10 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { estEmailAdmin } from "@/lib/admin";
 import { peutOctroyer } from "@/lib/niveaux";
 
-type RolePro = "coordinatrice" | "chirurgien" | "delegue" | "manager" | "infirmiere_liberale" | "livreur" | "pharmacie" | "dirigeant";
-const ROLES: RolePro[] = ["coordinatrice", "chirurgien", "delegue", "manager", "infirmiere_liberale", "livreur", "pharmacie", "dirigeant"];
+type RolePro = "coordinatrice" | "chirurgien" | "delegue" | "manager" | "infirmiere_liberale" | "livreur" | "pharmacie" | "dirigeant" | "magasinier";
+const ROLES: RolePro[] = ["coordinatrice", "chirurgien", "delegue", "manager", "infirmiere_liberale", "livreur", "pharmacie", "dirigeant", "magasinier"];
 // Comptes service : ne peuvent pas créer d'autres comptes.
-const estRoleService = (r: string | null | undefined) => r === "livreur" || r === "pharmacie";
+const estRoleService = (r: string | null | undefined) => r === "livreur" || r === "pharmacie" || r === "magasinier";
 
 // Génère un mot de passe lisible (sans caractères ambigus).
 function genererMotDePasse(): string {
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   // (le plus restrictif) ; sa vue PEC nationale passe par son rôle (RLS 0064).
   const niveauDemande = role === "manager" ? 1
     : role === "livreur" ? 2
-    : (role === "infirmiere_liberale" || role === "pharmacie" || role === "chirurgien" || role === "dirigeant") ? 3
+    : (role === "infirmiere_liberale" || role === "pharmacie" || role === "chirurgien" || role === "dirigeant" || role === "magasinier") ? 3
     : ([0, 1, 2, 3].includes(Number(body.niveau)) ? Number(body.niveau) : 3);
   if (!peutOctroyer(niveauCreateur, niveauDemande)) {
     return NextResponse.json(

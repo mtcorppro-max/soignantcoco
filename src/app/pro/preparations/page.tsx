@@ -56,7 +56,9 @@ export default function PreparationsPage() {
   const [feedback, setFeedback] = useState<{ type: "ok" | "info" | "erreur"; msg: string } | null>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const peutAcceder = pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
+  const peutAcceder = pro?.role === "magasinier" || pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
+  // Seul le magasinier prépare (picking + validation) ; les autres consultent / livrent.
+  const estMag = pro?.role === "magasinier" || pro?.niveau === 0;
 
   const charger = useCallback(async () => {
     const { data } = await createClient()
@@ -152,7 +154,7 @@ export default function PreparationsPage() {
   }, [openId, pret]);
 
   if (pro && !peutAcceder) {
-    return <div className="card text-sm text-slate-500">La préparation de commande est réservée aux coordinatrices et aux livreurs.</div>;
+    return <div className="card text-sm text-slate-500">La préparation de commande est réservée au magasinier, aux coordinatrices et aux livreurs.</div>;
   }
 
   const aPreparer = livs.filter((l) => l.statut === "planifiee");
@@ -162,7 +164,7 @@ export default function PreparationsPage() {
   const carte = (l: Liv) => {
     const p = patientDe(l);
     const nbPrep = l.lignes.filter((x) => x.prepare).length;
-    const editable = l.statut === "planifiee";
+    const editable = l.statut === "planifiee" && estMag;
     return (
       <div key={l.id} id={`liv-${l.id}`} className={`card grid grid-cols-1 gap-3 ${openId === l.id ? "ring-2 ring-brand ring-offset-2" : ""}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -194,8 +196,11 @@ export default function PreparationsPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {l.statut === "planifiee" && (
+          {l.statut === "planifiee" && estMag && (
             <button onClick={() => validerPrep(l)} disabled={busy === l.id} className="btn-primary px-3 py-1.5 text-sm disabled:opacity-50">Valider la préparation</button>
+          )}
+          {l.statut === "planifiee" && !estMag && (
+            <span className="text-xs text-slate-400">En attente de préparation par le magasinier</span>
           )}
           {l.statut === "preparee" && (
             <>

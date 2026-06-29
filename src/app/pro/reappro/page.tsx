@@ -28,7 +28,7 @@ export default function ReapproPage() {
   const [recherche, setRecherche] = useState("");
   const [resultats, setResultats] = useState<Article[]>([]);
 
-  const peutAcceder = pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
+  const peutAcceder = pro?.role === "magasinier" || pro?.niveau === 0;
 
   const charger = useCallback(async () => {
     const { data } = await createClient()
@@ -100,7 +100,7 @@ export default function ReapproPage() {
   }
 
   if (pro && !peutAcceder) {
-    return <div className="card text-sm text-slate-500">Le réapprovisionnement est réservé aux coordinatrices et aux livreurs.</div>;
+    return <div className="card text-sm text-slate-500">Le réapprovisionnement est réservé au magasinier.</div>;
   }
 
   return (

@@ -9,7 +9,11 @@ export const LIBELLE_ROLE: Record<RolePro, string> = {
   livreur: "Livreur",
   pharmacie: "Pharmacie",
   dirigeant: "Dirigeant",
+  magasinier: "Magasinier",
 };
+
+// Magasinier : gère le stock et la préparation des commandes (pas de patient).
+export const estMagasinier = (r: string | undefined | null) => r === "magasinier";
 
 // Compte de direction : pas de gestion de patients ; accès PEC (national) +
 // annuaire « équipe dirigeante » uniquement. Créé seulement par un admin.
@@ -22,7 +26,7 @@ export const estCoordOuManager = (r: string | undefined | null) =>
 // Comptes « service » (livreur, pharmacie) : pas de gestion d'équipe ni
 // d'accès élargi. Ils se connectent et ne voient que les patients rattachés.
 export const estRoleService = (r: string | undefined | null) =>
-  r === "livreur" || r === "pharmacie";
+  r === "livreur" || r === "pharmacie" || r === "magasinier";
 
 // Matrice des droits (cf. §4 du cahier des charges).
 export const peut = {
