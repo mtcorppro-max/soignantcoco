@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 import { SignaturePad } from "@/components/SignaturePad";
@@ -15,6 +15,23 @@ type Liv = {
   patient: Patient | Patient[] | null;
   lignes: Ligne[];
 };
+
+// Petit bip (Web Audio) — aigu si OK, grave si erreur. Sans fichier audio.
+let audioCtx: AudioContext | null = null;
+function bip(ok: boolean) {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    audioCtx = audioCtx || new Ctx();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = "sine"; o.frequency.value = ok ? 880 : 300;
+    const t = audioCtx.currentTime;
+    g.gain.setValueAtTime(0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (ok ? 0.13 : 0.25));
+    o.start(t); o.stop(t + (ok ? 0.14 : 0.26));
+  } catch { /* audio non dispo */ }
+}
 
 const patientDe = (l: Liv) => (Array.isArray(l.patient) ? l.patient[0] : l.patient) ?? null;
 const desig = (a: Ligne["article"]) => (Array.isArray(a) ? a[0]?.designation : a?.designation) ?? "";
@@ -36,6 +53,8 @@ export default function PreparationsPage() {
   const [scanArticle, setScanArticle] = useState<Liv | null>(null);
   const [scanBon, setScanBon] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "ok" | "info" | "erreur"; msg: string } | null>(null);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const peutAcceder = pro?.role === "coordinatrice" || pro?.role === "livreur" || pro?.niveau === 0;
 
@@ -94,13 +113,24 @@ export default function PreparationsPage() {
     charger();
   }
 
+  // Retour visuel + sonore + vibration après un scan.
+  function retour(type: "ok" | "info" | "erreur", msg: string) {
+    setFeedback({ type, msg });
+    bip(type === "ok");
+    try { if (navigator.vibrate) navigator.vibrate(type === "ok" ? 50 : [40, 30, 40]); } catch { /* */ }
+    clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = setTimeout(() => setFeedback(null), 1400);
+  }
   // Scan d'un article → coche la ligne correspondante du panier en cours.
   function scanArticleScan(texte: string) {
     const liv = livs.find((x) => x.id === scanArticle?.id);
     if (!liv) return;
     const code = texte.trim();
     const ligne = liv.lignes.find((x) => x.article_code === code);
-    if (ligne && !ligne.prepare) togglePrepare(ligne.id, true);
+    if (!ligne) { retour("erreur", `Hors panier : ${code}`); return; }
+    if (ligne.prepare) { retour("info", `Déjà coché : ${desig(ligne.article)}`); return; }
+    togglePrepare(ligne.id, true);
+    retour("ok", `✓ ${desig(ligne.article)}`);
   }
   // Scan d'un bon de livraison (QR = URL avec ?l=) → met en évidence la livraison.
   function scanBonScan(texte: string) {
@@ -206,6 +236,17 @@ export default function PreparationsPage() {
 
       {signer && <SignaturePad onValider={confirmerLivraison} onAnnuler={() => setSigner(null)} />}
       {scanArticle && <Scanner continu titre="Scanner les articles" onScan={scanArticleScan} onClose={() => setScanArticle(null)} />}
+      {feedback && (
+        <div
+          className={`fixed left-1/2 top-6 z-[60] max-w-[90vw] -translate-x-1/2 truncate rounded-xl px-4 py-2.5 text-sm font-semibold shadow-lg ${
+            feedback.type === "ok" ? "bg-green-600 text-white"
+              : feedback.type === "info" ? "bg-amber-100 text-attention"
+                : "bg-critique text-white"
+          }`}
+        >
+          {feedback.msg}
+        </div>
+      )}
       {scanBon && <Scanner titre="Scanner un bon de livraison" onScan={scanBonScan} onClose={() => setScanBon(false)} />}
     </div>
   );
