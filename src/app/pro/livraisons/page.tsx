@@ -40,6 +40,9 @@ type Liv = {
   livreur_id: string | null;
   statut: "a_programmer" | "a_planifier" | "planifiee" | "preparee" | "livree";
   date_prevue: string | null;
+  livree_le: string | null;
+  signature: string | null;
+  signataire: string | null;
   patient: PatientLite | PatientLite[] | null;
   lignes: LigneBon[];
 };
@@ -55,6 +58,9 @@ const refLiv = (l: Liv) => l.id.slice(0, 8).toUpperCase();
 const bonLignes = (l: Liv): BonLigne[] => l.lignes.map((x) => ({ code: x.article_code, designation: desigDe(x.article), quantite: x.quantite }));
 const bonPatient = (p: PatientLite | null): BonPatient => ({ nom: p?.nom ?? "Patient", adresse: p?.adresse, code_postal: p?.code_postal, ville: p?.ville, telephone: p?.telephone });
 const urlQR = (l: Liv) => `${typeof window !== "undefined" ? window.location.origin : ""}/pro/preparations?l=${l.id}`;
+// Une livraison livrée n'est annulable que dans les 2 h suivant sa validation.
+const DELAI_ANNULATION_MS = 2 * 60 * 60 * 1000;
+const annulable = (l: Liv) => !!l.livree_le && Date.now() - new Date(l.livree_le).getTime() < DELAI_ANNULATION_MS;
 
 function todayIso(): string {
   const d = new Date();
@@ -109,7 +115,7 @@ export default function LivraisonsPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("livraison")
-      .select(`id,patient_id,livreur_id,statut,date_prevue,patient:patient_id(${PATIENT_COLS}),lignes:livraison_ligne(article_code,quantite,article:article_code(designation))`)
+      .select(`id,patient_id,livreur_id,statut,date_prevue,livree_le,patient:patient_id(${PATIENT_COLS}),lignes:livraison_ligne(article_code,quantite,article:article_code(designation))`)
       .order("date_prevue", { ascending: true });
     setLivs((data ?? []) as unknown as Liv[]);
     // Matériel de location actuellement chez les patients (cloisonné agence par RLS).
@@ -345,7 +351,11 @@ export default function LivraisonsPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="badge bg-green-100 text-ok">Livrée ✓</span>
-                  <button onClick={() => maj(l.id, { statut: "planifiee" })} disabled={busy === l.id} className="text-sm font-medium text-brand hover:underline">Annuler</button>
+                  {annulable(l) ? (
+                    <button onClick={() => maj(l.id, { statut: "planifiee", signature: null, signataire: null, livree_le: null })} disabled={busy === l.id} className="text-sm font-medium text-brand hover:underline">Annuler</button>
+                  ) : (
+                    <span className="text-xs text-slate-400">Annulation expirée (2 h)</span>
+                  )}
                 </div>
               </div>
             );
