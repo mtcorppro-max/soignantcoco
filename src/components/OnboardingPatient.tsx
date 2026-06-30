@@ -15,7 +15,7 @@ type Row = {
 };
 
 const TUTO = [
-  { emoji: "👋", titre: "Bienvenue sur AS2CŒUR", texte: "Votre application de suivi après l'opération, à domicile. Voici comment elle fonctionne en quelques écrans." },
+  { emoji: "👋", titre: "Bienvenue sur AS2CŒUR", texte: "Votre application de suivi de soins à domicile. Voici comment elle fonctionne en quelques écrans." },
   { emoji: "🩺", titre: "Vos mesures", texte: "Depuis l'accueil, saisissez vos constantes (tension, température, saturation…) lorsque cela vous est demandé. Tout est transmis à votre équipe." },
   { emoji: "📝", titre: "Votre bilan du jour", texte: "Les jours de suivi, un court questionnaire « état général » vous est proposé automatiquement. Quelques clics suffisent." },
   { emoji: "💬", titre: "Votre infirmière", texte: "Une question, un doute ? Écrivez à votre infirmière coordinatrice via la messagerie, onglet « Infirmière »." },
@@ -82,7 +82,7 @@ export function OnboardingPatient() {
               <p className="mb-3 text-center text-sm text-slate-500">Voici ce qui est prévu pour vous.</p>
               <dl className="grid gap-2 rounded-2xl border border-rose-100 bg-rose-50/40 p-4 text-sm">
                 {row.operation && <Ligne label="Intervention" value={row.operation} />}
-                <Ligne label="Date d'opération" value={fmtDate(row.date_operation)} />
+                <Ligne label={row.operation ? "Date d'opération" : "Début de prise en charge"} value={fmtDate(row.date_operation)} />
                 {row.duree_prise_en_charge != null && <Ligne label="Durée du suivi" value={`${row.duree_prise_en_charge} jour${row.duree_prise_en_charge > 1 ? "s" : ""}`} />}
                 {jours.length > 0 && <Ligne label="Jours de suivi" value={jours.map((j) => `J${j}`).join(" · ")} />}
                 {row.traitement && <Ligne label="Traitement" value={row.traitement} />}
@@ -98,7 +98,7 @@ export function OnboardingPatient() {
                 Vos données sont protégées et vues uniquement par votre équipe de soins.
               </div>
               <p className="text-sm leading-relaxed text-slate-500">
-                Vos données de santé sont collectées pour assurer votre suivi post-opératoire, conformément au RGPD. Elles sont hébergées de façon sécurisée et ne sont accessibles qu&apos;aux professionnels de votre équipe de soins. Vous pouvez à tout moment exercer vos droits d&apos;accès, de rectification et de suppression auprès de votre prestataire.
+                Vos données de santé sont collectées pour assurer votre suivi de soins à domicile, conformément au RGPD. Elles sont hébergées de façon sécurisée et ne sont accessibles qu&apos;aux professionnels de votre équipe de soins. Vous pouvez à tout moment exercer vos droits d&apos;accès, de rectification et de suppression auprès de votre prestataire.
               </p>
               <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
                 <input type="checkbox" checked={accepte} onChange={(e) => setAccepte(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand" />

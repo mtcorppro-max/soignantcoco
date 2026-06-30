@@ -64,7 +64,7 @@ export function CalendrierSuivi({ patientId }: { patientId: string }) {
       <section className="card">
         <h2 className="mb-1 text-sm font-semibold text-slate-600">Mon calendrier de prise en charge</h2>
         <p className="text-sm text-slate-400">
-          Votre calendrier apparaîtra dès que la date d&apos;opération sera renseignée par votre équipe soignante.
+          Votre calendrier apparaîtra dès que la date de début de prise en charge sera renseignée par votre équipe soignante.
         </p>
       </section>
     );
@@ -81,7 +81,7 @@ export function CalendrierSuivi({ patientId }: { patientId: string }) {
   // Étapes de prise en charge (si la date d'opération est connue).
   if (infos?.date_operation) {
     const base = parseISO(infos.date_operation);
-    etapes.push({ label: "Opération", date: base, type: "operation", statut: statutDe(base) });
+    etapes.push({ label: infos.operation ? "Opération" : "Début de prise en charge", date: base, type: "operation", statut: statutDe(base) });
     (infos.jours_suivi ?? []).forEach((j) => {
       const d = ajoute(base, j);
       etapes.push({ label: `Suivi J${j}`, date: d, type: "suivi", statut: statutDe(d) });
