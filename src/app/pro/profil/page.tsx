@@ -120,7 +120,7 @@ export default function MonProfil() {
   }
 
   return (
-    <div className={edition ? "max-w-2xl" : "max-w-sm"}>
+    <div className={`mx-auto ${edition ? "max-w-2xl" : "max-w-md"}`}>
       {!pret ? (
         <p className="text-sm text-slate-400">Chargement…</p>
       ) : (
