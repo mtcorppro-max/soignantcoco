@@ -9,6 +9,7 @@ import { Select } from "@/components/Select";
 import { DateField } from "@/components/DateField";
 import { TYPES_DEPENSE, libDepense, STATUTS_NDF, eurNdf } from "@/lib/notesFrais";
 import { genererPdfNoteFrais } from "@/lib/pdfNoteFrais";
+import { imageEnPdf } from "@/lib/imageToPdf";
 
 type Note = {
   id: string; emetteur_id: string; titre: string; periode_debut: string | null; periode_fin: string | null;
@@ -177,7 +178,12 @@ export default function NoteFraisDetail() {
 
   async function uploadJustif(lid: string, file: File) {
     setBusy(true);
-    const fd = new FormData(); fd.append("fichier", file); fd.append("ligne_id", lid);
+    // Photo → PDF (façon scan) ; les PDF restent inchangés.
+    let envoi = file;
+    if (file.type.startsWith("image/")) {
+      try { envoi = await imageEnPdf(file); } catch { envoi = file; }
+    }
+    const fd = new FormData(); fd.append("fichier", envoi); fd.append("ligne_id", lid);
     const res = await fetch("/api/notes-frais/justificatif", { method: "POST", body: fd });
     setBusy(false);
     if (!res.ok) { const j = await res.json().catch(() => ({})); alert("Échec : " + (j.message ?? "")); return; }
