@@ -141,28 +141,26 @@ export default function FichePatient() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      {/* ── En-tête + onglets de rubriques ── */}
-      <div className="grid gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <Link href="/pro" className="text-sm text-slate-400 hover:text-brand" prefetch>
-              ← Tableau de bord
-            </Link>
-            <h1 className="mt-1 text-2xl font-bold text-slate-800">{patient.nom}</h1>
-            <p className="text-sm text-slate-500">
-              Code : <span className="font-mono font-semibold">{patient.code_unique}</span>
-              {patient.code_postal ? ` · ${patient.code_postal}` : ""}
-            </p>
+      {/* ── En-tête : nom + icônes de rubriques + statut ── */}
+      <div className="grid gap-2">
+        <Link href="/pro" className="text-sm text-slate-400 hover:text-brand" prefetch>
+          ← Tableau de bord
+        </Link>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h1 className="text-2xl font-bold text-slate-800">{patient.nom}</h1>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <OngletBtn label="Suivis" icon={<ICal />} actif={onglet === "suivis"} onClick={() => setOnglet((o) => (o === "suivis" ? null : "suivis"))} />
+            <OngletBtn label="Ordonnances" icon={<IDoc />} actif={onglet === "ordonnances"} onClick={() => setOnglet((o) => (o === "ordonnances" ? null : "ordonnances"))} />
+            <OngletBtn label="Livraison" icon={<ITruck />} actif={onglet === "livraisons"} onClick={() => setOnglet((o) => (o === "livraisons" ? null : "livraisons"))} />
+            <OngletBtn label="Messagerie" icon={<IChat />} actif={onglet === "messagerie"} onClick={() => setOnglet((o) => (o === "messagerie" ? null : "messagerie"))} />
+            {peutFacturation && <OngletBtn label="Facturation" icon={<IEuro />} actif={onglet === "facturation"} onClick={() => setOnglet((o) => (o === "facturation" ? null : "facturation"))} />}
           </div>
-          <StatutPatient patientId={patient.id} statut={patient.statut} modifiable={peutStatut} />
+          <div className="ml-auto"><StatutPatient patientId={patient.id} statut={patient.statut} modifiable={peutStatut} /></div>
         </div>
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          <OngletBtn label="Suivis" icon={<ICal />} actif={onglet === "suivis"} onClick={() => setOnglet((o) => (o === "suivis" ? null : "suivis"))} />
-          <OngletBtn label="Ordonnances" icon={<IDoc />} actif={onglet === "ordonnances"} onClick={() => setOnglet((o) => (o === "ordonnances" ? null : "ordonnances"))} />
-          <OngletBtn label="Livraison" icon={<ITruck />} actif={onglet === "livraisons"} onClick={() => setOnglet((o) => (o === "livraisons" ? null : "livraisons"))} />
-          <OngletBtn label="Messagerie" icon={<IChat />} actif={onglet === "messagerie"} onClick={() => setOnglet((o) => (o === "messagerie" ? null : "messagerie"))} />
-          {peutFacturation && <OngletBtn label="Facturation" icon={<IEuro />} actif={onglet === "facturation"} onClick={() => setOnglet((o) => (o === "facturation" ? null : "facturation"))} />}
-        </div>
+        <p className="text-sm text-slate-500">
+          Code : <span className="font-mono font-semibold">{patient.code_unique}</span>
+          {patient.code_postal ? ` · ${patient.code_postal}` : ""}
+        </p>
       </div>
 
       {/* ── Panneau de la rubrique ouverte ── */}
@@ -293,10 +291,9 @@ function OngletBtn({ label, icon, actif, onClick }: { label: string; icon: React
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${actif ? "border-brand bg-brand text-white" : "border-rose-200 bg-white text-brand hover:bg-rose-50"}`}
+      className={`inline-flex items-center justify-center rounded-xl border p-2 transition ${actif ? "border-brand bg-brand text-white" : "border-rose-200 bg-white text-brand hover:bg-rose-50"}`}
     >
       {icon}
-      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
