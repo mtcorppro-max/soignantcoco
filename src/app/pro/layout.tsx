@@ -225,7 +225,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
         ...(peutGerer ? [{ href: "/pro/equipe", icon: "users", label: "Équipe" }] : []),
         ...(peutAnnuaire ? [{ href: "/pro/annuaire", icon: "users", label: "Annuaire" }] : []),
-        ...(estCoord || estChir || peutGerer ? [{ href: "/pro/nouveau", icon: "plus", label: "Nouveau" }] : []),
         ...(peutPec ? [{ href: "/pro/pec", icon: "chart", label: "PEC" }] : []),
       ];
   // Au-delà de 5 entrées : 4 visibles + un bouton « Plus » qui ouvre le reste.
@@ -341,6 +340,19 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
             })}
           </div>
         </>
+      )}
+
+      {/* Bouton flottant « Nouveau » (mobile) : toujours visible en bas à droite. */}
+      {pro && (estCoord || estChir || peutGerer) && (
+        <Link
+          href="/pro/nouveau"
+          prefetch
+          aria-label="Nouveau"
+          title="Nouveau"
+          className="fixed bottom-[4.75rem] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-lg transition active:scale-95 sm:hidden"
+        >
+          <IconeNav name="plus" className="h-6 w-6" />
+        </Link>
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-rose-100 bg-white sm:hidden">
