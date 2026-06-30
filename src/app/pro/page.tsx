@@ -47,7 +47,7 @@ function libelleAction(a: ActionItem): string {
 async function fetchDashboard(): Promise<DashData> {
   const supabase = createClient();
   const [{ data: pts }, { data: als }, { data: msgs }, { data: svs }, { data: rps }, { data: livs }] = await Promise.all([
-    supabase.from("patient").select("id,nom,statut,code_postal,prestataire_id,user_id,date_operation,duree_prise_en_charge,jours_suivi").order("nom"),
+    supabase.from("patient").select("id,nom,statut,code_postal,prestataire_id,user_id,date_operation,duree_prise_en_charge,jours_suivi,infirmiere_nom,infirmiere_tel").order("nom"),
     supabase.from("alerte").select("id,patient_id,statut").in("statut", ["declenchee", "escaladee", "acquittee"]),
     supabase.from("message").select("patient_id,auteur_user_id,horodatage").order("horodatage", { ascending: true }).limit(2000),
     supabase.from("suivi").select("patient_id,created_at"),
@@ -132,6 +132,20 @@ export default function Dashboard() {
   const voitAlertes = !estRoleService(pro?.role) && (!estMedecin || !!pro?.recevoir_alertes);
   // Le suivi des livraisons à attribuer est réservé aux coordinatrices/managers.
   const peutVoirLivraisons = estCoordOuManager(pro?.role);
+
+  // Médecin : ordonnances en attente de sa signature, par patient.
+  const ordoData = useData<Map<string, number>>(
+    estMedecin && pro?.id ? `pro:dash-ordo:${pro.id}` : "pro:dash-ordo:none",
+    async () => {
+      if (!estMedecin || !pro?.id) return new Map<string, number>();
+      const { data } = await createClient().from("ordonnance").select("patient_id").eq("destinataire_id", pro.id).eq("statut", "a_signer");
+      const m = new Map<string, number>();
+      (data ?? []).forEach((o) => { const id = (o as { patient_id: string }).patient_id; m.set(id, (m.get(id) ?? 0) + 1); });
+      return m;
+    },
+    [estMedecin, pro?.id]
+  );
+  const ordoParPatient = ordoData ?? new Map<string, number>();
 
   // Pharmacie, livreur et dirigeant n'ont pas de tableau de bord : on les renvoie vers leur espace.
   useEffect(() => {
@@ -227,6 +241,12 @@ export default function Dashboard() {
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-slate-700">{p.nom}</p>
                       <StatutSuivi statut={p.statut} />
+                      {estMedecin && (p.infirmiere_nom || p.infirmiere_tel) && (
+                        <p className="mt-0.5 truncate text-xs text-slate-400">
+                          IDE : {p.infirmiere_nom || "—"}
+                          {p.infirmiere_tel && <> · <a href={`tel:${p.infirmiere_tel}`} onClick={(ev) => ev.stopPropagation()} className="text-brand hover:underline">{p.infirmiere_tel}</a></>}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -235,27 +255,39 @@ export default function Dashboard() {
                     ) : (e?.acquittees ?? 0) > 0 ? (
                       <span className="badge bg-amber-100 text-attention">{e?.acquittees} traitée(s)</span>
                     ) : null}
-                    {(messages.get(p.id) ?? 0) > 0 && (
-                      <span className="badge bg-rose-800 text-white">
-                        {messages.get(p.id)} message{(messages.get(p.id) ?? 0) > 1 ? "s" : ""}
-                      </span>
-                    )}
-                    {acts.length > 0 && (
-                      <button
-                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); validerActions(p.id, acts); }}
-                        className="badge bg-rose-800 text-white"
-                        title={`${acts.map(libelleAction).join(", ")} — appuyer pour valider`}
-                      >
-                        {acts.length} action · valider
-                      </button>
-                    )}
-                    {nbLiv > 0 && (
-                      <span className="badge bg-amber-100 text-attention" title="Livraison programmée sans livreur — indiquez qui livre">
-                        {nbLiv} livraison · attribuer
-                      </span>
-                    )}
-                    {!critique && (e?.acquittees ?? 0) === 0 && (messages.get(p.id) ?? 0) === 0 && acts.length === 0 && nbLiv === 0 && (
-                      <span className="text-slate-300 text-sm">—</span>
+                    {estMedecin ? (
+                      (ordoParPatient.get(p.id) ?? 0) > 0 ? (
+                        <span className="badge bg-amber-100 text-attention" title="Ordonnance(s) en attente de votre signature">
+                          {ordoParPatient.get(p.id)} ordo · à signer
+                        </span>
+                      ) : !critique && (e?.acquittees ?? 0) === 0 ? (
+                        <span className="text-slate-300 text-sm">—</span>
+                      ) : null
+                    ) : (
+                      <>
+                        {(messages.get(p.id) ?? 0) > 0 && (
+                          <span className="badge bg-rose-800 text-white">
+                            {messages.get(p.id)} message{(messages.get(p.id) ?? 0) > 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {acts.length > 0 && (
+                          <button
+                            onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); validerActions(p.id, acts); }}
+                            className="badge bg-rose-800 text-white"
+                            title={`${acts.map(libelleAction).join(", ")} — appuyer pour valider`}
+                          >
+                            {acts.length} action · valider
+                          </button>
+                        )}
+                        {nbLiv > 0 && (
+                          <span className="badge bg-amber-100 text-attention" title="Livraison programmée sans livreur — indiquez qui livre">
+                            {nbLiv} livraison · attribuer
+                          </span>
+                        )}
+                        {!critique && (e?.acquittees ?? 0) === 0 && (messages.get(p.id) ?? 0) === 0 && acts.length === 0 && nbLiv === 0 && (
+                          <span className="text-slate-300 text-sm">—</span>
+                        )}
+                      </>
                     )}
                     <span className="text-brand">→</span>
                   </div>
@@ -272,8 +304,17 @@ export default function Dashboard() {
                   <th className="px-4 py-3">Patient</th>
                   <th className="px-4 py-3">Statut</th>
                   <th className="px-4 py-3">Alertes</th>
-                  <th className="px-4 py-3">Message</th>
-                  <th className="px-4 py-3">Action</th>
+                  {estMedecin ? (
+                    <>
+                      <th className="px-4 py-3">Infirmière</th>
+                      <th className="px-4 py-3">Ordonnances</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-4 py-3">Message</th>
+                      <th className="px-4 py-3">Action</th>
+                    </>
+                  )}
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -307,43 +348,69 @@ export default function Dashboard() {
                           <span className="text-slate-300">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        {(messages.get(p.id) ?? 0) > 0 ? (
-                          <span className="badge bg-rose-800 text-white">
-                            {messages.get(p.id)} message{(messages.get(p.id) ?? 0) > 1 ? "s" : ""}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="flex flex-wrap items-center gap-2">
-                          {acts.length > 0 && (
-                            <span className="inline-flex items-center gap-2">
-                              <span
-                                className="badge bg-rose-800 text-white"
-                                title={acts.map(libelleAction).join(", ")}
-                              >
-                                {acts.length}
+                      {estMedecin ? (
+                        <>
+                          <td className="px-4 py-3">
+                            {p.infirmiere_nom || p.infirmiere_tel ? (
+                              <span className="flex flex-col leading-tight">
+                                <span className="font-medium text-slate-700">{p.infirmiere_nom || "—"}</span>
+                                {p.infirmiere_tel && <a href={`tel:${p.infirmiere_tel}`} onClick={(ev) => ev.stopPropagation()} className="text-xs text-brand hover:underline">{p.infirmiere_tel}</a>}
                               </span>
-                              <button
-                                onClick={(ev) => { ev.stopPropagation(); validerActions(p.id, acts); }}
-                                className="text-xs font-medium text-brand hover:underline"
-                              >
-                                Valider
-                              </button>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {(ordoParPatient.get(p.id) ?? 0) > 0 ? (
+                              <span className="badge bg-amber-100 text-attention" title="Ordonnance(s) en attente de votre signature">
+                                {ordoParPatient.get(p.id)} à signer
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3">
+                            {(messages.get(p.id) ?? 0) > 0 ? (
+                              <span className="badge bg-rose-800 text-white">
+                                {messages.get(p.id)} message{(messages.get(p.id) ?? 0) > 1 ? "s" : ""}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="flex flex-wrap items-center gap-2">
+                              {acts.length > 0 && (
+                                <span className="inline-flex items-center gap-2">
+                                  <span
+                                    className="badge bg-rose-800 text-white"
+                                    title={acts.map(libelleAction).join(", ")}
+                                  >
+                                    {acts.length}
+                                  </span>
+                                  <button
+                                    onClick={(ev) => { ev.stopPropagation(); validerActions(p.id, acts); }}
+                                    className="text-xs font-medium text-brand hover:underline"
+                                  >
+                                    Valider
+                                  </button>
+                                </span>
+                              )}
+                              {nbLiv > 0 && (
+                                <span className="badge bg-amber-100 text-attention" title="Livraison programmée sans livreur — indiquez qui livre">
+                                  {nbLiv} livraison · attribuer
+                                </span>
+                              )}
+                              {acts.length === 0 && nbLiv === 0 && (
+                                <span className="text-slate-300">—</span>
+                              )}
                             </span>
-                          )}
-                          {nbLiv > 0 && (
-                            <span className="badge bg-amber-100 text-attention" title="Livraison programmée sans livreur — indiquez qui livre">
-                              {nbLiv} livraison · attribuer
-                            </span>
-                          )}
-                          {acts.length === 0 && nbLiv === 0 && (
-                            <span className="text-slate-300">—</span>
-                          )}
-                        </span>
-                      </td>
+                          </td>
+                        </>
+                      )}
                       <td className="px-4 py-3 text-right">
                         <Link href={`/pro/patients/${p.id}`} className="text-sm font-medium text-brand hover:underline">
                           Ouvrir →

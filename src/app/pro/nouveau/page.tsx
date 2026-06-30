@@ -8,6 +8,8 @@ export default function NouveauHub() {
   const estN0 = pro?.niveau === 0;                 // super-admin : tout
   const peutPatient = !!pro; // tout soignant (niveau 0 à 3) peut créer un patient
   const peutSoignant = estN0 || (!!pro && pro.niveau <= 2 && pro.role !== "chirurgien");
+  // Le médecin ne crée pas de soignant externe.
+  const peutSoignantExterne = !!pro && pro.role !== "chirurgien";
   const peutRegion = estN0;                         // créer une région
   const peutAgence = !!pro && pro.niveau <= 1;     // créer une agence
 
@@ -39,7 +41,7 @@ export default function NouveauHub() {
             desc="Créer un compte coordinatrice, chirurgien/médecin ou délégué."
           />
         )}
-        {peutPatient && (
+        {peutSoignantExterne && (
           <Choix
             href="/pro/nouveau-soignant-externe"
             icon={
