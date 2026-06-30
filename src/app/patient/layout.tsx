@@ -9,6 +9,7 @@ import { usePatientSession } from "@/lib/hooks/useSession";
 
 const NAV = [
   { href: "/patient",          label: "Accueil",    icon: "home" },
+  { href: "/patient/bilan",    label: "Bilan",      icon: "bilan" },
   { href: "/patient/chat",     label: "Infirmière", icon: "chat" },
   { href: "/patient/conseils", label: "Conseils",   icon: "bulb" },
   { href: "/patient/profil",   label: "Profil",     icon: "user" },
@@ -85,6 +86,7 @@ function IconePatient({ name, className }: { name: string; className?: string })
     home: (<><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /><path d="M9.5 21v-6h5v6" /></>),
     chat: (<><path d="M21 11.5a7.5 7.5 0 0 1-10.9 6.7L4 19.5l1.3-3.9A7.5 7.5 0 1 1 21 11.5Z" /><circle cx="9" cy="11.5" r="0.7" fill="currentColor" stroke="none" /><circle cx="12.5" cy="11.5" r="0.7" fill="currentColor" stroke="none" /><circle cx="16" cy="11.5" r="0.7" fill="currentColor" stroke="none" /></>),
     bulb: (<><path d="M9.5 18h5" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5.9 1 1.05 1.7l.15.5h4.8l.15-.5c.15-.7.45-1.2 1.05-1.7A6 6 0 0 0 12 3Z" /></>),
+    bilan: (<><rect x="8" y="3" width="8" height="4" rx="1" /><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2" /><path d="m9 13 2 2 4-4" /></>),
     user: (<><circle cx="12" cy="8" r="4" /><path d="M4 20a8 8 0 0 1 16 0" /></>),
   };
   return <svg viewBox="0 0 24 24" className={className} {...p} aria-hidden="true">{paths[name] ?? paths.home}</svg>;

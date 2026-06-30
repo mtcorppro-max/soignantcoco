@@ -15,6 +15,7 @@ import { EquipementsPatient } from "@/components/EquipementsPatient";
 import { OrdonnancesPatient } from "@/components/OrdonnancesPatient";
 import { FacturationPatient } from "@/components/FacturationPatient";
 import { StatutPatient } from "@/components/StatutPatient";
+import { BilansPatient } from "@/components/BilansPatient";
 import { MarquerVisite } from "@/components/MarquerVisite";
 import { AlertesPatient } from "@/components/AlertesPatient";
 import { SuiviPatient } from "@/components/SuiviPatient";
@@ -172,6 +173,7 @@ export default function FichePatient() {
 
       {/* ── Panneau de la rubrique ouverte ── */}
       {onglet === "suivis" && (
+        <>
         <SuiviPatient
           patient={patient}
           constantes={{
@@ -184,6 +186,8 @@ export default function FichePatient() {
             spo2: dernieres.get("spo2")?.toString() ?? "",
           }}
         />
+        <BilansPatient patientId={patient.id} />
+        </>
       )}
       {onglet === "ordonnances" && <OrdonnancesPatient patientId={patient.id} patientNom={patient.nom} patientNaissance={patient.date_naissance} patientChirurgien={patient.chirurgien} />}
       {onglet === "livraisons" && (
