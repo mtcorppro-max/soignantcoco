@@ -98,6 +98,9 @@ export default function FichePatient() {
   // Saisie des constantes : réservée à l'infirmière libérale (et au patient, côté patient).
   // La coordinatrice ne saisit pas de constantes.
   const peutSaisirMesure = pro?.role === "infirmiere_liberale";
+  // Rubriques en onglets (boutons en haut) : suivis / ordonnances / livraisons / facturation.
+  const [onglet, setOnglet] = useState<"suivis" | "ordonnances" | "livraisons" | "facturation" | null>(null);
+  const peutFacturation = !!pro && (pro.niveau <= 1 || ["dirigeant", "coordinatrice"].includes(pro.role));
 
   // Dernières valeurs par type
   const dernieres = new Map<string, number>();
@@ -136,8 +139,8 @@ export default function FichePatient() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      {/* ── En-tête ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* ── En-tête + onglets de rubriques ── */}
+      <div className="grid gap-3">
         <div>
           <Link href="/pro" className="text-sm text-slate-400 hover:text-brand" prefetch>
             ← Tableau de bord
@@ -148,41 +151,45 @@ export default function FichePatient() {
             {patient.code_postal ? ` · ${patient.code_postal}` : ""}
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <OngletBtn label="Suivis" actif={onglet === "suivis"} onClick={() => setOnglet((o) => (o === "suivis" ? null : "suivis"))} />
+          <OngletBtn label="Ordonnances" actif={onglet === "ordonnances"} onClick={() => setOnglet((o) => (o === "ordonnances" ? null : "ordonnances"))} />
+          <OngletBtn label="Livraison" actif={onglet === "livraisons"} onClick={() => setOnglet((o) => (o === "livraisons" ? null : "livraisons"))} />
+          {peutFacturation && <OngletBtn label="Facturation" actif={onglet === "facturation"} onClick={() => setOnglet((o) => (o === "facturation" ? null : "facturation"))} />}
+        </div>
       </div>
+
+      {/* ── Panneau de la rubrique ouverte ── */}
+      {onglet === "suivis" && (
+        <SuiviPatient
+          patient={patient}
+          constantes={{
+            ta:
+              dernieres.has("ta_systolique") || dernieres.has("ta_diastolique")
+                ? `${dernieres.get("ta_systolique") ?? "—"}/${dernieres.get("ta_diastolique") ?? "—"}`
+                : "",
+            pouls: dernieres.get("bpm")?.toString() ?? "",
+            temperature: dernieres.get("temperature")?.toString() ?? "",
+            spo2: dernieres.get("spo2")?.toString() ?? "",
+          }}
+        />
+      )}
+      {onglet === "ordonnances" && <OrdonnancesPatient patientId={patient.id} patientNom={patient.nom} patientNaissance={patient.date_naissance} patientChirurgien={patient.chirurgien} />}
+      {onglet === "livraisons" && (
+        <>
+          <LivraisonPatient patientId={patient.id} prestataireId={patient.prestataire_id} />
+          <EquipementsPatient patientId={patient.id} />
+        </>
+      )}
+      {onglet === "facturation" && <FacturationPatient patientId={patient.id} />}
 
       <MarquerVisite patientId={patient.id} />
 
       {/* ── Alertes en cours — clôturables ici ── */}
       <AlertesPatient patientId={patient.id} />
 
-      {/* ── Suivis (fiches quotidiennes + PDF) ── */}
-      <SuiviPatient
-        patient={patient}
-        constantes={{
-          ta:
-            dernieres.has("ta_systolique") || dernieres.has("ta_diastolique")
-              ? `${dernieres.get("ta_systolique") ?? "—"}/${dernieres.get("ta_diastolique") ?? "—"}`
-              : "",
-          pouls: dernieres.get("bpm")?.toString() ?? "",
-          temperature: dernieres.get("temperature")?.toString() ?? "",
-          spo2: dernieres.get("spo2")?.toString() ?? "",
-        }}
-      />
-
       {/* ── Informations patient ── */}
       <InfosPatient patient={patient} modifiable={modifiableInfos} />
-
-      {/* ── Livraisons (programmées par la coordinatrice, prises par un livreur) ── */}
-      <LivraisonPatient patientId={patient.id} prestataireId={patient.prestataire_id} />
-
-      {/* ── Matériel de location en cours chez le patient ── */}
-      <EquipementsPatient patientId={patient.id} />
-
-      {/* ── Ordonnances du patient ── */}
-      <OrdonnancesPatient patientId={patient.id} patientNom={patient.nom} patientNaissance={patient.date_naissance} patientChirurgien={patient.chirurgien} />
-
-      {/* ── CA généré + prévisionnel (managers/coordinatrices) ── */}
-      <FacturationPatient patientId={patient.id} />
 
       {/* ── Dernières valeurs ── */}
       <section>
@@ -278,6 +285,17 @@ export default function FichePatient() {
 }
 
 // ── Skeletons ───────────────────────────────────────────────────────
+
+function OngletBtn({ label, actif, onClick }: { label: string; actif: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${actif ? "border-brand bg-brand text-white" : "border-rose-200 bg-white text-brand hover:bg-rose-50"}`}
+    >
+      {label}
+    </button>
+  );
+}
 
 function SkeletonCourbes() {
   return (
