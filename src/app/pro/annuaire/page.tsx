@@ -72,6 +72,14 @@ export default function AnnuairePage() {
     if (ok) alert("Document(s) déposé(s) dans le coffre-fort du salarié.");
   }
 
+  async function reinitCode(memberId: string, nom: string) {
+    if (!confirm(`Réinitialiser le code du coffre-fort de ${nom} ?\nLe salarié devra en définir un nouveau à la prochaine ouverture.`)) return;
+    setCoffreBusy(memberId);
+    const res = await fetch("/api/coffre", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ professionnel_id: memberId }) });
+    setCoffreBusy(null);
+    alert(res.ok ? "Code réinitialisé. Le salarié en sera informé." : "Échec de la réinitialisation.");
+  }
+
   const recharger = () => {
     createClient().from("professionnel").select(COLS).order("nom").then(({ data }) => {
       setPros((data ?? []) as Pro[]);
@@ -260,10 +268,13 @@ export default function AnnuairePage() {
                       {m.email && <a href={`mailto:${m.email}`} className="btn-secondary px-3 py-1.5 text-xs" title="Envoyer un email">Email</a>}
                       {m.telephone && <a href={`tel:${m.telephone}`} className="btn-secondary px-3 py-1.5 text-xs" title="Appeler">Tél.</a>}
                       {peutDeposerCoffre && m.id !== pro?.id && peutNotesFrais(m.role) && (
-                        <label className={`btn-secondary cursor-pointer px-3 py-1.5 text-xs ${coffreBusy === m.id ? "pointer-events-none opacity-50" : ""}`} title="Déposer un document dans le coffre-fort de ce salarié">
-                          {coffreBusy === m.id ? "Dépôt…" : "🔒 Coffre"}
-                          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" multiple className="hidden" onChange={(e) => deposerCoffre(m.id, e.target.files)} disabled={coffreBusy === m.id} />
-                        </label>
+                        <>
+                          <label className={`btn-secondary cursor-pointer px-3 py-1.5 text-xs ${coffreBusy === m.id ? "pointer-events-none opacity-50" : ""}`} title="Déposer un document dans le coffre-fort de ce salarié">
+                            {coffreBusy === m.id ? "Dépôt…" : "🔒 Coffre"}
+                            <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" multiple className="hidden" onChange={(e) => deposerCoffre(m.id, e.target.files)} disabled={coffreBusy === m.id} />
+                          </label>
+                          <button onClick={() => reinitCode(m.id, nomComplet(m))} disabled={coffreBusy === m.id} className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-50" title="Réinitialiser le code du coffre (code oublié)">Réinit. code</button>
+                        </>
                       )}
                     </div>
                   </div>

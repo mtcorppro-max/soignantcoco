@@ -62,6 +62,42 @@ export async function POST(request: Request) {
     await admin.storage.from(BUCKET_COFFRE).remove([chemin]);
     return NextResponse.json({ message: "Échec de l'enregistrement." }, { status: 500 });
   }
+
+  // Dépôt par un tiers (RH/dirigeant) → on prévient le salarié par message interne.
+  if (ownerId !== proId) {
+    await admin.from("message_pro").insert({
+      expediteur_id: proId,
+      destinataire_id: ownerId,
+      contenu: `📁 Un nouveau document a été déposé dans votre coffre-fort : « ${fichier.name} ».`,
+    });
+  }
+  return NextResponse.json({ ok: true });
+}
+
+// Réinitialisation du code d'un salarié par un RH / dirigeant (code oublié).
+export async function PATCH(request: Request) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
+  const body = await request.json().catch(() => ({}));
+  const cible = (body.professionnel_id ?? "").toString();
+  if (!cible) return NextResponse.json({ message: "Salarié manquant." }, { status: 400 });
+
+  const admin = createAdminClient();
+  const proId = await proCourant(admin, user.id);
+  const { data: moi } = await admin.from("professionnel").select("role,niveau,prestataire_id").eq("id", proId ?? "").maybeSingle();
+  const peutReset = !!moi && (moi.niveau === 0 || moi.role === "rh" || moi.role === "dirigeant");
+  if (!proId || !peutReset) return NextResponse.json({ message: "Action non autorisée." }, { status: 403 });
+  const { data: emp } = await admin.from("professionnel").select("id,prestataire_id").eq("id", cible).maybeSingle();
+  if (!emp || emp.prestataire_id !== moi!.prestataire_id) return NextResponse.json({ message: "Salarié hors de votre périmètre." }, { status: 403 });
+
+  await admin.from("professionnel").update({ coffre_code_hash: null }).eq("id", cible);
+  // On informe le salarié qu'il devra définir un nouveau code.
+  await admin.from("message_pro").insert({
+    expediteur_id: proId,
+    destinataire_id: cible,
+    contenu: "🔐 Le code de votre coffre-fort a été réinitialisé. Vous devrez en définir un nouveau à la prochaine ouverture.",
+  });
   return NextResponse.json({ ok: true });
 }
 
