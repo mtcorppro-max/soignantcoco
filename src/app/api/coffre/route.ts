@@ -28,6 +28,7 @@ export async function POST(request: Request) {
 
   const form = await request.formData().catch(() => null);
   const fichier = form?.get("fichier");
+  const cible = form?.get("professionnel_id")?.toString() ?? "";
   if (!(fichier instanceof File)) return NextResponse.json({ message: "Fichier manquant." }, { status: 400 });
   if (!TYPES_OK.includes(fichier.type)) return NextResponse.json({ message: "Format non supporté (image ou PDF)." }, { status: 400 });
   if (fichier.size > TAILLE_MAX) return NextResponse.json({ message: "Fichier trop volumineux (max 20 Mo)." }, { status: 400 });
@@ -35,15 +36,26 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const proId = await proCourant(admin, user.id);
   if (!proId) return NextResponse.json({ message: "Compte introuvable." }, { status: 403 });
+
+  // Propriétaire du document : soi-même, ou un salarié (dépôt RH/dirigeant).
+  let ownerId = proId;
+  if (cible && cible !== proId) {
+    const { data: moi } = await admin.from("professionnel").select("role,niveau,prestataire_id").eq("id", proId).maybeSingle();
+    const peutDeposer = !!moi && (moi.niveau === 0 || moi.role === "rh" || moi.role === "dirigeant");
+    if (!peutDeposer) return NextResponse.json({ message: "Dépôt non autorisé." }, { status: 403 });
+    const { data: emp } = await admin.from("professionnel").select("id,prestataire_id").eq("id", cible).maybeSingle();
+    if (!emp || emp.prestataire_id !== moi.prestataire_id) return NextResponse.json({ message: "Salarié hors de votre périmètre." }, { status: 403 });
+    ownerId = cible;
+  }
   await assurerBucket(admin);
 
   const ext = EXT[fichier.type] ?? "bin";
-  const chemin = `${proId}/${crypto.randomUUID()}.${ext}`;
+  const chemin = `${ownerId}/${crypto.randomUUID()}.${ext}`;
   const { error: errUp } = await admin.storage.from(BUCKET_COFFRE).upload(chemin, fichier, { contentType: fichier.type, upsert: false });
   if (errUp) return NextResponse.json({ message: "Échec de l'envoi du fichier." }, { status: 500 });
 
   const { error: errRow } = await admin.from("coffre_document").insert({
-    professionnel_id: proId, chemin_stockage: chemin,
+    professionnel_id: ownerId, depose_par: proId, chemin_stockage: chemin,
     libelle: fichier.name, mime: fichier.type, taille: fichier.size,
   });
   if (errRow) {
@@ -76,8 +88,14 @@ export async function GET(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
-  const chemins = (new URL(request.url).searchParams.get("chemins") ?? "").split(",").filter(Boolean);
+  const params = new URL(request.url).searchParams;
+  const chemins = (params.get("chemins") ?? "").split(",").filter(Boolean);
+  const code = params.get("code") ?? "";
   if (!chemins.length) return NextResponse.json({ urls: {} });
+
+  // Accès aux fichiers protégé par le code du coffre.
+  const { data: ok } = await supabase.rpc("coffre_verifier_code", { p_code: code });
+  if (!ok) return NextResponse.json({ message: "Code du coffre incorrect." }, { status: 403 });
 
   const admin = createAdminClient();
   const proId = await proCourant(admin, user.id);

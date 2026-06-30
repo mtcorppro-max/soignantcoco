@@ -6,6 +6,7 @@ import { useProSession } from "@/lib/hooks/useSession";
 import { Avatar } from "@/components/Avatar";
 import { Select } from "@/components/Select";
 import { LIBELLE_ROLE, peutGererPersonnel, SERVICES, libService } from "@/lib/roles";
+import { peutNotesFrais } from "@/lib/notesFrais";
 
 type Pro = {
   id: string;
@@ -52,6 +53,24 @@ export default function AnnuairePage() {
   const [cCree, setCCree] = useState<{ email: string; motDePasse: string } | null>(null);
 
   const gestion = !!pro && peutGererPersonnel(pro.role, pro.niveau);
+  // RH / dirigeant peuvent déposer des documents dans le coffre d'un salarié interne.
+  const peutDeposerCoffre = !!pro && (pro.niveau === 0 || pro.role === "rh" || pro.role === "dirigeant");
+  const [coffreBusy, setCoffreBusy] = useState<string | null>(null);
+
+  async function deposerCoffre(memberId: string, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setCoffreBusy(memberId);
+    let ok = true;
+    for (const f of Array.from(files)) {
+      const fd = new FormData();
+      fd.append("fichier", f);
+      fd.append("professionnel_id", memberId);
+      const res = await fetch("/api/coffre", { method: "POST", body: fd });
+      if (!res.ok) { ok = false; alert((await res.json().catch(() => ({}))).message ?? "Échec du dépôt."); break; }
+    }
+    setCoffreBusy(null);
+    if (ok) alert("Document(s) déposé(s) dans le coffre-fort du salarié.");
+  }
 
   const recharger = () => {
     createClient().from("professionnel").select(COLS).order("nom").then(({ data }) => {
@@ -240,6 +259,12 @@ export default function AnnuairePage() {
                     <div className="flex shrink-0 gap-1.5">
                       {m.email && <a href={`mailto:${m.email}`} className="btn-secondary px-3 py-1.5 text-xs" title="Envoyer un email">Email</a>}
                       {m.telephone && <a href={`tel:${m.telephone}`} className="btn-secondary px-3 py-1.5 text-xs" title="Appeler">Tél.</a>}
+                      {peutDeposerCoffre && m.id !== pro?.id && peutNotesFrais(m.role) && (
+                        <label className={`btn-secondary cursor-pointer px-3 py-1.5 text-xs ${coffreBusy === m.id ? "pointer-events-none opacity-50" : ""}`} title="Déposer un document dans le coffre-fort de ce salarié">
+                          {coffreBusy === m.id ? "Dépôt…" : "🔒 Coffre"}
+                          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" multiple className="hidden" onChange={(e) => deposerCoffre(m.id, e.target.files)} disabled={coffreBusy === m.id} />
+                        </label>
+                      )}
                     </div>
                   </div>
                 ))}

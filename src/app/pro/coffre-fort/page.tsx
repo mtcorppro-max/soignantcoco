@@ -10,19 +10,55 @@ import { formatTaille, type CoffreDocument } from "@/lib/coffre";
 export default function CoffreFortPage() {
   const pro = useProSession();
   const interne = peutNotesFrais(pro?.role);
+
+  // Verrou : a-t-on un code ? code saisi en mémoire (session) pour ouvrir les fichiers.
+  const [aUnCode, setAUnCode] = useState<boolean | null>(null);
+  const [deverrouille, setDeverrouille] = useState(false);
+  const [code, setCode] = useState("");        // code courant (en mémoire après déverrouillage)
+  const [saisie, setSaisie] = useState("");     // champ de saisie
+  const [saisie2, setSaisie2] = useState("");    // confirmation (création)
+  const [codeErr, setCodeErr] = useState<string | null>(null);
+  const [codeBusy, setCodeBusy] = useState(false);
+
   const [docs, setDocs] = useState<CoffreDocument[]>([]);
   const [pret, setPret] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Le coffre a-t-il déjà un code ?
+  useEffect(() => {
+    if (!pro?.id || !interne) return;
+    createClient().rpc("coffre_a_un_code").then(({ data }) => setAUnCode(!!data));
+  }, [pro?.id, interne]);
+
   const charger = useCallback(async () => {
-    const { data } = await createClient().from("coffre_document").select("id,libelle,chemin_stockage,mime,taille,created_at").order("created_at", { ascending: false });
+    const { data } = await createClient().from("coffre_document").select("id,libelle,chemin_stockage,mime,taille,created_at,depose_par,professionnel_id").order("created_at", { ascending: false });
     setDocs((data ?? []) as CoffreDocument[]);
     setPret(true);
   }, []);
 
-  useEffect(() => { if (pro?.id) charger(); }, [pro?.id, charger]);
+  // Charge les documents une fois déverrouillé.
+  useEffect(() => { if (deverrouille) charger(); }, [deverrouille, charger]);
+
+  async function creerCode() {
+    if (saisie.length < 4) { setCodeErr("Choisissez un code d'au moins 4 caractères."); return; }
+    if (saisie !== saisie2) { setCodeErr("Les deux codes ne correspondent pas."); return; }
+    setCodeBusy(true); setCodeErr(null);
+    const { data, error } = await createClient().rpc("coffre_definir_code", { p_code: saisie });
+    setCodeBusy(false);
+    if (error || !data) { setCodeErr("Impossible de définir le code."); return; }
+    setCode(saisie); setSaisie(""); setSaisie2(""); setAUnCode(true); setDeverrouille(true);
+  }
+
+  async function ouvrirCoffre() {
+    if (!saisie) return;
+    setCodeBusy(true); setCodeErr(null);
+    const { data } = await createClient().rpc("coffre_verifier_code", { p_code: saisie });
+    setCodeBusy(false);
+    if (!data) { setCodeErr("Code incorrect."); return; }
+    setCode(saisie); setSaisie(""); setDeverrouille(true);
+  }
 
   async function envoyer(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -39,7 +75,7 @@ export default function CoffreFortPage() {
   }
 
   async function ouvrir(d: CoffreDocument) {
-    const res = await fetch(`/api/coffre?chemins=${encodeURIComponent(d.chemin_stockage)}`);
+    const res = await fetch(`/api/coffre?chemins=${encodeURIComponent(d.chemin_stockage)}&code=${encodeURIComponent(code)}`);
     const url = (await res.json().catch(() => ({}))).urls?.[d.chemin_stockage];
     if (url) window.open(url, "_blank", "noopener,noreferrer");
     else alert("Impossible d'ouvrir le document.");
@@ -61,10 +97,60 @@ export default function CoffreFortPage() {
     );
   }
 
-  return (
-    <div className="mx-auto max-w-2xl">
+  const entete = (
+    <>
       <Link href="/pro/profil" prefetch className="text-sm text-slate-400 hover:text-brand">← Mon profil</Link>
       <h1 className="mb-1 mt-1 text-2xl font-bold text-slate-800">🔒 Coffre-fort</h1>
+    </>
+  );
+
+  // Écran de verrouillage : création du code, ou saisie pour ouvrir.
+  if (!deverrouille) {
+    return (
+      <div className="mx-auto max-w-sm">
+        {entete}
+        <div className="card mt-4 grid gap-3">
+          <div className="grid place-items-center gap-2 py-2 text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-rose-100 text-2xl text-brand">🔐</span>
+            {aUnCode === null ? (
+              <p className="text-sm text-slate-400">Chargement…</p>
+            ) : aUnCode ? (
+              <>
+                <p className="font-semibold text-slate-800">Entrez votre code</p>
+                <p className="text-xs text-slate-400">Le code qui ouvre votre coffre-fort.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-slate-800">Créez votre code</p>
+                <p className="text-xs text-slate-400">Il sera demandé à chaque ouverture du coffre. Conservez-le bien, il n&apos;est pas récupérable.</p>
+              </>
+            )}
+          </div>
+
+          {aUnCode && (
+            <>
+              <input type="password" inputMode="numeric" autoFocus className="input text-center tracking-widest" placeholder="Code" value={saisie} onChange={(e) => setSaisie(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") ouvrirCoffre(); }} />
+              {codeErr && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{codeErr}</p>}
+              <button onClick={ouvrirCoffre} disabled={codeBusy || !saisie} className="btn-primary py-2.5 disabled:opacity-50">{codeBusy ? "Vérification…" : "Ouvrir le coffre"}</button>
+            </>
+          )}
+
+          {aUnCode === false && (
+            <>
+              <input type="password" inputMode="numeric" autoFocus className="input text-center tracking-widest" placeholder="Nouveau code (4 caractères min.)" value={saisie} onChange={(e) => setSaisie(e.target.value)} />
+              <input type="password" inputMode="numeric" className="input text-center tracking-widest" placeholder="Confirmez le code" value={saisie2} onChange={(e) => setSaisie2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") creerCode(); }} />
+              {codeErr && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critique">{codeErr}</p>}
+              <button onClick={creerCode} disabled={codeBusy} className="btn-primary py-2.5 disabled:opacity-50">{codeBusy ? "Création…" : "Créer mon code"}</button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      {entete}
       <p className="mb-5 text-sm text-slate-500">Vos documents personnels sécurisés (fiche de paie, contrat, attestations…). Visibles uniquement par vous.</p>
 
       {/* Dépôt */}
@@ -90,7 +176,10 @@ export default function CoffreFortPage() {
                   {d.mime === "application/pdf" ? "PDF" : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13 3v5h5" /></svg>}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate font-medium text-slate-700">{d.libelle}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium text-slate-700">{d.libelle}</span>
+                    {d.depose_par && d.depose_par !== d.professionnel_id && <span className="badge shrink-0 bg-sky-100 text-sky-700">Déposé par RH</span>}
+                  </span>
                   <span className="block text-xs text-slate-400">{new Date(d.created_at).toLocaleDateString("fr-FR")}{d.taille ? ` · ${formatTaille(d.taille)}` : ""}</span>
                 </span>
               </button>

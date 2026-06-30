@@ -9,6 +9,8 @@ export type CoffreDocument = {
   mime: string | null;
   taille: number | null;
   created_at: string;
+  depose_par: string | null;
+  professionnel_id: string;
 };
 
 export function formatTaille(o: number | null): string {
