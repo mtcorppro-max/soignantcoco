@@ -100,7 +100,9 @@ export default function CoffreFortPage() {
   const entete = (
     <>
       <Link href="/pro/profil" prefetch className="text-sm text-slate-400 hover:text-brand">← Mon profil</Link>
-      <h1 className="mb-1 mt-1 text-2xl font-bold text-slate-800">🔒 Coffre-fort</h1>
+      <h1 className="mb-1 mt-1 flex items-center gap-2 text-2xl font-bold text-slate-800">
+        <IconeCadenas className="h-6 w-6 text-brand" /> Coffre-fort
+      </h1>
     </>
   );
 
@@ -111,7 +113,7 @@ export default function CoffreFortPage() {
         {entete}
         <div className="card mt-4 grid gap-3">
           <div className="grid place-items-center gap-2 py-2 text-center">
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-rose-100 text-2xl text-brand">🔐</span>
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-rose-100 text-brand"><IconeCadenas className="h-7 w-7" /></span>
             {aUnCode === null ? (
               <p className="text-sm text-slate-400">Chargement…</p>
             ) : aUnCode ? (
@@ -155,7 +157,9 @@ export default function CoffreFortPage() {
 
       {/* Dépôt */}
       <label className={`mb-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-rose-200 bg-rose-50/40 px-4 py-8 text-center transition hover:bg-rose-50 ${busy ? "pointer-events-none opacity-60" : ""}`}>
-        <span className="grid h-12 w-12 place-items-center rounded-full bg-rose-100 text-2xl text-brand">＋</span>
+        <span className="grid h-12 w-12 place-items-center rounded-full bg-rose-100 text-brand">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="h-6 w-6"><path d="M12 5v14M5 12h14" /></svg>
+        </span>
         <span className="text-sm font-semibold text-slate-700">{busy ? "Envoi en cours…" : "Déposer un document"}</span>
         <span className="text-xs text-slate-400">Image ou PDF · 20 Mo max</span>
         <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" multiple className="hidden" onChange={(e) => envoyer(e.target.files)} disabled={busy} />
@@ -192,5 +196,15 @@ export default function CoffreFortPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function IconeCadenas({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <rect x="4" y="11" width="16" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      <circle cx="12" cy="15.2" r="1.2" />
+    </svg>
   );
 }

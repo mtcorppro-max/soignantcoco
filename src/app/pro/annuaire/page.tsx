@@ -269,8 +269,9 @@ export default function AnnuairePage() {
                       {m.telephone && <a href={`tel:${m.telephone}`} className="btn-secondary px-3 py-1.5 text-xs" title="Appeler">Tél.</a>}
                       {peutDeposerCoffre && m.id !== pro?.id && peutNotesFrais(m.role) && (
                         <>
-                          <label className={`btn-secondary cursor-pointer px-3 py-1.5 text-xs ${coffreBusy === m.id ? "pointer-events-none opacity-50" : ""}`} title="Déposer un document dans le coffre-fort de ce salarié">
-                            {coffreBusy === m.id ? "Dépôt…" : "🔒 Coffre"}
+                          <label className={`btn-secondary inline-flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-xs ${coffreBusy === m.id ? "pointer-events-none opacity-50" : ""}`} title="Déposer un document dans le coffre-fort de ce salarié">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect x="4" y="11" width="16" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                            {coffreBusy === m.id ? "Dépôt…" : "Coffre"}
                             <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" multiple className="hidden" onChange={(e) => deposerCoffre(m.id, e.target.files)} disabled={coffreBusy === m.id} />
                           </label>
                           <button onClick={() => reinitCode(m.id, nomComplet(m))} disabled={coffreBusy === m.id} className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-50" title="Réinitialiser le code du coffre (code oublié)">Réinit. code</button>

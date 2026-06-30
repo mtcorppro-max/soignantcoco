@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     await admin.from("message_pro").insert({
       expediteur_id: proId,
       destinataire_id: ownerId,
-      contenu: `📁 Un nouveau document a été déposé dans votre coffre-fort : « ${fichier.name} ».`,
+      contenu: `Un nouveau document a été déposé dans votre coffre-fort : « ${fichier.name} ».`,
     });
   }
   return NextResponse.json({ ok: true });
@@ -96,7 +96,7 @@ export async function PATCH(request: Request) {
   await admin.from("message_pro").insert({
     expediteur_id: proId,
     destinataire_id: cible,
-    contenu: "🔐 Le code de votre coffre-fort a été réinitialisé. Vous devrez en définir un nouveau à la prochaine ouverture.",
+    contenu: "Le code de votre coffre-fort a été réinitialisé. Vous devrez en définir un nouveau à la prochaine ouverture.",
   });
   return NextResponse.json({ ok: true });
 }
