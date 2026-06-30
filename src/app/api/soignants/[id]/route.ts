@@ -110,7 +110,7 @@ export async function PATCH(
   // mais JAMAIS sur un compte plus puissant que soi (niveau strictement inférieur).
   const peutContact = admin_ || estSelf || (niveauMoi <= 2 && cible.niveau >= niveauMoi);
   if (peutContact) {
-    for (const k of ["telephone", "email", "rpps", "specialite", "cabinets", "secretariat_nom", "secretariat_email", "secretariat_tel", "zone_exercice", "titre", "prenom"]) {
+    for (const k of ["telephone", "email", "rpps", "specialite", "cabinets", "secretariat_nom", "secretariat_email", "secretariat_tel", "zone_exercice", "titre", "prenom", "date_naissance"]) {
       if (body[k] !== undefined) maj[k] = t(body[k]);
     }
     if (body.nom !== undefined && t(body.nom)) maj.nom = t(body.nom);

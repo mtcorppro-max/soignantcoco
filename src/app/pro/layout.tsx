@@ -10,6 +10,7 @@ import { useProSession } from "@/lib/hooks/useSession";
 import { LIBELLE_ROLE, estCoordOuManager, estRoleService, peutMarketing } from "@/lib/roles";
 import { TYPES_ORDO_PHARMACIE, clePharmaVu } from "@/lib/ordonnances";
 import { RechercheSoignants } from "@/components/RechercheSoignants";
+import { AnniversairesBanner } from "@/components/AnniversairesBanner";
 import { Avatar } from "@/components/Avatar";
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
@@ -313,7 +314,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl overflow-x-clip px-4 py-6 pb-24 sm:px-6 sm:pb-6">{children}</main>
+      <main className="mx-auto max-w-6xl overflow-x-clip px-4 py-6 pb-24 sm:px-6 sm:pb-6"><AnniversairesBanner />{children}</main>
 
       {/* Feuille « Plus » : entrées qui débordent de la barre mobile. */}
       {menuOuvert && (
