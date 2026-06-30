@@ -110,7 +110,7 @@ export function FacturationPatient({ patientId }: { patientId: string }) {
   const previsionnelHt = gen.unitHt + totalForfaitsHt;        // total attendu en fin de PEC (HT)
 
   return (
-    <section className="card grid gap-3">
+    <section className="card grid min-w-0 gap-3">
       <h2 className="text-sm font-semibold text-slate-600">Facturation prévisionnelle Sécu</h2>
       <div className="grid grid-cols-2 gap-3">
         <div className="min-w-0 rounded-xl border border-rose-100 p-3">
@@ -125,14 +125,14 @@ export function FacturationPatient({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-      <div className="grid gap-1.5">
+      <div className="grid min-w-0 gap-1.5">
         <p className="text-xs font-semibold text-slate-500">Forfaits de prise en charge</p>
         {forfaits.length === 0 ? (
           <p className="text-xs text-slate-400">Aucun forfait attaché.</p>
         ) : forfaits.map((f) => {
           const lp = un(f.lpp);
           return (
-            <div key={f.id} className="flex items-center justify-between gap-2 rounded-lg border border-rose-100 px-3 py-1.5 text-xs">
+            <div key={f.id} className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-rose-100 px-3 py-1.5 text-xs">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-slate-700">{lp?.libelle ?? f.lpp_code}</p>
                 <p className="text-slate-400">{lp?.prix_ttc ? eur(lp.prix_ttc) : "—"} {PER[lp?.periodicite ?? ""]}</p>
@@ -142,10 +142,10 @@ export function FacturationPatient({ patientId }: { patientId: string }) {
           );
         })}
         {peutGerer && (
-          <div className="mt-1 flex flex-wrap items-end gap-2">
-            <div className="w-full sm:w-52"><Select value={fam} onChange={(v) => { setFam(v); setAjout(""); }} placeholder="Type de forfait…" options={[{ value: "", label: "Type de forfait…" }, ...FAMILLES]} /></div>
+          <div className="mt-1 flex w-full min-w-0 flex-wrap items-end gap-2">
+            <div className="w-full min-w-0 sm:w-52"><Select value={fam} onChange={(v) => { setFam(v); setAjout(""); }} placeholder="Type de forfait…" options={[{ value: "", label: "Type de forfait…" }, ...FAMILLES]} /></div>
             {fam && (
-              <div className="w-full sm:w-72"><Select value={ajout} onChange={setAjout} placeholder="Choisir le forfait…" options={[{ value: "", label: "Choisir le forfait…" }, ...lppF.filter((l) => l.famille === fam).map((l) => ({ value: l.code, label: `${l.libelle.replace(/^[^—]*— /, "").slice(0, 55)} — ${l.prix_ttc ? eur(l.prix_ttc) : "?"} ${PER[l.periodicite]}` }))]} /></div>
+              <div className="w-full min-w-0 sm:w-72"><Select value={ajout} onChange={setAjout} placeholder="Choisir le forfait…" options={[{ value: "", label: "Choisir le forfait…" }, ...lppF.filter((l) => l.famille === fam).map((l) => ({ value: l.code, label: `${l.libelle.replace(/^[^—]*— /, "").slice(0, 55)} — ${l.prix_ttc ? eur(l.prix_ttc) : "?"} ${PER[l.periodicite]}` }))]} /></div>
             )}
             {fam && <button onClick={ajouter} disabled={!ajout} className="btn-primary px-3 py-2 text-sm disabled:opacity-50">Ajouter</button>}
           </div>

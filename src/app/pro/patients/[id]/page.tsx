@@ -140,7 +140,7 @@ export default function FichePatient() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
       {/* ── En-tête : nom + icônes de rubriques + statut ── */}
       <div className="grid gap-2">
         <Link href="/pro" className="text-sm text-slate-400 hover:text-brand" prefetch>

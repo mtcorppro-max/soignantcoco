@@ -45,7 +45,7 @@ export function Select({
         className="input flex w-full items-center justify-between gap-2 text-left disabled:opacity-50"
         aria-invalid={required && !value ? true : undefined}
       >
-        <span className={`truncate ${selected ? "text-slate-700" : "text-slate-400"}`}>
+        <span className={`min-w-0 truncate ${selected ? "text-slate-700" : "text-slate-400"}`}>
           {selected ? selected.label : placeholder}
         </span>
         <svg
