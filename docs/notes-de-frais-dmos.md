@@ -1,222 +1,235 @@
-# Spec — Module « Notes de frais / Avantages PS » (conformité DMOS)
+# Spec — Module « Notes de frais » (interne) + conformité DMOS
 
 > Document de cadrage. **Aucun code à ce stade.** Les seuils et procédures
 > réglementaires devront être validés par le référent conformité / juriste avant
 > mise en production. (Connaissances arrêtées à début 2026.)
 
+## 0. Décisions actées (réponses du 30/06/2026)
+
+1. **Notes de frais = personnel interne uniquement.** Émetteurs : tous les
+   comptes internes (coordinatrice, manager, dirigeant, délégué médical, livreur,
+   magasinier, RH, personnel). **Exclus** : médecin/chirurgien, infirmière
+   libérale, pharmacie (partenaires externes, ne déposent pas de notes de frais ;
+   ils sont en revanche les **bénéficiaires** possibles côté DMOS).
+2. **Validation :** chacun dépose ses notes ; routage du validateur :
+   - personnel **dans la hiérarchie** (coordinatrice, délégué, livreur,
+     magasinier) → **manager** (de sa région) ;
+   - personnel **hors niveau d'accès** (rôle *personnel*) → **RH** ;
+   - une note de la **RH** → **dirigeant** ;
+   - *(par défaut, à confirmer)* note d'un **manager** → **dirigeant** ; note d'un
+     **dirigeant** → autre dirigeant / administration (niveau 0).
+3. **Conventions DMOS : barème/gestion globale** (cf. point 4) — module
+   conventions traité en lot ultérieur.
+4. **Barème DMOS global** (plateforme, mêmes seuils pour tous), paramétrable.
+5. **Transparence Santé : oui**, intégrée.
+6. **Références/décisions EPS : saisie manuelle** acceptée (pas de dépôt auto).
+
 ## 1. Objectif & périmètre
 
-Permettre à l'entreprise (PSAD / prestataire) de **saisir, valider, tracer et
-déclarer** les **avantages** accordés aux **professionnels de santé** (PS) —
-repas, hospitalité de congrès (transport, hébergement, inscription), dons,
-honoraires de prestation… — dans le respect de la **loi anti‑cadeaux (DMOS)** et
-de l'obligation **Transparence Santé**.
+Deux briques complémentaires :
 
-Le module s'articule avec la rubrique **Marketing → Congrès & événements** (un
-avantage est presque toujours rattaché à un événement) et avec les **délégués
-médicaux** (principaux saisisseurs) et leurs **médecins**.
+- **A. Notes de frais internes** : un salarié déclare ses **frais professionnels**
+  (repas, transport, hébergement, péage, fournitures…), joint ses justificatifs,
+  soumet ; le bon validateur approuve ; l'entreprise **rembourse**.
+- **B. Conformité DMOS** : lorsqu'une **ligne** de frais constitue un **avantage
+  à un professionnel de santé externe** (ex. un délégué invite un médecin à un
+  repas/au congrès), cette ligne est **qualifiée DMOS** (bénéficiaire PS,
+  déclaration vs autorisation, **Transparence Santé**).
 
-Périmètre **inclus** : saisie, justificatifs, qualification DMOS (déclaration vs
-autorisation), workflow de validation interne, historique par PS/événement,
-**exports** vers le téléservice EPS et vers Transparence Santé.
+S'articule avec **Marketing → Congrès & événements** (une ligne DMOS se rattache
+souvent à un événement) et avec les **délégués** (principaux concernés par le DMOS).
 
-Périmètre **exclu** (limites) : dépôt automatique sur EPS (pas d'API publique →
-export + dépôt manuel/semi‑auto), conseil juridique, calcul fiscal.
+**Inclus** : saisie multi‑lignes, justificatifs, workflow de validation routé,
+remboursement, qualification DMOS, exports EPS + Transparence Santé, historique.
+**Exclus** : dépôt automatique EPS (export + dépôt manuel), conseil juridique,
+paie/comptabilité (export comptable possible plus tard).
 
 ## 2. Cadre réglementaire (résumé opérationnel)
 
-- **Loi anti‑cadeaux / DMOS** : ord. 2017‑49, décret 2020‑730 (15/06/2020),
-  arrêtés du 07/08/2020 ; art. **L.1453‑3 et s. CSP**.
-- Deux régimes selon les **montants** (fixés par arrêté, donc **paramétrables**) :
-  - **Déclaration** (sous seuil) ;
-  - **Autorisation préalable** (au‑dessus) — demande **en amont** (~2 mois),
-    **silence vaut acceptation** au‑delà du délai.
-- Dépôt sur le **téléservice EPS** (Entreprises ↔ Professionnels de Santé), avec
-  possibilité de **déclaration par fichier** (dépôt en masse, schéma défini).
-- **Transparence Santé** (« Sunshine » FR) : publication **semestrielle** des
-  avantages/conventions/rémunérations sur `transparence.sante.gouv.fr` (schéma de
-  télétransmission défini). Obligation **distincte** mais alimentée par les mêmes
-  données → mutualisation possible.
-
-> Les **montants exacts** ne sont pas codés en dur : ils vivent dans un **barème
-> paramétrable** (cf. §5) avec date d'effet.
+- **Loi anti‑cadeaux / DMOS** : ord. 2017‑49, décret 2020‑730, arrêtés du
+  07/08/2020 ; art. **L.1453‑3 et s. CSP**. S'applique aux **avantages** accordés
+  par l'entreprise aux PS (les notes de frais en sont un **vecteur**).
+- Deux régimes selon les **montants** (arrêté → **barème paramétrable**) :
+  **déclaration** (sous seuil) / **autorisation préalable** (au‑dessus, demande
+  ~2 mois avant, silence vaut acceptation).
+- Dépôt sur le **téléservice EPS** (déclaration par fichier possible).
+- **Transparence Santé** : publication **semestrielle** sur
+  `transparence.sante.gouv.fr` (schéma de télétransmission défini).
 
 ## 3. Rôles & permissions
 
-| Action | Délégué | Manager | Dirigeant | Conformité* | Admin (N0) |
-|---|---|---|---|---|---|
-| Créer / soumettre un avantage | ✅ (ses PS) | ✅ | ✅ | ✅ | ✅ |
-| Voir les avantages | ses PS / agences | sa région | national | national | tout |
-| Valider (workflow) | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Gérer le barème DMOS | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Exporter EPS / Transparence | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Marquer « déposé / décision reçue » | ❌ | ✅ | ✅ | ✅ | ✅ |
+### Émetteurs (déposent leurs notes de frais)
+Tous les comptes internes : coordinatrice, manager, dirigeant, **délégué**,
+livreur, magasinier, **RH**, **personnel**. (Pas chirurgien/médecin, ni infirmière
+libérale, ni pharmacie.)
 
-\* Rôle « conformité » optionnel — peut être porté par le dirigeant au départ
-(pas de nouveau rôle obligatoire pour le MVP).
+### Routage du validateur (selon l'émetteur)
 
-Cloisonnement **par prestataire** (RLS), et par **région/agence** selon le niveau
-du délégué/manager, cohérent avec l'existant.
+| Émetteur | Validateur |
+|---|---|
+| Coordinatrice, délégué, livreur, magasinier (hiérarchie, niv. 2/3) | **Manager** de sa région |
+| Personnel (hors niveau d'accès) | **RH** |
+| RH | **Dirigeant** |
+| Manager *(défaut, à confirmer)* | **Dirigeant** |
+| Dirigeant *(défaut, à confirmer)* | Autre dirigeant / **Admin (niveau 0)** |
+
+- Un émetteur **ne valide jamais sa propre note**.
+- S'il y a plusieurs managers/RH/dirigeants dans le périmètre, **tous** sont
+  destinataires (notification) et **l'un d'eux** valide.
+
+### Autres droits
+
+| Action | Émetteur | Validateur | Dirigeant/Conformité | Admin N0 |
+|---|---|---|---|---|
+| Créer/soumettre sa note | ✅ | ✅ | ✅ | ✅ |
+| Valider / rejeter | ❌ (pas la sienne) | ✅ (selon routage) | ✅ | ✅ |
+| Marquer « remboursé » | ❌ | ✅ | ✅ | ✅ |
+| Gérer le barème DMOS | ❌ | ❌ | ✅ | ✅ |
+| Exporter EPS / Transparence | ❌ | ✅ (manager+) | ✅ | ✅ |
+
+Cloisonnement **par prestataire** (RLS) + périmètre région/agence.
 
 ## 4. Modèle de données (proposition)
 
-### `evenement_marketing` (adosse la rubrique Congrès & événements)
+### `note_de_frais` (en‑tête)
 - `id`, `prestataire_id`
-- `nom`, `type` (congrès / soirée scientifique / atelier / autre)
-- `date_debut`, `date_fin`, `lieu`, `organisateur`
-- `description`, `created_by`, timestamps
-
-### `avantage` (la note de frais / avantage)
-- `id`, `prestataire_id`
-- **Bénéficiaire PS** (un seul des deux) :
-  - `beneficiaire_pro_id` → `professionnel` (médecin avec compte), **ou**
-  - `beneficiaire_externe_id` → `soignant_externe` (médecin sans compte)
-  - `beneficiaire_nom`, `beneficiaire_rpps`, `beneficiaire_specialite` *(snapshot
-    figé au moment de la saisie)*
-- `evenement_id` → `evenement_marketing` (nullable)
-- `convention_id` → `convention` (nullable, cf. ci‑dessous)
-- `type_avantage` : `repas` | `transport` | `hebergement` | `inscription` |
-  `don` | `honoraires_prestation` | `autre`
-- `nature` : `nature` | `especes`
-- `montant_ttc`, `montant_ht`, `devise` (défaut EUR)
-- `date_avantage`
-- `description`
-- `regime` (calculé) : `declaration` | `autorisation`
+- `emetteur_id` → `professionnel`
+- `titre` (ex. « Congrès SOFCOT — juin 2026 »), `periode` (mois) ou
+  `date_debut`/`date_fin`
 - `statut` (cf. §6)
-- `reference_eps`, `date_depot`, `date_decision`, `decision`
-  (`autorise` | `refuse` | `tacite`)
-- `publie_transparence` (bool), `periode_transparence`
-- `created_by`, `valide_par`, `valide_le`, timestamps
+- `validateur_id` (résolu au dépôt), `valide_le`, `motif_rejet`
+- `total_ttc`, `total_ht` (dérivés des lignes)
+- `rembourse_le`
+- `created_at`, `updated_at`
 
-### `avantage_justificatif`
-- `id`, `avantage_id`, `chemin_stockage` (bucket Storage privé), `libelle`,
-  `mime`, `taille`, `created_at`
+### `note_de_frais_ligne`
+- `id`, `note_id` → `note_de_frais`
+- `type` : `repas` | `transport` | `hebergement` | `peage` | `carburant` |
+  `inscription` | `fournitures` | `autre`
+- `montant_ttc`, `montant_ht`, `tva`, `date_depense`, `description`
+- `evenement_id` → `evenement_marketing` (nullable)
+- **DMOS (si la ligne est un avantage à un PS)** :
+  - `est_avantage_ps` (bool)
+  - bénéficiaire (un seul) : `beneficiaire_pro_id` → `professionnel` (médecin/
+    infirmière libérale/pharmacie ayant un compte) **ou** `beneficiaire_externe_id`
+    → `soignant_externe`
+  - `beneficiaire_nom`, `beneficiaire_rpps`, `beneficiaire_specialite` (snapshot)
+  - `dmos_regime` (calculé) : `declaration` | `autorisation`
+  - `dmos_statut`, `reference_eps`, `date_depot`, `decision`
+    (`autorise`|`refuse`|`tacite`), `publie_transparence`, `periode_transparence`
 
-### `convention` (optionnel — Lot 2)
-- `id`, `prestataire_id`, `beneficiaire_*`, `objet`, `date_debut`, `date_fin`,
-  `montant_global`, `fichier` (PDF signé), `statut`
+### `note_de_frais_justificatif`
+- `id`, `ligne_id` (ou `note_id`), `chemin_stockage` (bucket privé), `libelle`,
+  `mime`, `taille`
 
-### `dmos_bareme` (paramétrage des seuils)
-- `id`, `prestataire_id` (ou global plateforme)
-- `type_avantage`
-- `seuil_declaration`, `seuil_autorisation`
-- `periode` : `par_manifestation` | `par_an` | `unitaire`
-- `date_effet`, `actif`, `note`
+### `evenement_marketing` (rubrique Congrès & événements)
+- `id`, `prestataire_id`, `nom`, `type`, `date_debut`, `date_fin`, `lieu`,
+  `organisateur`, `description`, `created_by`, timestamps
 
-## 5. Barème DMOS paramétrable
+### `dmos_bareme` (global plateforme, paramétrable)
+- `id`, `type_avantage`, `seuil_declaration`, `seuil_autorisation`,
+  `periode` (`par_manifestation`|`par_an`|`unitaire`), `date_effet`, `actif`, `note`
 
-Écran d'administration (dirigeant / conformité) listant, par `type_avantage`,
-les seuils en vigueur + historique par `date_effet`. La qualification d'un
-avantage utilise **le barème actif à sa `date_avantage`** → traçabilité même si
-les seuils changent ensuite. Aucune valeur en dur dans le code.
+## 5. Barème DMOS (global, paramétrable)
 
-## 6. Workflow (statuts)
+Barème **unique plateforme** (mêmes seuils pour tous les prestataires), édité par
+le dirigeant/conformité ou l'admin. La qualification d'une ligne utilise le
+**barème actif à sa `date_depense`** → traçabilité même après changement.
 
+## 6. Workflow
+
+### Note de frais (interne)
 ```
-brouillon
-   │ (soumettre)
-soumis ───────────────► rejete
-   │ (valider interne)
-valide_interne
-   │ (qualification auto: regime)
-   ├─ regime = declaration ─► a_declarer ─► declare ─► (publie_transparence) ─► cloture
-   └─ regime = autorisation ─► a_demander ─► demande_deposee
-                                   │
-                                   ├─ autorise ─► (publie_transparence) ─► cloture
-                                   ├─ tacite   ─► (publie_transparence) ─► cloture
-                                   └─ refuse   ─► clos_refuse
+brouillon ─(soumettre)─► soumise ─(rejeter)─► rejetee
+                              │ (valider)
+                          validee ─(marquer remboursé)─► remboursee ─► cloturee
 ```
+- À la soumission : `validateur_id` résolu selon le routage (§3).
+- Notification au(x) validateur(s).
 
-- Passage `a_demander` : alerte sur le **délai** (l'autorisation doit être
-  demandée ~2 mois avant l'événement → l'outil prévient si la date est trop
-  proche).
-- `declare` / `demande_deposee` : statut posé **manuellement** après dépôt EPS,
-  avec `reference_eps`.
+### Sous‑pipeline DMOS (par ligne `est_avantage_ps = true`, après validation note)
+```
+a_qualifier ─► regime=declaration ─► a_declarer ─► declaree ─► (transparence) ─► clos
+            └► regime=autorisation ─► a_demander ─► deposee ─► autorise/tacite/refuse ─► (transparence) ─► clos
+```
+- Alerte **délai** si la date de l'événement approche pour une autorisation.
+- Statuts de dépôt posés **manuellement** + `reference_eps`.
 
-## 7. Écrans / UI (dans Marketing)
+## 7. Écrans / UI
 
-1. **Liste des avantages** : filtres (PS, événement, type, statut, période,
-   régime), badges de statut, total des montants, recherche.
-2. **Création / édition d'un avantage** : choix du PS (compte ou externe), de
-   l'événement, type, montants (TTC/HT), date, description, **upload des
-   justificatifs**. Affiche en direct le **régime calculé** (déclaration vs
-   autorisation) + alerte de délai.
-3. **Fiche avantage** : récap, justificatifs, historique de workflow, boutons
-   d'action selon rôle/statut.
-4. **Vue par professionnel** : cumul des avantages d'un PS sur une période
-   (utile pour les seuils annuels et un contrôle).
-5. **Barème DMOS** (admin) : édition des seuils.
-6. **Exports** : EPS (fichier de déclaration en masse) + Transparence Santé.
+**Espace « Notes de frais »** (accessible à tous les internes ; visible dans le
+menu + lien depuis Marketing pour la partie DMOS) :
+1. **Mes notes de frais** : liste, statuts, total, bouton « + Nouvelle note ».
+2. **Création/édition d'une note** : titre/période + **lignes** (type, montant,
+   date, justificatif). Sur une ligne, case **« Avantage à un professionnel de
+   santé »** → choix du PS (compte ou externe) + événement ; affichage du
+   **régime DMOS** calculé + alerte délai.
+3. **À valider** (validateur) : file des notes à approuver/rejeter selon routage.
+4. **Fiche note** : récap, lignes, justificatifs, historique, actions.
+
+**Espace conformité (manager+/dirigeant) :**
+5. **Suivi DMOS** : toutes les lignes‑avantages, filtres (PS, événement, régime,
+   statut, période), cumuls par PS.
+6. **Barème DMOS** (admin).
+7. **Exports** : EPS (fichier en masse) + Transparence Santé + récap PDF/CSV.
 
 ## 8. Contrôles automatiques
 
-- **Qualification du régime** : `montant` vs barème actif (par type, en tenant
-  compte de la période — manifestation / annuelle / unitaire).
-- **Cumul** : agrégation par PS et par période pour les seuils annuels.
-- **Délai d'autorisation** : alerte si `date_avantage − today < délai requis`.
-- **Complétude** : champs obligatoires + au moins un justificatif avant dépôt.
-- **Cohérence** : un avantage « hospitalité » doit être rattaché à un événement.
+- Résolution du **validateur** au dépôt (routage §3).
+- **Qualification DMOS** de chaque ligne‑avantage (montant vs barème actif, par
+  type/période) + **cumul par PS**.
+- **Délai d'autorisation** (alerte si trop proche de l'événement).
+- **Complétude** : champs + ≥ 1 justificatif par ligne avant soumission ; PS +
+  événement obligatoires si « avantage PS ».
 
 ## 9. Exports
 
-- **EPS — déclaration par fichier** : génération d'un fichier au **schéma EPS**
-  (déclarations + demandes d'autorisation) pour dépôt sur le portail. L'outil
-  **prépare** ; le **dépôt reste manuel** (pas d'API). Récupération ensuite des
-  `reference_eps` / décisions à saisir.
-- **Transparence Santé** : export au **schéma de télétransmission** (avantages,
-  conventions, rémunérations) pour la publication semestrielle.
-- **Exports internes** : CSV / PDF (récap par période, par PS, par événement)
-  pour audit et reporting direction.
+- **EPS — déclaration par fichier** (schéma EPS) : déclarations + demandes
+  d'autorisation ; **dépôt manuel** ; saisie des `reference_eps`/décisions au retour.
+- **Transparence Santé** : export au schéma de télétransmission (semestriel).
+- **Interne** : CSV/PDF (récap par période, par émetteur, par PS, par événement) ;
+  export comptable possible en option (remboursements).
 
 ## 10. Intégrations avec l'app existante
 
-- **Marketing → Congrès & événements** : `evenement_marketing` alimente la
-  rubrique ; un avantage s'y rattache.
-- **Délégués / médecins** : réutilise le lien médecin↔délégué (déjà en place) ;
-  un délégué saisit pour **ses** médecins (comptes ou externes).
-- **Storage** : bucket privé pour les justificatifs (même principe que les photos
-  de cicatrice : upload + URL signée).
-- **Rôles & RLS** : cloisonnement prestataire + périmètre région/agence ; helper
-  `peutMarketing` étendu (ou nouveau `peutNotesFrais`).
-- **Notifications** : badge / message interne sur les avantages à valider, à
-  déclarer, ou dont le délai d'autorisation approche (réutilise le système de
-  notifications + Realtime).
-- **PDF** : convention type + récap (générateurs PDF déjà utilisés).
+- **Marketing → Congrès** : `evenement_marketing` ; lien depuis les lignes‑avantages.
+- **Délégués / médecins** : réutilise le lien médecin↔délégué pour proposer le PS.
+- **Storage** : bucket privé pour justificatifs (URLs signées, comme les photos).
+- **Rôles & RLS** : émetteurs = tous internes ; routage validateur ; helpers
+  dédiés (`peutValiderNoteDe…`) ; cloisonnement prestataire/région.
+- **Notifications + Realtime** : badge « notes à valider », « à déclarer »,
+  « délai d'autorisation proche ».
+- **PDF** : récap note + justificatifs (générateurs existants).
 
 ## 11. Sécurité / RGPD / audit
 
-- Données = **avantages à des PS nommés** → données sensibles ; accès cloisonné,
-  justificatifs en **bucket privé** (URLs signées, jamais publiques).
-- **Journal d'audit** (qui a créé/validé/déposé, quand) pour les contrôles.
-- Conservation : durée alignée sur les obligations légales (à définir avec le
-  juriste).
+- Justificatifs et avantages à PS = données sensibles → **bucket privé**, URLs
+  signées, accès cloisonné.
+- **Journal d'audit** (création/validation/dépôt/remboursement).
+- Conservation alignée sur les obligations légales (à définir).
 
-## 12. Limites / hors‑périmètre (à assumer)
+## 12. Limites / hors‑périmètre
 
-- Pas de **dépôt automatique** EPS (export + dépôt humain).
-- Pas de **conseil juridique** : l'outil **assiste** la conformité, ne la
-  garantit pas ; validation finale humaine.
-- Les **seuils/schémas** évoluent → barème paramétrable + exports versionnés.
+- Pas de **dépôt automatique** EPS (export + dépôt humain, références saisies).
+- Pas de **conseil juridique** ni de **paie** (export comptable seulement).
+- **Conventions** DMOS : lot ultérieur (point 3).
 
 ## 13. Phasage proposé
 
-- **Lot 0 — Socle congrès** : table `evenement_marketing` + UI de la rubrique
-  « Congrès & événements » (liste + création). *Indépendant, utile tout de suite.*
-- **Lot 1 — MVP notes de frais** : `avantage` + justificatifs + workflow simple
-  (brouillon → soumis → validé) + qualification régime via barème + liste/fiche.
-- **Lot 2 — Conformité** : statuts déclaration/autorisation, alertes de délai,
-  vue par PS (cumuls), barème admin complet.
-- **Lot 3 — Exports** : EPS (fichier en masse) + Transparence Santé + récap PDF.
-- **Lot 4 — Conventions & audit** : `convention`, PDF type, journal d'audit,
-  notifications dédiées.
+- **Lot 0 — Socle Congrès** : `evenement_marketing` + UI rubrique « Congrès &
+  événements » (liste + création). *Indépendant, immédiatement utile.*
+- **Lot 1 — Notes de frais internes** : `note_de_frais` + lignes + justificatifs
+  + **workflow routé** (soumission → validation → remboursement) + écrans « Mes
+  notes » / « À valider ».
+- **Lot 2 — DMOS** : flag « avantage PS » sur les lignes, barème global, régime
+  auto, suivi DMOS, alertes de délai.
+- **Lot 3 — Exports** : EPS (fichier) + **Transparence Santé** + récap PDF/CSV.
+- **Lot 4 — Compléments** : conventions, journal d'audit, export comptable.
 
-## 14. Questions à trancher (avant build)
+## 14. Points encore à confirmer
 
-1. Périmètre des PS concernés : uniquement **médecins**, ou aussi **infirmières
-   libérales / pharmaciens** (la loi vise large) ?
-2. Qui valide et qui dépose réellement (délégué propose, mais **qui** dépose sur
-   EPS) ? Faut‑il un rôle **« conformité »** dédié ?
-3. Gère‑t‑on les **conventions** dès le départ ou en Lot 4 ?
-4. Barème **global plateforme** (mêmes seuils pour tous) ou **par prestataire** ?
-5. Faut‑il intégrer **Transparence Santé** dès le MVP ou plus tard ?
-6. Récupération des **références/décisions EPS** : saisie manuelle suffisante ?
+1. Validation des notes du **manager** (→ dirigeant ?) et du **dirigeant**
+   (→ autre dirigeant / admin ?).
+2. Y a‑t‑il un **plafond de remboursement** interne (politique entreprise)
+   distinct des seuils DMOS ?
+3. Faut‑il un **export comptable** (format ?) pour les remboursements.
