@@ -63,13 +63,10 @@ export default function ProfilPatient() {
               <div><label className="label">Téléphone</label><input className="input" value={f.telephone} onChange={set("telephone")} inputMode="tel" /></div>
               <div><label className="label">Email</label><input className="input" value={f.email} onChange={set("email")} inputMode="email" /></div>
             </div>
-            <div>
-              <label className="label">Adresse</label>
-              <AdresseAutocomplete
-                adresse={f.adresse} codePostal={f.code_postal} ville={f.ville}
-                onChange={(v) => setF((s) => ({ ...s, adresse: v.adresse, code_postal: v.code_postal, ville: v.ville }))}
-              />
-            </div>
+            <AdresseAutocomplete
+              adresse={f.adresse} codePostal={f.code_postal} ville={f.ville}
+              onChange={(v) => setF((s) => ({ ...s, adresse: v.adresse, code_postal: v.code_postal, ville: v.ville }))}
+            />
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label className="label">Proche à prévenir</label><input className="input" value={f.proche_nom} onChange={set("proche_nom")} /></div>
               <div><label className="label">Tél. du proche</label><input className="input" value={f.proche_tel} onChange={set("proche_tel")} inputMode="tel" /></div>
