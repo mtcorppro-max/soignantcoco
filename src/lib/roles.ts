@@ -26,6 +26,10 @@ export const estPersonnel = (r: string | undefined | null) => r === "personnel";
 export const peutGererPersonnel = (role: string | undefined | null, niveau: number | undefined | null) =>
   niveau === 0 || role === "rh" || role === "dirigeant" || role === "manager";
 
+// Accès à l'espace Marketing : dirigeant, RH, manager, délégué (+ admin niveau 0).
+export const peutMarketing = (role: string | undefined | null, niveau: number | undefined | null) =>
+  niveau === 0 || role === "dirigeant" || role === "rh" || role === "manager" || role === "delegue";
+
 // Magasinier : gère le stock et la préparation des commandes (pas de patient).
 export const estMagasinier = (r: string | undefined | null) => r === "magasinier";
 

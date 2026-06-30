@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/Logo";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useProSession } from "@/lib/hooks/useSession";
-import { LIBELLE_ROLE, estCoordOuManager, estRoleService } from "@/lib/roles";
+import { LIBELLE_ROLE, estCoordOuManager, estRoleService, peutMarketing } from "@/lib/roles";
 import { TYPES_ORDO_PHARMACIE, clePharmaVu } from "@/lib/ordonnances";
 import { RechercheSoignants } from "@/components/RechercheSoignants";
 import { Avatar } from "@/components/Avatar";
@@ -31,6 +31,8 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   const estPersonnel = pro?.role === "personnel" && !estN0;
   // Annuaire des équipes (+ gestion des postes) : RH, dirigeant, manager, admin.
   const peutAnnuaire = estN0 || pro?.role === "manager";
+  // Espace Marketing : dirigeant, RH, manager, délégué (+ admin).
+  const peutMkt = peutMarketing(pro?.role, pro?.niveau);
   // Gérer/créer des comptes & l'équipe : niveau 0, 1 ou 2 (hors chirurgien et
   // hors comptes service livreur/pharmacie)
   const peutGerer = estN0 || (!!pro && pro.niveau <= 2 && pro.role !== "chirurgien" && !estRoleService(pro.role));
@@ -198,6 +200,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
     ? [
         { href: "/pro/pec", icon: "chart", label: "PEC" },
         { href: "/pro/annuaire", icon: "users", label: "Annuaire" },
+        { href: "/pro/marketing", icon: "megaphone", label: "Marketing" },
         { href: "/pro/equipe-dirigeante", icon: "users", label: "Équipe dirigeante" },
       ]
     : estMagasinier
@@ -209,6 +212,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
     : estRh
     ? [
         { href: "/pro/annuaire", icon: "users", label: "Annuaire" },
+        { href: "/pro/marketing", icon: "megaphone", label: "Marketing" },
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
       ]
     : estPersonnel
@@ -225,6 +229,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
         ...(peutGerer ? [{ href: "/pro/equipe", icon: "users", label: "Équipe" }] : []),
         ...(peutAnnuaire ? [{ href: "/pro/annuaire", icon: "users", label: "Annuaire" }] : []),
+        ...(peutMkt ? [{ href: "/pro/marketing", icon: "megaphone", label: "Marketing" }] : []),
         ...(peutPec ? [{ href: "/pro/pec", icon: "chart", label: "PEC" }] : []),
       ];
   // Au-delà de 5 entrées : 4 visibles + un bouton « Plus » qui ouvre le reste.
@@ -252,6 +257,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                 <>
                   <Onglet href="/pro/pec" icon="chart" label="PEC" pathname={pathname} />
                   <Onglet href="/pro/annuaire" icon="users" label="Annuaire des équipes" pathname={pathname} />
+                  <Onglet href="/pro/marketing" icon="megaphone" label="Marketing" pathname={pathname} />
                   <Onglet href="/pro/equipe-dirigeante" icon="users" label="Équipe dirigeante" pathname={pathname} />
                 </>
               ) : estMagasinier ? (
@@ -263,6 +269,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
               ) : estRh ? (
                 <>
                   <Onglet href="/pro/annuaire" icon="users" label="Annuaire des équipes" pathname={pathname} />
+                  <Onglet href="/pro/marketing" icon="megaphone" label="Marketing" pathname={pathname} />
                   <Onglet href="/pro/messagerie" icon="message" label="Messagerie" pathname={pathname} badge={nbMessages} />
                 </>
               ) : estPersonnel ? (
@@ -277,6 +284,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                   {estChir && <Onglet href="/pro/a-signer" icon="document" label="À signer" pathname={pathname} badge={nbASigner} />}
                   {peutGerer && <Onglet href="/pro/equipe" icon="users" label="Équipe soignante" pathname={pathname} />}
                   {peutAnnuaire && <Onglet href="/pro/annuaire" icon="users" label="Annuaire des équipes" pathname={pathname} />}
+                  {peutMkt && <Onglet href="/pro/marketing" icon="megaphone" label="Marketing" pathname={pathname} />}
                   <Onglet href="/pro/messagerie" icon="message" label="Messagerie" pathname={pathname} badge={nbMessages} />
                   {peutPec && <Onglet href="/pro/pec" icon="chart" label="PEC" pathname={pathname} />}
                 </>
@@ -466,6 +474,7 @@ function IconeNav({ name, className }: { name: string; className?: string }) {
     box: (<><path d="m3 7.5 9-4.5 9 4.5v9l-9 4.5-9-4.5z" /><path d="m3 7.5 9 4.5 9-4.5" /><path d="M12 12v9" /></>),
     prep: (<><rect x="8" y="3" width="8" height="4" rx="1" /><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></>),
     parc: (<><rect x="3" y="4.5" width="18" height="12" rx="2" /><line x1="8.5" y1="20" x2="15.5" y2="20" /><line x1="12" y1="16.5" x2="12" y2="20" /><path d="M7.5 10.5h2l1-2 1.5 4 1-2h3.5" /></>),
+    megaphone: (<><path d="M4 10.5v3a1 1 0 0 0 1 1h2.5l6 3.5V6l-6 3.5H5a1 1 0 0 0-1 1Z" /><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5" /><path d="M7.5 14.5 9 20" /></>),
   };
   return (
     <svg viewBox="0 0 24 24" className={className} {...p} aria-hidden="true">
