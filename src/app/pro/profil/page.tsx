@@ -119,29 +119,28 @@ export default function MonProfil() {
     setMsg("Profil mis à jour ✓"); setEdition(false);
   }
 
-  const nomComplet = [f.prenom, f.nom].filter(Boolean).join(" ") || (pro?.nom ?? "");
-
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-2xl">
       {!pret ? (
         <p className="text-sm text-slate-400">Chargement…</p>
       ) : (
-        <div className="grid gap-6">
-          {/* ── Carte profil (compacte, haut gauche ; pleine largeur en édition) ── */}
-          <div className={`card grid gap-4 ${edition ? "" : "w-full max-w-xs"}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-4">
+        <div className="grid gap-5">
+          {/* ── Hero profil ── */}
+          <div className="grid gap-4 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-100/70 via-rose-50 to-white p-5">
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
                 <Avatar url={photoUrl} prenom={f.prenom} nom={f.nom} taille="lg" />
-                <div className="min-w-0">
-                  <p className="text-lg font-bold text-slate-800">{nomComplet}</p>
-                  <p className="text-sm text-slate-500">{role ? LIBELLE_ROLE[role as keyof typeof LIBELLE_ROLE] : ""}</p>
-                </div>
+                {!edition && (
+                  <button onClick={() => { setEdition(true); setMsg(null); }} title="Modifier mon profil" aria-label="Modifier" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full bg-brand text-white shadow ring-2 ring-white transition hover:bg-brand-dark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                  </button>
+                )}
               </div>
-              {!edition && (
-                <button onClick={() => { setEdition(true); setMsg(null); }} title="Modifier mon profil" aria-label="Modifier" className="shrink-0 rounded-lg p-2 text-brand transition hover:bg-rose-50">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                </button>
-              )}
+              <div className="min-w-0">
+                <p className="text-xl font-bold text-slate-800">Bonjour, {f.prenom || f.nom || "vous"} 👋</p>
+                {f.email && <p className="truncate text-sm text-slate-500">{f.email}</p>}
+                <span className="badge mt-1 bg-white/70 text-brand">{role ? LIBELLE_ROLE[role as keyof typeof LIBELLE_ROLE] : ""}</span>
+              </div>
             </div>
 
             {edition ? (
@@ -221,14 +220,17 @@ export default function MonProfil() {
             )}
           </div>
 
-          {/* ── Mes espaces (tuiles centrées, façon réseau social) ── */}
+          {/* ── Mes espaces (menu vertical) ── */}
           {peutNotesFrais(role) && (
-            <div className="mx-auto grid w-full max-w-xl grid-cols-2 gap-3">
+            <div className="overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm">
               {ESPACES.map((e) => (
-                <Link key={e.href} href={e.href} prefetch className="card flex flex-col items-center gap-2 py-6 text-center transition hover:-translate-y-0.5 hover:bg-rose-50/40 hover:shadow-md">
-                  <span className="grid h-12 w-12 place-items-center rounded-full bg-rose-100 text-brand"><IconeEspace name={e.icon} /></span>
-                  <p className="font-semibold text-slate-800">{e.titre}</p>
-                  <p className="text-xs text-slate-500">{e.sous}</p>
+                <Link key={e.href} href={e.href} prefetch className="flex items-center gap-3 border-b border-rose-50 px-4 py-3.5 transition last:border-0 hover:bg-rose-50">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-100 text-brand"><IconeEspace name={e.icon} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-slate-800">{e.titre}</span>
+                    <span className="block text-xs text-slate-500">{e.sous}</span>
+                  </span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" /></svg>
                 </Link>
               ))}
             </div>
