@@ -120,13 +120,13 @@ export default function MonProfil() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className={edition ? "max-w-2xl" : "max-w-sm"}>
       {!pret ? (
         <p className="text-sm text-slate-400">Chargement…</p>
       ) : (
-        <div className="grid gap-5">
-          {/* ── Hero profil ── */}
-          <div className="grid gap-4 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-100/70 via-rose-50 to-white p-5">
+        <div className="grid gap-4">
+          {/* ── Hero profil (panneau blanc, à gauche) ── */}
+          <div className="grid gap-4 rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
                 <Avatar url={photoUrl} prenom={f.prenom} nom={f.nom} taille="lg" />
@@ -139,7 +139,7 @@ export default function MonProfil() {
               <div className="min-w-0">
                 <p className="text-xl font-bold text-slate-800">Bonjour, {f.prenom || f.nom || "vous"} 👋</p>
                 {f.email && <p className="truncate text-sm text-slate-500">{f.email}</p>}
-                <span className="badge mt-1 bg-white/70 text-brand">{role ? LIBELLE_ROLE[role as keyof typeof LIBELLE_ROLE] : ""}</span>
+                <span className="badge mt-1 bg-rose-100 text-brand">{role ? LIBELLE_ROLE[role as keyof typeof LIBELLE_ROLE] : ""}</span>
               </div>
             </div>
 

@@ -64,7 +64,8 @@ export default function NotesFraisPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+      <Link href="/pro/profil" prefetch className="text-sm text-slate-400 hover:text-brand">← Mon profil</Link>
+      <div className="mb-1 mt-1 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-800">Notes de frais</h1>
         <div className="flex items-center gap-3">
           {pro && (pro.niveau === 0 || pro.role === "dirigeant" || pro.role === "manager") && (
