@@ -307,13 +307,6 @@ export default function NoteFraisDetail() {
         <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-attention"><b>DMOS :</b> un avantage dépasse le seuil et nécessite une <b>autorisation préalable</b>. La validation est bloquée tant que l&apos;autorisation n&apos;est pas enregistrée (Suivi DMOS).</p>
       )}
 
-      {/* Période */}
-      {editable && (
-        <div className="card mb-4 grid gap-4 sm:grid-cols-2">
-          <div><label className="label">Période — début</label><DateField value={note.periode_debut ?? ""} onChange={(v) => majNote({ periode_debut: v || null })} /></div>
-          <div><label className="label">Période — fin <span className="text-slate-400">(facultatif)</span></label><DateField value={note.periode_fin ?? ""} onChange={(v) => majNote({ periode_fin: v || null })} /></div>
-        </div>
-      )}
 
       {/* Lignes */}
       <div className="grid gap-3">
