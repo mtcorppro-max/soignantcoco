@@ -364,7 +364,6 @@ export function InfosPatient({
         <button onClick={() => setOuvert((v) => !v)} className="-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 text-left transition hover:bg-rose-50/60" aria-expanded={ouvert}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`h-4 w-4 shrink-0 text-brand transition-transform ${ouvert ? "rotate-90" : ""}`} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" /></svg>
           <h2 className="text-sm font-semibold text-slate-600">Informations patient</h2>
-          {!ouvert && <span className="ml-auto shrink-0 text-xs font-medium text-brand">{aucune ? "Compléter" : "Voir"}</span>}
         </button>
         {modifiable && ouvert && (
           <button onClick={() => { setForm({ ...vue }); setEdition(true); }} className="shrink-0 text-sm font-medium text-brand hover:underline">
