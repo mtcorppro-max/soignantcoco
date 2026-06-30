@@ -80,7 +80,9 @@ export function InfosPatient({
   const pro = useProSession();
 
   useEffect(() => {
-    if (!edition || soignants.length) return;
+    // Chargé dès l'affichage (et plus seulement en édition) : la vue lecture en a
+    // besoin pour retrouver le téléphone de la pharmacie rattachée.
+    if (soignants.length) return;
     createClient()
       .from("professionnel")
       .select("id,nom,prenom,titre,role,agence_id,telephone,specialite,protocoles")
