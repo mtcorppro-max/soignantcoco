@@ -291,7 +291,7 @@ function OngletBtn({ label, icon, actif, onClick }: { label: string; icon: React
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`inline-flex items-center justify-center rounded-xl border p-2 transition ${actif ? "border-brand bg-brand text-white" : "border-rose-200 bg-white text-brand hover:bg-rose-50"}`}
+      className={`inline-flex items-center justify-center p-1.5 transition ${actif ? "text-brand" : "text-slate-400 hover:text-brand"}`}
     >
       {icon}
     </button>
