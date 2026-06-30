@@ -22,7 +22,9 @@ type Ligne = {
   est_avantage_ps: boolean; beneficiaire_pro_id: string | null; beneficiaire_externe_id: string | null;
   beneficiaire_nom: string | null; beneficiaire_rpps: string | null; beneficiaire_specialite: string | null;
   dmos_regime: string | null; decision: string | null; usage_pedagogique: boolean;
+  convives: Convive[]; montant_dmos: number | null;
 };
+type Convive = { nom: string; dmos: boolean; pro_id?: string | null; externe_id?: string | null; rpps?: string | null; specialite?: string | null };
 type Benef = { value: string; label: string; nom: string; rpps: string | null; specialite: string | null };
 type BaremeRow = { type_avantage: string; seuil_declaration: number | null; seuil_autorisation: number | null; seuil_max: number | null; limite_an_nb: number | null; limite_an_montant: number | null; date_effet: string };
 const REGIME_DMOS: Record<string, { label: string; cls: string }> = {
@@ -59,7 +61,7 @@ export default function NoteFraisDetail() {
     if (!n) { setNote(null); setPret(true); return; }
     setNote(n as unknown as Note);
     const [{ data: l }, { data: j }, { data: ev }] = await Promise.all([
-      supabase.from("note_de_frais_ligne").select("id,type,montant_ttc,montant_ht,date_depense,description,evenement_id,est_avantage_ps,beneficiaire_pro_id,beneficiaire_externe_id,beneficiaire_nom,beneficiaire_rpps,beneficiaire_specialite,dmos_regime,decision,usage_pedagogique").eq("note_id", id).order("created_at"),
+      supabase.from("note_de_frais_ligne").select("id,type,montant_ttc,montant_ht,date_depense,description,evenement_id,est_avantage_ps,beneficiaire_pro_id,beneficiaire_externe_id,beneficiaire_nom,beneficiaire_rpps,beneficiaire_specialite,dmos_regime,decision,usage_pedagogique,convives,montant_dmos").eq("note_id", id).order("created_at"),
       supabase.from("note_de_frais_justificatif").select("id,ligne_id,chemin_stockage,libelle,mime").eq("note_id", id),
       supabase.from("evenement_marketing").select("id,nom").order("date_debut", { ascending: false }),
     ]);
@@ -133,18 +135,25 @@ export default function NoteFraisDetail() {
   const bloqueDmos = lignes.some((l) => l.est_avantage_ps && l.dmos_regime === "autorisation" && !["autorise", "tacite"].includes(l.decision ?? ""));
   // Plafond (seuil_max) dépassé → bloque (et empêche la soumission).
   const plafondDe = (type: string) => baremes.get(type)?.seuil_max ?? null;
-  const depasseCap = (l: Ligne) => { const m = l.est_avantage_ps && !l.usage_pedagogique ? plafondDe(l.type) : null; return m != null && Number(l.montant_ttc) > m; };
+  const depasseCap = (l: Ligne) => { const m = l.est_avantage_ps && !l.usage_pedagogique ? plafondDe(l.type) : null; const v = l.montant_dmos ?? l.montant_ttc; return m != null && Number(v) > m; };
+  // Repas : persistance de la liste des convives (recalcul DMOS côté serveur).
+  async function persistConvives(lid: string, conv: Convive[]) {
+    setLignes((a) => a.map((l) => (l.id === lid ? { ...l, convives: conv } : l)));
+    await supabase.from("note_de_frais_ligne").update({ convives: conv }).eq("id", lid);
+    charger();
+  }
+  const setConviveLocal = (lid: string, conv: Convive[]) => setLignes((a) => a.map((l) => (l.id === lid ? { ...l, convives: conv } : l)));
   const bloqueCap = lignes.some(depasseCap);
 
   // ── Actions note ──
   const majNote = async (patch: Partial<Note>) => { setNote((n) => (n ? { ...n, ...patch } : n)); await supabase.from("note_de_frais").update(patch).eq("id", id); };
 
   async function ajouterLigne() {
-    const { data } = await supabase.from("note_de_frais_ligne").insert({ note_id: id, type: "repas", montant_ttc: 0, date_depense: note?.periode_debut ?? null }).select("id,type,montant_ttc,montant_ht,date_depense,description,evenement_id").single();
+    const { data } = await supabase.from("note_de_frais_ligne").insert({ note_id: id, type: "repas", montant_ttc: 0 }).select("id,type,montant_ttc,montant_ht,date_depense,description,evenement_id,est_avantage_ps,beneficiaire_pro_id,beneficiaire_externe_id,beneficiaire_nom,beneficiaire_rpps,beneficiaire_specialite,dmos_regime,decision,usage_pedagogique,convives,montant_dmos").single();
     if (data) setLignes((a) => [...a, data as Ligne]);
   }
   const majLigne = (lid: string, patch: Partial<Ligne>) => setLignes((a) => a.map((l) => (l.id === lid ? { ...l, ...patch } : l)));
-  const persistLigne = async (lid: string, patch: Partial<Ligne>) => { await supabase.from("note_de_frais_ligne").update(patch).eq("id", lid); recalcTotal(); };
+  const persistLigne = async (lid: string, patch: Partial<Ligne>) => { await supabase.from("note_de_frais_ligne").update(patch).eq("id", lid); charger(); };
   async function supprimerLigne(lid: string) {
     await supabase.from("note_de_frais_ligne").delete().eq("id", lid);
     setLignes((a) => a.filter((l) => l.id !== lid));
@@ -329,6 +338,42 @@ export default function NoteFraisDetail() {
                     <Select value={l.evenement_id ?? ""} onChange={(v) => { majLigne(l.id, { evenement_id: v || null }); persistLigne(l.id, { evenement_id: v || null }); }} placeholder="— Aucun —" options={[{ value: "", label: "— Aucun —" }, ...events.map((e) => ({ value: e.id, label: e.nom }))]} />
                   </div>
                 )}
+                {l.type === "repas" ? (
+                  <div className="rounded-lg border border-rose-100 bg-rose-50/30 p-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-slate-700">Convives ({1 + l.convives.length})</p>
+                      {Number(l.montant_ttc) > 0 && <p className="text-xs text-slate-500">{eurNdf(Number(l.montant_ttc) / (1 + l.convives.length))} / pers.</p>}
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">Vous (auteur de la note) · compté d&apos;office</p>
+                    <div className="mt-2 grid gap-1.5">
+                      {l.convives.map((c, i) => (
+                        <div key={i} className="flex flex-wrap items-center gap-2">
+                          <input className="input h-8 w-40 py-1 text-sm" value={c.nom} placeholder="Nom de l'invité"
+                            onChange={(e) => setConviveLocal(l.id, l.convives.map((x, j) => (j === i ? { ...x, nom: e.target.value } : x)))}
+                            onBlur={() => persistConvives(l.id, l.convives)} />
+                          <label className="flex items-center gap-1 text-xs text-slate-600">
+                            <input type="checkbox" checked={c.dmos} className="accent-brand"
+                              onChange={(e) => persistConvives(l.id, l.convives.map((x, j) => (j === i ? { ...x, dmos: e.target.checked } : x)))} /> PS
+                          </label>
+                          {c.dmos && (
+                            <div className="w-44"><Select value={c.pro_id ? `pro:${c.pro_id}` : c.externe_id ? `ext:${c.externe_id}` : ""}
+                              onChange={(v) => { const b = benefs.find((x) => x.value === v); persistConvives(l.id, l.convives.map((x, j) => (j === i ? { ...x, nom: b?.nom ?? x.nom, rpps: b?.rpps ?? null, specialite: b?.specialite ?? null, pro_id: v.startsWith("pro:") ? v.slice(4) : null, externe_id: v.startsWith("ext:") ? v.slice(4) : null } : x))); }}
+                              placeholder="(lier un PS enregistré)" options={[{ value: "", label: "(lier un PS enregistré)" }, ...benefs]} /></div>
+                          )}
+                          <button onClick={() => persistConvives(l.id, l.convives.filter((_, j) => j !== i))} className="text-xs font-medium text-critique" title="Retirer">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => persistConvives(l.id, [...l.convives, { nom: "", dmos: false }])} className="mt-2 text-xs font-semibold text-brand hover:underline">+ Ajouter un invité</button>
+                    {l.est_avantage_ps && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {(() => { const b = baremes.get("repas"); return b?.seuil_max != null ? <span className="text-[11px] text-slate-400">Plafond {eurNdf(b.seuil_max)}/pers.</span> : null; })()}
+                        {l.dmos_regime && <span className={`badge ${REGIME_DMOS[l.dmos_regime].cls}`}>{REGIME_DMOS[l.dmos_regime].label}</span>}
+                        {depasseCap(l) && <span className="badge bg-red-100 text-critique">Plafond/pers. dépassé</span>}
+                      </div>
+                    )}
+                  </div>
+                ) : (
                 <div className="rounded-lg border border-rose-100 bg-rose-50/30 p-2.5">
                   <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
                     <input type="checkbox" checked={l.est_avantage_ps} onChange={(e) => setAvantage(l.id, e.target.checked)} className="accent-brand" />
@@ -360,6 +405,7 @@ export default function NoteFraisDetail() {
                     </div>
                   )}
                 </div>
+                )}
               </>
             ) : (
               <div className="flex flex-wrap items-start justify-between gap-2">
