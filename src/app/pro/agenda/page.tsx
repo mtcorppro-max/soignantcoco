@@ -12,9 +12,9 @@ type LivraisonLite = { id: string; statut: string; date_prevue: string | null; p
 type Action = { id: string; type: string; titre: string; date: string; heure: string | null; patient_id: string | null; description: string | null; fait: boolean };
 
 type Item =
-  | { k: "suivi"; date: string; heure: null; jour: number; patientId: string; patientNom: string; echeance: string }
-  | { k: "livraison"; date: string; heure: null; statut: string; patientNom: string }
-  | { k: "action"; date: string; heure: string | null; action: Action };
+  | { k: "suivi"; heure: null; jour: number; patientId: string; patientNom: string; echeance: string }
+  | { k: "livraison"; heure: null; statut: string; patientNom: string }
+  | { k: "action"; heure: string | null; action: Action };
 
 const TYPES_ACTION = [
   { value: "suivi", label: "Suivi" },
@@ -23,20 +23,26 @@ const TYPES_ACTION = [
   { value: "autre", label: "Autre" },
 ];
 const libAction = (t: string) => TYPES_ACTION.find((x) => x.value === t)?.label ?? t;
-const BADGE_ACTION: Record<string, string> = { suivi: "bg-rose-100 text-brand", livraison: "bg-sky-100 text-sky-700", reunion: "bg-violet-100 text-violet-700", autre: "bg-slate-100 text-slate-500" };
+const BADGE_ACTION: Record<string, string> = { suivi: "bg-rose-100 text-brand", livraison: "bg-sky-100 text-sky-700", reunion: "bg-violet-100 text-violet-700", autre: "bg-slate-100 text-slate-600" };
 
-const iso = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.toISOString().slice(0, 10); };
+const iso = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); const off = x.getTimezoneOffset(); return new Date(x.getTime() - off * 60000).toISOString().slice(0, 10); };
 const ajoute = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const lundi = (d: Date) => { const x = new Date(d); const j = (x.getDay() + 6) % 7; return ajoute(x, -j); };
 const unP = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] : v) ?? null;
 const fmtJour = (d: Date) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long" });
+const JOURS_COURTS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
+
+// Libellé + couleurs d'un item (chip / pastille).
+const itemLabel = (it: Item) => it.k === "suivi" ? `Suivi · ${it.patientNom}` : it.k === "livraison" ? `Livr. · ${it.patientNom}` : `${it.heure ? it.heure.slice(0, 5) + " " : ""}${it.action.titre}`;
+const itemChip = (it: Item) => it.k === "suivi" ? "bg-rose-100 text-brand" : it.k === "livraison" ? "bg-sky-100 text-sky-700" : (BADGE_ACTION[it.action.type] ?? BADGE_ACTION.autre);
+const itemDot = (it: Item) => it.k === "suivi" ? "bg-brand" : it.k === "livraison" ? "bg-sky-500" : it.action.type === "reunion" ? "bg-violet-500" : it.action.type === "livraison" ? "bg-sky-500" : it.action.type === "suivi" ? "bg-brand" : "bg-slate-400";
 
 const VIDE = { type: "reunion", titre: "", date: "", heure: "", patient_id: "", description: "" };
 
 export default function AgendaPage() {
   const pro = useProSession();
   const monNom = pro ? [pro.titre, pro.prenom, pro.nom].filter(Boolean).join(" ") : "";
-  const [mode, setMode] = useState<"jour" | "semaine">("semaine");
+  const [mode, setMode] = useState<"mois" | "semaine" | "jour">("mois");
   const [ancre, setAncre] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [patients, setPatients] = useState<PatientLite[]>([]);
   const [livs, setLivs] = useState<LivraisonLite[]>([]);
@@ -47,7 +53,16 @@ export default function AgendaPage() {
   const [f, setF] = useState({ ...VIDE });
   const [busy, setBusy] = useState(false);
 
-  const jours = useMemo(() => (mode === "jour" ? [new Date(ancre)] : Array.from({ length: 7 }, (_, i) => ajoute(lundi(ancre), i))), [mode, ancre]);
+  // Jours affichés selon le mode (mois = grille 6 semaines).
+  const jours = useMemo(() => {
+    if (mode === "jour") return [new Date(ancre)];
+    if (mode === "semaine") return Array.from({ length: 7 }, (_, i) => ajoute(lundi(ancre), i));
+    const premier = new Date(ancre.getFullYear(), ancre.getMonth(), 1);
+    const dernier = new Date(ancre.getFullYear(), ancre.getMonth() + 1, 0);
+    const out: Date[] = [];
+    for (let d = lundi(premier); d <= ajoute(lundi(dernier), 6); d = ajoute(d, 1)) out.push(new Date(d));
+    return out;
+  }, [mode, ancre]);
   const debut = iso(jours[0]);
   const fin = iso(jours[jours.length - 1]);
 
@@ -67,11 +82,9 @@ export default function AgendaPage() {
   }, [debut, fin]);
   useEffect(() => { charger(); }, [charger]);
 
-  // Items par jour (clé = date ISO)
   const parJour = useMemo(() => {
     const map = new Map<string, Item[]>();
     jours.forEach((d) => map.set(iso(d), []));
-    // Suivis dont je suis responsable (alerte 1 ou 2)
     patients.forEach((p) => {
       if (p.statut !== "active" || !p.date_operation) return;
       if (p.alerte_1_nom !== monNom && p.alerte_2_nom !== monNom) return;
@@ -79,13 +92,12 @@ export default function AgendaPage() {
       if (isNaN(base.getTime())) return;
       (p.jours_suivi ?? []).forEach((j) => {
         const dd = iso(ajoute(base, j));
-        if (!map.has(dd)) return;
-        if (faits.has(`${p.id}|${dd}`)) return;
-        map.get(dd)!.push({ k: "suivi", date: dd, heure: null, jour: j, patientId: p.id, patientNom: p.nom, echeance: dd });
+        if (!map.has(dd) || faits.has(`${p.id}|${dd}`)) return;
+        map.get(dd)!.push({ k: "suivi", heure: null, jour: j, patientId: p.id, patientNom: p.nom, echeance: dd });
       });
     });
-    livs.forEach((l) => { if (l.date_prevue && map.has(l.date_prevue)) map.get(l.date_prevue)!.push({ k: "livraison", date: l.date_prevue, heure: null, statut: l.statut, patientNom: unP(l.patient)?.nom ?? "Patient" }); });
-    actions.forEach((a) => { if (map.has(a.date)) map.get(a.date)!.push({ k: "action", date: a.date, heure: a.heure, action: a }); });
+    livs.forEach((l) => { if (l.date_prevue && map.has(l.date_prevue)) map.get(l.date_prevue)!.push({ k: "livraison", heure: null, statut: l.statut, patientNom: unP(l.patient)?.nom ?? "Patient" }); });
+    actions.forEach((a) => { if (map.has(a.date)) map.get(a.date)!.push({ k: "action", heure: a.heure, action: a }); });
     for (const [, items] of map) items.sort((x, y) => (x.heure ?? "99").localeCompare(y.heure ?? "99"));
     return map;
   }, [jours, patients, livs, actions, faits, monNom]);
@@ -114,41 +126,47 @@ export default function AgendaPage() {
     setBusy(false);
     if (error || !data) { alert("Échec : " + (error?.message ?? "")); return; }
     setOpen(false); setF({ ...VIDE });
-    if (data.date >= debut && data.date <= fin) setActions((arr) => [...arr, data as Action]);
-    else charger();
+    if (data.date >= debut && data.date <= fin) setActions((arr) => [...arr, data as Action]); else charger();
   }
 
+  function navig(dir: number) {
+    setAncre((d) => (mode === "mois" ? new Date(d.getFullYear(), d.getMonth() + dir, 1) : ajoute(d, dir * (mode === "jour" ? 1 : 7))));
+  }
+  const ouvrirJour = (d: Date) => { setAncre(new Date(d)); setMode("jour"); };
+
   const ongletBtn = (actif: boolean) => `rounded-xl border px-4 py-2 text-sm font-semibold transition ${actif ? "border-brand bg-brand text-white" : "border-rose-200 bg-white text-brand hover:bg-rose-50"}`;
-  const labelPeriode = mode === "jour" ? fmtJour(jours[0]) : `${jours[0].toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })} – ${jours[6].toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}`;
+  const modeBtn = (actif: boolean) => `rounded-lg px-3 py-1.5 text-sm font-medium ${actif ? "bg-rose-100 text-brand" : "text-slate-500 hover:bg-rose-50"}`;
+  const labelPeriode = mode === "mois" ? ancre.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+    : mode === "jour" ? fmtJour(jours[0])
+    : `${jours[0].toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })} – ${jours[6].toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}`;
+  const auj = iso(new Date());
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-slate-800">Agenda</h1>
         <button onClick={() => { setF({ ...VIDE, date: iso(ancre) }); setOpen((v) => !v); }} className="btn-primary px-4 py-2 text-sm">+ Ajouter</button>
       </div>
 
-      {/* Bascule individuel / équipe */}
       <div className="mb-4 flex flex-wrap gap-2">
         <button className={ongletBtn(true)}>Mon agenda</button>
         <Link href="/pro/calendrier" prefetch className={ongletBtn(false)}>Organisation de l&apos;équipe</Link>
       </div>
 
-      {/* Mode + navigation */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1.5">
-          <button onClick={() => setMode("jour")} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${mode === "jour" ? "bg-rose-100 text-brand" : "text-slate-500 hover:bg-rose-50"}`}>Jour</button>
-          <button onClick={() => setMode("semaine")} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${mode === "semaine" ? "bg-rose-100 text-brand" : "text-slate-500 hover:bg-rose-50"}`}>Semaine</button>
+          <button onClick={() => setMode("mois")} className={modeBtn(mode === "mois")}>Mois</button>
+          <button onClick={() => setMode("semaine")} className={modeBtn(mode === "semaine")}>Semaine</button>
+          <button onClick={() => setMode("jour")} className={modeBtn(mode === "jour")}>Jour</button>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={() => setAncre((d) => ajoute(d, mode === "jour" ? -1 : -7))} className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-sm text-brand hover:bg-rose-50" aria-label="Précédent">‹</button>
-          <button onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setAncre(d); }} className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-brand hover:bg-rose-50">Aujourd&apos;hui</button>
-          <button onClick={() => setAncre((d) => ajoute(d, mode === "jour" ? 1 : 7))} className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-sm text-brand hover:bg-rose-50" aria-label="Suivant">›</button>
+          <button onClick={() => navig(-1)} className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-sm text-brand hover:bg-rose-50" aria-label="Précédent">‹</button>
+          <button onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setAncre(d); setMode("jour"); }} className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-brand hover:bg-rose-50">Aujourd&apos;hui</button>
+          <button onClick={() => navig(1)} className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-sm text-brand hover:bg-rose-50" aria-label="Suivant">›</button>
         </div>
       </div>
-      <p className="mb-3 text-sm font-semibold capitalize text-slate-600">{labelPeriode}</p>
+      <p className="mb-3 text-base font-semibold capitalize text-slate-700">{labelPeriode}</p>
 
-      {/* Formulaire d'ajout */}
       {open && (
         <form onSubmit={ajouterAction} className="card mb-4 grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -167,25 +185,61 @@ export default function AgendaPage() {
 
       {!pret ? (
         <p className="text-sm text-slate-400">Chargement…</p>
+      ) : mode === "jour" ? (
+        <JourDetail d={jours[0]} items={parJour.get(iso(jours[0])) ?? []} onSuiviFait={marquerSuiviFait} onToggle={toggleAction} onDelete={supprimerAction} />
       ) : (
-        <div className="grid gap-3">
-          {jours.map((d) => {
-            const k = iso(d);
-            const items = parJour.get(k) ?? [];
-            const estAujourdhui = k === iso(new Date());
-            return (
-              <section key={k} className="grid gap-2">
-                <h2 className={`text-sm font-semibold capitalize ${estAujourdhui ? "text-brand" : "text-slate-600"}`}>{fmtJour(d)}{estAujourdhui ? " · aujourd'hui" : ""}</h2>
-                {items.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-rose-100 px-3 py-2 text-xs text-slate-300">Rien de prévu</p>
-                ) : (
-                  items.map((it, idx) => <LigneAgenda key={idx} it={it} onSuiviFait={marquerSuiviFait} onToggle={toggleAction} onDelete={supprimerAction} />)
-                )}
-              </section>
-            );
-          })}
+        <div className="card overflow-hidden p-0">
+          {/* En-tête jours de la semaine */}
+          <div className="grid grid-cols-7 border-b border-rose-100 bg-rose-50/50">
+            {JOURS_COURTS.map((j) => <div key={j} className="py-2 text-center text-xs font-semibold capitalize text-slate-500">{j}</div>)}
+          </div>
+          <div className="grid grid-cols-7">
+            {jours.map((d, i) => {
+              const k = iso(d);
+              const items = parJour.get(k) ?? [];
+              const horsMois = mode === "mois" && d.getMonth() !== ancre.getMonth();
+              const estAuj = k === auj;
+              const max = mode === "mois" ? 3 : 6;
+              return (
+                <button
+                  key={k}
+                  onClick={() => ouvrirJour(d)}
+                  className={`flex flex-col gap-1 border-b border-r border-rose-100 p-1.5 text-left align-top transition hover:bg-rose-50/50 ${mode === "mois" ? "min-h-[70px] sm:min-h-[88px]" : "min-h-[120px]"} ${(i + 1) % 7 === 0 ? "border-r-0" : ""} ${horsMois ? "bg-slate-50/60" : "bg-white"}`}
+                >
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${estAuj ? "bg-brand text-white" : horsMois ? "text-slate-300" : "text-slate-600"}`}>{d.getDate()}</span>
+                  {mode === "mois" ? (
+                    <div className="flex flex-wrap gap-0.5">
+                      {items.slice(0, max).map((it, idx) => <span key={idx} className={`h-1.5 w-1.5 rounded-full ${itemDot(it)}`} />)}
+                      {items.length > max && <span className="text-[9px] font-semibold text-slate-400">+{items.length - max}</span>}
+                    </div>
+                  ) : (
+                    <div className="grid gap-0.5">
+                      {items.slice(0, max).map((it, idx) => <span key={idx} className={`truncate rounded px-1 py-0.5 text-[10px] font-medium ${itemChip(it)}`}>{itemLabel(it)}</span>)}
+                      {items.length > max && <span className="text-[10px] font-semibold text-slate-400">+{items.length - max}</span>}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function JourDetail({ d, items, onSuiviFait, onToggle, onDelete }: {
+  d: Date; items: Item[];
+  onSuiviFait: (pid: string, ech: string, jour: number) => void;
+  onToggle: (a: Action) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      {items.length === 0 ? (
+        <p className="card text-sm text-slate-400">Rien de prévu ce jour.</p>
+      ) : items.map((it, idx) => <LigneAgenda key={idx} it={it} onSuiviFait={onSuiviFait} onToggle={onToggle} onDelete={onDelete} />)}
+      <p className="px-1 text-xs text-slate-300">{items.length} élément(s) · {fmtJour(d)}</p>
     </div>
   );
 }
@@ -199,10 +253,7 @@ function LigneAgenda({ it, onSuiviFait, onToggle, onDelete }: {
   if (it.k === "suivi") {
     return (
       <div className="card flex flex-wrap items-center justify-between gap-2 py-2.5">
-        <div className="min-w-0">
-          <span className="badge bg-rose-100 text-brand">Suivi J{it.jour}</span>
-          <Link href={`/pro/patients/${it.patientId}`} prefetch className="ml-2 font-medium text-slate-700 hover:text-brand">{it.patientNom}</Link>
-        </div>
+        <div className="min-w-0"><span className="badge bg-rose-100 text-brand">Suivi J{it.jour}</span><Link href={`/pro/patients/${it.patientId}`} prefetch className="ml-2 font-medium text-slate-700 hover:text-brand">{it.patientNom}</Link></div>
         <button onClick={() => onSuiviFait(it.patientId, it.echeance, it.jour)} className="shrink-0 text-sm font-medium text-brand hover:underline">Marquer fait</button>
       </div>
     );
@@ -210,10 +261,7 @@ function LigneAgenda({ it, onSuiviFait, onToggle, onDelete }: {
   if (it.k === "livraison") {
     return (
       <div className="card flex flex-wrap items-center justify-between gap-2 py-2.5">
-        <div className="min-w-0">
-          <span className="badge bg-sky-100 text-sky-700">Livraison</span>
-          <span className="ml-2 font-medium text-slate-700">{it.patientNom}</span>
-        </div>
+        <div className="min-w-0"><span className="badge bg-sky-100 text-sky-700">Livraison</span><span className="ml-2 font-medium text-slate-700">{it.patientNom}</span></div>
         <Link href="/pro/livraisons" prefetch className="shrink-0 text-sm font-medium text-brand hover:underline">Tournée →</Link>
       </div>
     );
