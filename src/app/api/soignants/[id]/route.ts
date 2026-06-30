@@ -115,6 +115,8 @@ export async function PATCH(
     }
     if (body.nom !== undefined && t(body.nom)) maj.nom = t(body.nom);
     if (Array.isArray(body.protocoles)) maj.protocoles = body.protocoles;
+    // Délégué médical rattaché au médecin (auto-rattachement de ses patients).
+    if (body.delegue_id !== undefined && cible.role === "chirurgien") maj.delegue_id = body.delegue_id || null;
     if (Array.isArray(body.ordonnances_types)) maj.ordonnances_types = body.ordonnances_types;
     // Réception des alertes patients (opt-in médecin).
     if (typeof body.recevoir_alertes === "boolean") maj.recevoir_alertes = body.recevoir_alertes;

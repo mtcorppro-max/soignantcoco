@@ -136,6 +136,8 @@ export async function POST(request: Request) {
           ordonnances_types: Array.isArray(body.ordonnances_types) ? body.ordonnances_types : [],
           // Réception des alertes patients : opt-in explicite (défaut : non).
           recevoir_alertes: body.recevoir_alertes === true,
+          // Délégué médical rattaché (ses patients seront auto-rattachés au délégué).
+          delegue_id: texteOuNull(body.delegue_id),
         }
       : {
           // La pharmacie n'a pas de prénom (raison sociale dans `nom`) ; on

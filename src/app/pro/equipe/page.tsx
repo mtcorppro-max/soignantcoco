@@ -32,10 +32,11 @@ type Soignant = {
   recevoir_alertes: boolean | null;
   agences: string[] | null;
   photo_url: string | null;
+  delegue_id: string | null;
 };
 
 const COLS =
-  "id,nom,prenom,titre,role,niveau,agence_id,region_id,email,telephone,specialite,rpps,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles,recevoir_alertes,agences,photo_url";
+  "id,nom,prenom,titre,role,niveau,agence_id,region_id,email,telephone,specialite,rpps,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles,recevoir_alertes,agences,photo_url,delegue_id";
 
 // Soignant externe (sans compte) — cf. migrations 0040 / 0041 / 0042.
 type Externe = {
@@ -421,6 +422,7 @@ export default function EquipePage() {
           soignant={edite}
           agences={agences}
           regions={regions}
+          delegues={soignants.filter((s) => s.role === "delegue").map((s) => ({ value: s.id, label: [s.titre, s.prenom, s.nom].filter(Boolean).join(" ") }))}
           niveauMoi={niveauMoi}
           onClose={() => setEdite(null)}
           onSaved={() => { setEdite(null); charger(); }}
@@ -553,11 +555,12 @@ function EditeurExterne({ externe, onClose, onSaved }: { externe: Externe; onClo
 }
 
 function EditeurSoignant({
-  soignant, agences, regions, niveauMoi, onClose, onSaved,
+  soignant, agences, regions, delegues, niveauMoi, onClose, onSaved,
 }: {
   soignant: Soignant;
   agences: { value: string; label: string }[];
   regions: { value: string; label: string }[];
+  delegues: { value: string; label: string }[];
   niveauMoi: number;
   onClose: () => void;
   onSaved: () => void;
@@ -571,6 +574,7 @@ function EditeurSoignant({
     secretariat_nom: soignant.secretariat_nom ?? "", secretariat_email: soignant.secretariat_email ?? "", secretariat_tel: soignant.secretariat_tel ?? "",
   });
   const [recevoirAlertes, setRecevoirAlertes] = useState(!!soignant.recevoir_alertes);
+  const [delegueId, setDelegueId] = useState(soignant.delegue_id ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [protocoles, setProtocoles] = useState<Protocole[]>(() => (soignant.protocoles ?? []).map((p) => protocoleDepuis(p as unknown as Record<string, unknown>)));
@@ -587,7 +591,7 @@ function EditeurSoignant({
     setBusy(true); setErr(null);
     const body: Record<string, unknown> = {
       telephone: f.telephone, email: f.email,
-      ...(estChir ? { rpps: f.rpps, specialite: f.specialite, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, protocoles: protocoles.map(protocolePropre), recevoir_alertes: recevoirAlertes } : {}),
+      ...(estChir ? { rpps: f.rpps, specialite: f.specialite, cabinets: f.cabinets, secretariat_nom: f.secretariat_nom, secretariat_email: f.secretariat_email, secretariat_tel: f.secretariat_tel, protocoles: protocoles.map(protocolePropre), recevoir_alertes: recevoirAlertes, delegue_id: delegueId || null } : {}),
       ...(estDelegue ? { agences: agencesDelegue } : {}),
       ...(peutAcces ? (estDelegue
         ? { niveau: Number(niveau) }
@@ -616,6 +620,11 @@ function EditeurSoignant({
               <div><label className="label">N° RPPS</label><input className="input" value={f.rpps} onChange={set("rpps")} inputMode="numeric" /></div>
             </div>
             <div><label className="label">Lieu d&apos;exercice</label><input className="input" value={f.cabinets} onChange={set("cabinets")} /></div>
+            <div>
+              <label className="label">Délégué médical rattaché <span className="font-normal text-slate-400">(facultatif)</span></label>
+              <Select value={delegueId} onChange={setDelegueId} placeholder="— Aucun délégué —" options={[{ value: "", label: "— Aucun délégué —" }, ...delegues]} />
+              <p className="mt-1 text-xs text-slate-400">Tous les patients de ce médecin seront automatiquement rattachés à ce délégué.</p>
+            </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div><label className="label">Secrétariat</label><input className="input" value={f.secretariat_nom} onChange={set("secretariat_nom")} /></div>
               <div><label className="label">Email secr.</label><input className="input" value={f.secretariat_email} onChange={set("secretariat_email")} inputMode="email" /></div>

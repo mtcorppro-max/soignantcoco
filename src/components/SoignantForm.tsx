@@ -74,6 +74,8 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
   const [regionId, setRegionId] = useState("");
   const [agences, setAgences] = useState<{ value: string; label: string }[]>([]);
   const [regions, setRegions] = useState<{ value: string; label: string }[]>([]);
+  const [delegues, setDelegues] = useState<{ value: string; label: string }[]>([]);
+  const [delegueId, setDelegueId] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cree, setCree] = useState<{ email: string; motDePasse: string } | null>(null);
@@ -94,6 +96,10 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
         }))
       );
     });
+    // Délégués médicaux (pour rattacher un médecin à un délégué).
+    supabase.from("professionnel").select("id,nom,prenom,titre").eq("role", "delegue").order("nom").then(({ data }) => {
+      setDelegues((data ?? []).map((d) => ({ value: d.id as string, label: [d.titre, d.prenom, d.nom].filter(Boolean).join(" ") })));
+    });
   }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -106,6 +112,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
     setAgenceId("");
     setAgencesDelegue([]);
     setRegionId("");
+    setDelegueId("");
   };
 
   const toggleAgenceDelegue = (id: string) =>
@@ -172,6 +179,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
           region_id: form.niveau === "1" ? regionId : null,
           protocoles: estChirurgien ? protocoles.map(protocolePropre) : [],
           recevoir_alertes: estChirurgien ? recevoirAlertes : false,
+          delegue_id: estChirurgien ? (delegueId || null) : null,
         }),
       });
       const j = await res.json();
@@ -399,6 +407,16 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
             <div>
               <label className="label">Adresse du lieu d&apos;exercice</label>
               <input className="input" value={form.cabinets} onChange={set("cabinets")} placeholder="Clinique du Parc à Castelnau-le-Lez / …" />
+            </div>
+            <div>
+              <label className="label">Délégué médical rattaché <span className="text-slate-400">(facultatif)</span></label>
+              <Select
+                value={delegueId}
+                onChange={setDelegueId}
+                placeholder={delegues.length ? "— Aucun délégué —" : "Aucun délégué enregistré"}
+                options={[{ value: "", label: "— Aucun délégué —" }, ...delegues]}
+              />
+              <p className="mt-1 text-xs text-slate-400">Tous les patients de ce médecin seront automatiquement rattachés à ce délégué.</p>
             </div>
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/40 p-3">
               <input type="checkbox" checked={recevoirAlertes} onChange={(e) => setRecevoirAlertes(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand" />
