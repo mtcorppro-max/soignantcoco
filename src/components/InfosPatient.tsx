@@ -63,6 +63,7 @@ export function InfosPatient({
   modifiable: boolean;
 }) {
   const [edition, setEdition] = useState(false);
+  const [ouvert, setOuvert] = useState(false); // section rétractable (repliée par défaut)
   const [form, setForm] = useState<Form>(() => depuisPatient(patient));
   const [vue, setVue] = useState<Form>(() => depuisPatient(patient));
   const [busy, setBusy] = useState(false);
@@ -359,16 +360,19 @@ export function InfosPatient({
 
   return (
     <section className="card grid gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-600">Informations patient</h2>
-        {modifiable && (
-          <button onClick={() => { setForm({ ...vue }); setEdition(true); }} className="text-sm font-medium text-brand hover:underline">
+      <div className="flex items-center justify-between gap-2">
+        <button onClick={() => setOuvert((v) => !v)} className="flex min-w-0 items-center gap-2 text-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`h-4 w-4 shrink-0 text-brand transition-transform ${ouvert ? "rotate-90" : ""}`} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" /></svg>
+          <h2 className="text-sm font-semibold text-slate-600">Informations patient</h2>
+        </button>
+        {modifiable && ouvert && (
+          <button onClick={() => { setForm({ ...vue }); setEdition(true); }} className="shrink-0 text-sm font-medium text-brand hover:underline">
             {aucune ? "Compléter" : "Modifier"}
           </button>
         )}
       </div>
 
-      {aucune ? (
+      {!ouvert ? null : aucune ? (
         <p className="text-sm text-slate-400">
           Aucune information renseignée.{modifiable ? " Cliquez sur « Compléter »." : ""}
         </p>
