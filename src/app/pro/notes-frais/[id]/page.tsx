@@ -43,6 +43,8 @@ export default function NoteFraisDetail() {
   const [events, setEvents] = useState<Evt[]>([]);
   const [benefs, setBenefs] = useState<Benef[]>([]);
   const [emailCompta, setEmailCompta] = useState<string>("");
+  const [realProId, setRealProId] = useState<string | null>(null);
+  const [realNom, setRealNom] = useState<string>("");
   const [pret, setPret] = useState(false);
   const [busy, setBusy] = useState(false);
   const supabase = createClient();
@@ -88,6 +90,16 @@ export default function NoteFraisDetail() {
   }, [id]);
 
   useEffect(() => { charger(); }, [charger]);
+  // Identité réelle du compte connecté (autorité = serveur, pas le cache session).
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("professionnel").select("id,nom,prenom,titre").eq("user_id", user.id).maybeSingle();
+      if (data) { setRealProId(data.id as string); setRealNom([data.titre, data.prenom, data.nom].filter(Boolean).join(" ")); }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!pro?.prestataire_id) return;
     supabase.from("parametre_notes_frais").select("email_comptabilite").eq("prestataire_id", pro.prestataire_id).maybeSingle()
@@ -98,8 +110,8 @@ export default function NoteFraisDetail() {
   if (pret && !note) return <div className="card text-sm text-slate-500">Note introuvable ou inaccessible.</div>;
   if (!note || !pro) return <p className="text-sm text-slate-400">Chargement…</p>;
 
-  const proId = pro.id;
-  const mien = note.emetteur_id === pro.id;
+  const proId = realProId ?? pro.id;
+  const mien = note.emetteur_id === proId;
   const editable = mien && note.statut === "brouillon";
   const peutValider = !mien && note.statut === "soumise";
   const peutRembourser = !mien && note.statut === "validee";
@@ -174,9 +186,12 @@ export default function NoteFraisDetail() {
   }
   async function rouvrir() { await supabase.from("note_de_frais").update({ statut: "brouillon", motif_rejet: null }).eq("id", id); charger(); }
   async function rappeler() {
-    const { data, error } = await supabase.from("note_de_frais").update({ statut: "brouillon" }).eq("id", id).select("id");
+    const { data, error } = await supabase.rpc("ndf_recall", { p_note: id });
     if (error) { alert("Échec : " + error.message); return; }
-    if (!data || data.length === 0) { alert("Modification refusée. Assurez-vous que la dernière migration (0102) est bien appliquée en base."); return; }
+    if (data !== true) {
+      alert(`Modification refusée.\nConnecté en tant que : ${realNom || "compte inconnu"}\nÉmetteur de la note : ${nomDe(note?.emetteur) || "autre compte"}\n\nSeul l'émetteur (ou un administrateur) peut modifier cette note.`);
+      return;
+    }
     charger();
   }
 
@@ -246,6 +261,11 @@ export default function NoteFraisDetail() {
 
       {note.statut === "rejetee" && note.motif_rejet && (
         <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-critique"><b>Rejetée :</b> {note.motif_rejet}</p>
+      )}
+      {realProId && !mien && !peutValider && !peutRembourser && (
+        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-attention">
+          Vous êtes connecté en tant que <b>{realNom || "—"}</b>. Cette note appartient à <b>{nomDe(note.emetteur) || "un autre compte"}</b> : seul son émetteur (ou un administrateur) peut la modifier ou la supprimer.
+        </p>
       )}
       {bloqueDmos && note.statut !== "remboursee" && (
         <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-attention"><b>DMOS :</b> un avantage dépasse le seuil et nécessite une <b>autorisation préalable</b>. La validation est bloquée tant que l&apos;autorisation n&apos;est pas enregistrée (Suivi DMOS).</p>
