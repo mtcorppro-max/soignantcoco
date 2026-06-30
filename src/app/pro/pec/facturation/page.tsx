@@ -247,14 +247,18 @@ export default function FacturationPage() {
             <Kpi label="CA en attente Sécu" value={eur(s.attenteSecu)} ht={eur(s.attenteSecuHt)} />
           </div>
 
-          <section className="card grid gap-4">
-            <h2 className="text-sm font-semibold text-slate-700">Chiffre d&apos;affaires généré — 12 derniers mois</h2>
-            <div className="flex items-end justify-between gap-1.5" style={{ height: 180 }}>
+          <section className="card grid gap-4 overflow-hidden">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <h2 className="text-sm font-semibold text-slate-700">Chiffre d&apos;affaires généré — 12 derniers mois</h2>
+              {maxSerie > 0 && <span className="text-xs text-slate-400">max {eur(maxSerie)}</span>}
+            </div>
+            <div className="flex items-end justify-between gap-1 sm:gap-1.5" style={{ height: 180 }}>
               {s.serie.map((m, i) => (
                 <div key={i} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-                  <span className="text-[10px] font-medium text-slate-500">{m.total > 0 ? eur(m.total) : ""}</span>
+                  {/* Montant par barre : masqué sur mobile (12 colonnes étroites → débordement) */}
+                  <span className="hidden w-full truncate text-center text-[10px] font-medium text-slate-500 sm:block">{m.total > 0 ? eur(m.total) : ""}</span>
                   <div className="w-full rounded-t-md bg-brand/80" style={{ height: `${Math.max(2, (m.total / maxSerie) * 140)}px` }} title={`${m.label} : ${eur(m.total)}`} />
-                  <span className="text-[10px] text-slate-400">{m.label}</span>
+                  <span className="w-full truncate text-center text-[10px] text-slate-400">{m.label}</span>
                 </div>
               ))}
             </div>
