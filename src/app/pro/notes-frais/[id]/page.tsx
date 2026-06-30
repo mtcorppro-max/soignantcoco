@@ -20,7 +20,7 @@ type Ligne = {
   description: string | null; evenement_id: string | null;
   est_avantage_ps: boolean; beneficiaire_pro_id: string | null; beneficiaire_externe_id: string | null;
   beneficiaire_nom: string | null; beneficiaire_rpps: string | null; beneficiaire_specialite: string | null;
-  dmos_regime: string | null;
+  dmos_regime: string | null; decision: string | null;
 };
 type Benef = { value: string; label: string; nom: string; rpps: string | null; specialite: string | null };
 const REGIME_DMOS: Record<string, { label: string; cls: string }> = {
@@ -54,7 +54,7 @@ export default function NoteFraisDetail() {
     if (!n) { setNote(null); setPret(true); return; }
     setNote(n as unknown as Note);
     const [{ data: l }, { data: j }, { data: ev }] = await Promise.all([
-      supabase.from("note_de_frais_ligne").select("id,type,montant_ttc,montant_ht,date_depense,description,evenement_id,est_avantage_ps,beneficiaire_pro_id,beneficiaire_externe_id,beneficiaire_nom,beneficiaire_rpps,beneficiaire_specialite,dmos_regime").eq("note_id", id).order("created_at"),
+      supabase.from("note_de_frais_ligne").select("id,type,montant_ttc,montant_ht,date_depense,description,evenement_id,est_avantage_ps,beneficiaire_pro_id,beneficiaire_externe_id,beneficiaire_nom,beneficiaire_rpps,beneficiaire_specialite,dmos_regime,decision").eq("note_id", id).order("created_at"),
       supabase.from("note_de_frais_justificatif").select("id,ligne_id,chemin_stockage,libelle,mime").eq("note_id", id),
       supabase.from("evenement_marketing").select("id,nom").order("date_debut", { ascending: false }),
     ]);
@@ -104,6 +104,8 @@ export default function NoteFraisDetail() {
   const peutValider = !mien && note.statut === "soumise";
   const peutRembourser = !mien && note.statut === "validee";
   const s = STATUTS_NDF[note.statut] ?? STATUTS_NDF.brouillon;
+  // Avantage dépassant le seuil DMOS (régime « autorisation ») non encore autorisé → bloque la validation.
+  const bloqueDmos = lignes.some((l) => l.est_avantage_ps && l.dmos_regime === "autorisation" && !["autorise", "tacite"].includes(l.decision ?? ""));
 
   // ── Actions note ──
   const majNote = async (patch: Partial<Note>) => { setNote((n) => (n ? { ...n, ...patch } : n)); await supabase.from("note_de_frais").update(patch).eq("id", id); };
@@ -169,8 +171,10 @@ export default function NoteFraisDetail() {
     router.push("/pro/notes-frais");
   }
   async function rouvrir() { await supabase.from("note_de_frais").update({ statut: "brouillon", motif_rejet: null }).eq("id", id); charger(); }
+  async function rappeler() { await supabase.from("note_de_frais").update({ statut: "brouillon" }).eq("id", id); charger(); }
 
   async function valider() {
+    if (bloqueDmos) { alert("Validation impossible : un avantage dépasse le seuil DMOS et nécessite une autorisation préalable (voir Suivi DMOS)."); return; }
     setBusy(true);
     await supabase.from("note_de_frais").update({ statut: "validee", valide_par: proId, valide_le: new Date().toISOString() }).eq("id", id);
     setBusy(false); router.push("/pro/notes-frais");
@@ -235,6 +239,9 @@ export default function NoteFraisDetail() {
 
       {note.statut === "rejetee" && note.motif_rejet && (
         <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-critique"><b>Rejetée :</b> {note.motif_rejet}</p>
+      )}
+      {bloqueDmos && note.statut !== "remboursee" && (
+        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-attention"><b>DMOS :</b> un avantage dépasse le seuil et nécessite une <b>autorisation préalable</b>. La validation est bloquée tant que l&apos;autorisation n&apos;est pas enregistrée (Suivi DMOS).</p>
       )}
 
       {/* Période */}
@@ -332,10 +339,13 @@ export default function NoteFraisDetail() {
           <button onClick={soumettre} disabled={busy} className="btn-primary flex-1">Soumettre pour validation</button>
           <button onClick={supprimerNote} className="btn-secondary">Supprimer</button>
         </>)}
-        {mien && note.statut === "soumise" && <p className="text-sm text-slate-500">En attente de validation.</p>}
+        {mien && note.statut === "soumise" && (<>
+          <p className="self-center text-sm text-slate-500">En attente de validation.</p>
+          <button onClick={rappeler} className="btn-secondary">Modifier</button>
+        </>)}
         {mien && note.statut === "rejetee" && <button onClick={rouvrir} className="btn-primary">Corriger (repasser en brouillon)</button>}
         {peutValider && (<>
-          <button onClick={valider} disabled={busy} className="btn-primary flex-1">Valider</button>
+          <button onClick={valider} disabled={busy || bloqueDmos} className="btn-primary flex-1 disabled:opacity-50">Valider</button>
           <button onClick={rejeter} disabled={busy} className="btn-secondary">Rejeter</button>
         </>)}
         {peutRembourser && <button onClick={rembourser} disabled={busy} className="btn-primary flex-1">Marquer remboursée</button>}
