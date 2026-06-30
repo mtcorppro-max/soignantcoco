@@ -39,8 +39,8 @@ export default function BilanPage() {
       <div className="mx-auto max-w-xl">
         <div className="card grid place-items-center gap-3 py-12 text-center">
           <span className="grid h-14 w-14 place-items-center rounded-full bg-green-100 text-2xl">✓</span>
-          <p className="text-lg font-bold text-slate-800">Merci, votre bilan est envoyé</p>
-          <p className="max-w-sm text-sm text-slate-500">Votre équipe soignante en est informée. En cas d&apos;urgence, appelez le 15.</p>
+          <p className="text-lg font-bold text-slate-800">Vos données ont bien été transmises à votre équipe de soins</p>
+          <p className="max-w-sm text-sm text-slate-500">Vous serez notifié(e) dès que votre infirmière les aura consultées. En cas d&apos;urgence, appelez le 15.</p>
           <button onClick={() => { setRep({}); setEnvoye(false); }} className="btn-secondary mt-2">Faire un nouveau bilan</button>
         </div>
       </div>

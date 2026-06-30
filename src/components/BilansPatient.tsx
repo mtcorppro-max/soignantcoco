@@ -2,21 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useProSession } from "@/lib/hooks/useSession";
 import { QUESTIONS_BILAN, formatReponse, reponsePreoccupante, type ReponsesBilan } from "@/lib/bilanEtat";
 
-type Bilan = { id: string; created_at: string; reponses: ReponsesBilan };
+type Bilan = { id: string; created_at: string; reponses: ReponsesBilan; lu_le: string | null };
 const vide = (v: unknown) => v == null || v === "" || (Array.isArray(v) && v.length === 0);
 
 // Bilans « état général » remplis par le patient (côté soignant).
 export function BilansPatient({ patientId }: { patientId: string }) {
+  const pro = useProSession();
   const [bilans, setBilans] = useState<Bilan[]>([]);
   const [pret, setPret] = useState(false);
   const [ouvert, setOuvert] = useState<string | null>(null);
 
   useEffect(() => {
-    createClient().from("bilan_etat").select("id,created_at,reponses").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(20)
+    createClient().from("bilan_etat").select("id,created_at,reponses,lu_le").eq("patient_id", patientId).order("created_at", { ascending: false }).limit(20)
       .then(({ data }) => { setBilans((data ?? []) as Bilan[]); setPret(true); });
   }, [patientId]);
+
+  async function marquerLu(id: string) {
+    setBilans((a) => a.map((b) => (b.id === id ? { ...b, lu_le: new Date().toISOString() } : b)));
+    await createClient().from("bilan_etat").update({ lu_le: new Date().toISOString(), lu_par: pro?.id ?? null }).eq("id", id);
+  }
 
   if (!pret) return null;
 
@@ -31,15 +38,20 @@ export function BilansPatient({ patientId }: { patientId: string }) {
         const open = ouvert === b.id;
         return (
           <div key={b.id} className="card grid gap-2">
-            <button onClick={() => setOuvert(open ? null : b.id)} className="flex items-center justify-between gap-2 text-left">
-              <span className="font-medium text-slate-700">
-                {new Date(b.created_at).toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" })}
-                <span className="ml-1 text-xs text-slate-400">{new Date(b.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
-              </span>
-              {alertes.length > 0
-                ? <span className="badge bg-red-100 text-critique">{alertes.length} point{alertes.length > 1 ? "s" : ""} d&apos;attention</span>
-                : <span className="badge bg-green-100 text-ok">RAS</span>}
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              <button onClick={() => setOuvert(open ? null : b.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                <span className="font-medium text-slate-700">
+                  {new Date(b.created_at).toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" })}
+                  <span className="ml-1 text-xs text-slate-400">{new Date(b.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+                </span>
+                {alertes.length > 0
+                  ? <span className="badge bg-red-100 text-critique">{alertes.length} point{alertes.length > 1 ? "s" : ""} d&apos;attention</span>
+                  : <span className="badge bg-green-100 text-ok">RAS</span>}
+              </button>
+              {b.lu_le
+                ? <span className="badge shrink-0 bg-sky-100 text-sky-700" title={`Lu le ${new Date(b.lu_le).toLocaleString("fr-FR")}`}>Lu ✓</span>
+                : <button onClick={() => marquerLu(b.id)} className="shrink-0 rounded-lg border border-rose-200 px-2.5 py-1 text-xs font-semibold text-brand hover:bg-rose-50">Marquer lu</button>}
+            </div>
             {open && (
               <div className="grid gap-1.5 border-t border-rose-100 pt-2">
                 {QUESTIONS_BILAN.map((q) => {
