@@ -25,6 +25,9 @@ export type Ordo = {
 };
 export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, patientChirurgien }: { patientId: string; patientNom: string; patientNaissance: string | null; patientChirurgien: string | null }) {
   const pro = useProSession();
+  // Médecin (chirurgien) : consulte et signe les ordonnances, mais n'en génère
+  // pas et ne les modifie/supprime pas.
+  const lectureSeule = pro?.role === "chirurgien";
   const [ordos, setOrdos] = useState<Ordo[]>([]);
   const [signer, setSigner] = useState<Ordo | null>(null);
   const [editer, setEditer] = useState<Ordo | null>(null);
@@ -76,7 +79,7 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
     <section className="card grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-slate-700">Ordonnances</h2>
-        <GenerateurOrdonnance patientId={patientId} patientChirurgien={patientChirurgien} onCreated={charger} />
+        {!lectureSeule && <GenerateurOrdonnance patientId={patientId} patientChirurgien={patientChirurgien} onCreated={charger} />}
       </div>
 
       {ordos.length === 0 ? (
@@ -100,7 +103,7 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {aSigner && <button onClick={() => setSigner(o)} className="btn-primary px-3 py-1.5 text-sm">Lire et signer</button>}
-                  {o.statut !== "signee" && (
+                  {!lectureSeule && o.statut !== "signee" && (
                     <button onClick={() => setEditer(o)} className="btn-secondary px-3 py-1.5 text-sm">Modifier</button>
                   )}
                   <button onClick={() => voir(o)} className="btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-sm">
@@ -116,7 +119,7 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
                     </svg>
                     PDF
                   </button>
-                  <button onClick={() => supprimer(o)} className="rounded-lg border border-rose-200 px-2 py-1.5 text-sm text-critique hover:bg-red-50">✕</button>
+                  {!lectureSeule && <button onClick={() => supprimer(o)} className="rounded-lg border border-rose-200 px-2 py-1.5 text-sm text-critique hover:bg-red-50">✕</button>}
                 </div>
               </div>
             );

@@ -102,6 +102,8 @@ export default function FichePatient() {
   const peutSaisirMesure = pro?.role === "infirmiere_liberale";
   // Rubriques en onglets (boutons en haut) : suivis / ordonnances / livraisons / facturation.
   const [onglet, setOnglet] = useState<"suivis" | "ordonnances" | "livraisons" | "facturation" | "messagerie" | null>(null);
+  // Médecin (chirurgien) : consultation seule (pas de création de suivi / ordonnance), pas de livraisons.
+  const estChir = pro?.role === "chirurgien";
   const peutFacturation = !!pro && (pro.niveau <= 1 || ["dirigeant", "coordinatrice"].includes(pro.role));
   const peutStatut = !!pro && (pro.niveau <= 1 || pro.role === "coordinatrice");
 
@@ -144,7 +146,7 @@ export default function FichePatient() {
     <>
       <OngletBtn label="Suivis" icon={<ICal />} actif={onglet === "suivis"} onClick={() => setOnglet((o) => (o === "suivis" ? null : "suivis"))} />
       <OngletBtn label="Ordonnances" icon={<IDoc />} actif={onglet === "ordonnances"} onClick={() => setOnglet((o) => (o === "ordonnances" ? null : "ordonnances"))} />
-      <OngletBtn label="Livraison" icon={<ITruck />} actif={onglet === "livraisons"} onClick={() => setOnglet((o) => (o === "livraisons" ? null : "livraisons"))} />
+      {!estChir && <OngletBtn label="Livraison" icon={<ITruck />} actif={onglet === "livraisons"} onClick={() => setOnglet((o) => (o === "livraisons" ? null : "livraisons"))} />}
       <OngletBtn label="Messagerie" icon={<IChat />} actif={onglet === "messagerie"} onClick={() => setOnglet((o) => (o === "messagerie" ? null : "messagerie"))} />
       {peutFacturation && <OngletBtn label="Facturation" icon={<IEuro />} actif={onglet === "facturation"} onClick={() => setOnglet((o) => (o === "facturation" ? null : "facturation"))} />}
     </>
@@ -190,7 +192,7 @@ export default function FichePatient() {
         </>
       )}
       {onglet === "ordonnances" && <OrdonnancesPatient patientId={patient.id} patientNom={patient.nom} patientNaissance={patient.date_naissance} patientChirurgien={patient.chirurgien} />}
-      {onglet === "livraisons" && (
+      {onglet === "livraisons" && !estChir && (
         <>
           <LivraisonPatient patientId={patient.id} prestataireId={patient.prestataire_id} />
           <EquipementsPatient patientId={patient.id} />

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
 
-type Pro = { id: string; nom: string; prenom: string | null; titre: string | null; role: string; niveau: number };
+type Pro = { id: string; nom: string; prenom: string | null; titre: string | null; role: string; niveau: number; agence_id: string | null; region_id: string | null };
 type Message = { id: string; expediteur_id: string; destinataire_id: string; contenu: string; lu: boolean; created_at: string };
 
 const nomComplet = (p: Pro) => [p.titre, p.prenom, p.nom].filter(Boolean).join(" ");
@@ -15,6 +15,7 @@ export default function MessageriePage() {
   const monId = pro?.id ?? "";
   const params = useSearchParams();
   const [pros, setPros] = useState<Pro[]>([]);
+  const [agenceRegion, setAgenceRegion] = useState<Map<string, string | null>>(new Map());
   const [messages, setMessages] = useState<Message[]>([]);
   const [selId, setSelId] = useState<string>("");
   const [texte, setTexte] = useState("");
@@ -24,14 +25,16 @@ export default function MessageriePage() {
   const charger = useCallback(async () => {
     if (!monId) return;
     const supabase = createClient();
-    const [{ data: ps }, { data: ms }] = await Promise.all([
-      supabase.from("professionnel").select("id,nom,prenom,titre,role,niveau").neq("id", monId).order("nom"),
+    const [{ data: ps }, { data: ms }, { data: ags }] = await Promise.all([
+      supabase.from("professionnel").select("id,nom,prenom,titre,role,niveau,agence_id,region_id").neq("id", monId).order("nom"),
       supabase.from("message_pro").select("id,expediteur_id,destinataire_id,contenu,lu,created_at").order("created_at", { ascending: true }),
+      supabase.from("agence").select("id,region_id"),
     ]);
     // On garde tout le monde pour résoudre les noms (y compris un niveau 0 qui
     // vous a écrit) ; le filtrage niveau 0 ne s'applique qu'au choix d'un nouveau contact.
     setPros((ps ?? []) as Pro[]);
     setMessages((ms ?? []) as Message[]);
+    setAgenceRegion(new Map((ags ?? []).map((a) => [a.id as string, (a.region_id as string | null) ?? null])));
   }, [monId]);
 
   useEffect(() => { charger(); }, [charger]);
@@ -93,8 +96,25 @@ export default function MessageriePage() {
 
   const sel = selId ? proParId.get(selId) : undefined;
   const dejaEnConv = new Set(conversations.map((c) => c.id));
-  // Nouveau contact : on ne propose pas les comptes niveau 0 (invisibles).
-  const autresPros = pros.filter((p) => p.niveau !== 0 && !dejaEnConv.has(p.id));
+
+  // Règle médecin : un chirurgien ne dialogue qu'avec les coordinatrices de son
+  // agence + le manager de sa région (et réciproquement). La plateforme (niv 0)
+  // n'est jamais bloquée. Miroir de la fonction SQL peut_message_pro (0116).
+  function autorise(p: Pro): boolean {
+    if (!pro) return false;
+    if (pro.niveau === 0 || p.niveau === 0) return true;
+    if (pro.role !== "chirurgien" && p.role !== "chirurgien") return true;
+    if (pro.role === "chirurgien" && p.role === "chirurgien") return false;
+    const medAg = pro.role === "chirurgien" ? pro.agence_id : p.agence_id;
+    const x = pro.role === "chirurgien" ? p : { role: pro.role, agence_id: pro.agence_id, region_id: pro.region_id };
+    const medReg = medAg ? agenceRegion.get(medAg) ?? null : null;
+    return (x.role === "coordinatrice" && x.agence_id === medAg)
+        || (x.role === "manager" && x.region_id === medReg);
+  }
+
+  // Nouveau contact : on ne propose pas les comptes niveau 0 (invisibles) ni les
+  // interlocuteurs interdits par la règle médecin.
+  const autresPros = pros.filter((p) => p.niveau !== 0 && !dejaEnConv.has(p.id) && autorise(p));
 
   return (
     <div className="mx-auto max-w-4xl">

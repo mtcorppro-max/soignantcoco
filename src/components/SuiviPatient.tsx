@@ -37,6 +37,8 @@ export function SuiviPatient({
   // Les constantes ne sont saisies que par l'infirmière libérale (ou le patient,
   // côté patient) ; la coordinatrice voit les dernières valeurs en lecture seule.
   const peutConstantes = pro?.role === "infirmiere_liberale";
+  // Médecin (chirurgien) : consultation seule des suivis (pas de création).
+  const lectureSeule = pro?.role === "chirurgien";
   const [suivis, setSuivis] = useState<Suivi[]>([]);
   const [galerie, setGalerie] = useState<GalPhoto[]>([]);
   const [photosParSuivi, setPhotosParSuivi] = useState<Record<string, PhotoSuivi[]>>({});
@@ -189,7 +191,7 @@ export function SuiviPatient({
     <section ref={sectionRef} className="grid grid-cols-1 gap-3 scroll-mt-20">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-600">Suivis</h2>
-        {!ouvert && (
+        {!ouvert && !lectureSeule && (
           <button onClick={ouvrir} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark">
             <span className="text-base leading-none">＋</span> Nouveau suivi
           </button>
