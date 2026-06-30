@@ -166,8 +166,10 @@ export default function NoteFraisDetail() {
     router.push("/pro/notes-frais");
   }
   async function supprimerNote() {
-    if (!confirm("Supprimer cette note de frais ?")) return;
-    await supabase.from("note_de_frais").delete().eq("id", id);
+    if (!confirm("Supprimer définitivement cette note de frais ?")) return;
+    const { data, error } = await supabase.from("note_de_frais").delete().eq("id", id).select("id");
+    if (error) { alert("Échec : " + error.message); return; }
+    if (!data || data.length === 0) { alert("Suppression refusée (droits, ou note déjà validée/remboursée). Vérifiez que la migration 0103 est appliquée."); return; }
     router.push("/pro/notes-frais");
   }
   async function rouvrir() { await supabase.from("note_de_frais").update({ statut: "brouillon", motif_rejet: null }).eq("id", id); charger(); }
@@ -347,8 +349,12 @@ export default function NoteFraisDetail() {
         {mien && note.statut === "soumise" && (<>
           <p className="self-center text-sm text-slate-500">En attente de validation.</p>
           <button onClick={rappeler} className="btn-secondary">Modifier</button>
+          <button onClick={supprimerNote} className="btn-secondary text-critique">Supprimer</button>
         </>)}
-        {mien && note.statut === "rejetee" && <button onClick={rouvrir} className="btn-primary">Corriger (repasser en brouillon)</button>}
+        {mien && note.statut === "rejetee" && (<>
+          <button onClick={rouvrir} className="btn-primary">Corriger (repasser en brouillon)</button>
+          <button onClick={supprimerNote} className="btn-secondary text-critique">Supprimer</button>
+        </>)}
         {peutValider && (<>
           <button onClick={valider} disabled={busy || bloqueDmos} className="btn-primary flex-1 disabled:opacity-50">Valider</button>
           <button onClick={rejeter} disabled={busy} className="btn-secondary">Rejeter</button>
