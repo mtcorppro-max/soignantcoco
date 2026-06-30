@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession, patchProSession } from "@/lib/hooks/useSession";
 import { LIBELLE_ROLE } from "@/lib/roles";
+import { peutNotesFrais } from "@/lib/notesFrais";
 import { Avatar } from "@/components/Avatar";
 
 type Form = {
@@ -126,6 +128,16 @@ export default function MonProfil() {
       {!pret ? (
         <p className="text-sm text-slate-400">Chargement…</p>
       ) : (
+        <>
+        {peutNotesFrais(role) && (
+          <Link href="/pro/notes-frais" prefetch className="card mb-4 flex items-center justify-between gap-3 transition hover:bg-rose-50/40">
+            <div>
+              <p className="font-semibold text-slate-800">Mes notes de frais</p>
+              <p className="text-sm text-slate-500">Déposer et suivre mes frais professionnels.</p>
+            </div>
+            <span className="text-xl text-brand">→</span>
+          </Link>
+        )}
         <div className="card grid gap-4">
           {/* Photo de profil */}
           <div className="flex items-center gap-4">
@@ -197,6 +209,7 @@ export default function MonProfil() {
           {msg && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-ok">{msg}</p>}
           <button onClick={sauver} disabled={busy} className="btn-primary py-3">{busy ? "Enregistrement…" : "Enregistrer"}</button>
         </div>
+        </>
       )}
     </div>
   );

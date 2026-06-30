@@ -8,7 +8,6 @@ import { Logo } from "@/components/Logo";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useProSession } from "@/lib/hooks/useSession";
 import { LIBELLE_ROLE, estCoordOuManager, estRoleService, peutMarketing } from "@/lib/roles";
-import { peutNotesFrais } from "@/lib/notesFrais";
 import { TYPES_ORDO_PHARMACIE, clePharmaVu } from "@/lib/ordonnances";
 import { RechercheSoignants } from "@/components/RechercheSoignants";
 import { Avatar } from "@/components/Avatar";
@@ -32,8 +31,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   const estPersonnel = pro?.role === "personnel" && !estN0;
   // Espace Marketing : dirigeant, RH, manager, délégué (+ admin).
   const peutMkt = peutMarketing(pro?.role, pro?.niveau);
-  // Notes de frais : tout le personnel interne (pas les partenaires externes).
-  const peutNdf = peutNotesFrais(pro?.role);
   // Gérer/créer des comptes & l'équipe : niveau 0, 1 ou 2 (hors chirurgien et
   // hors comptes service livreur/pharmacie)
   const peutGerer = estN0 || (!!pro && pro.niveau <= 2 && pro.role !== "chirurgien" && !estRoleService(pro.role));
@@ -196,13 +193,11 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         { href: "/pro/livraisons", icon: "truck", label: "Tournée" },
         { href: "/pro/agenda", icon: "calendar", label: "Agenda" },
         { href: "/pro/magasin", icon: "box", label: "Magasin" },
-        { href: "/pro/notes-frais", icon: "recu", label: "Notes de frais" },
       ]
     : estDirigeant
     ? [
         { href: "/pro/pec", icon: "chart", label: "PEC" },
         { href: "/pro/marketing", icon: "megaphone", label: "Marketing" },
-        { href: "/pro/notes-frais", icon: "recu", label: "Notes de frais" },
         { href: "/pro/equipe-dirigeante", icon: "users", label: "Équipe dirigeante" },
       ]
     : estMagasinier
@@ -210,18 +205,15 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         { href: "/pro/magasin", icon: "box", label: "Magasin" },
         { href: "/pro/preparations", icon: "prep", label: "Préparations" },
         { href: "/pro/parc", icon: "parc", label: "Parc", badge: nbParc },
-        { href: "/pro/notes-frais", icon: "recu", label: "Notes de frais" },
       ]
     : estRh
     ? [
         { href: "/pro/annuaire", icon: "users", label: "Personnel" },
         { href: "/pro/marketing", icon: "megaphone", label: "Marketing" },
-        { href: "/pro/notes-frais", icon: "recu", label: "Notes de frais" },
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
       ]
     : estPersonnel
     ? [
-        { href: "/pro/notes-frais", icon: "recu", label: "Notes de frais" },
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
       ]
     : [
@@ -233,7 +225,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         { href: "/pro/messagerie", icon: "message", label: "Messages", badge: nbMessages },
         ...(peutGerer ? [{ href: "/pro/equipe", icon: "users", label: "Équipe" }] : []),
         ...(peutMkt ? [{ href: "/pro/marketing", icon: "megaphone", label: "Marketing" }] : []),
-        ...(peutNdf ? [{ href: "/pro/notes-frais", icon: "recu", label: "Notes de frais" }] : []),
         ...(peutPec ? [{ href: "/pro/pec", icon: "chart", label: "PEC" }] : []),
       ];
   // Au-delà de 5 entrées : 4 visibles + un bouton « Plus » qui ouvre le reste.
@@ -256,13 +247,11 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                   <Onglet href="/pro/livraisons" icon="truck" label="Tournée" pathname={pathname} />
                   <Onglet href="/pro/agenda" icon="calendar" label="Agenda" pathname={pathname} />
                   <Onglet href="/pro/magasin" icon="box" label="Magasin" pathname={pathname} />
-                  <Onglet href="/pro/notes-frais" icon="recu" label="Notes de frais" pathname={pathname} />
                 </>
               ) : estDirigeant ? (
                 <>
                   <Onglet href="/pro/pec" icon="chart" label="PEC" pathname={pathname} />
                   <Onglet href="/pro/marketing" icon="megaphone" label="Marketing" pathname={pathname} />
-                  <Onglet href="/pro/notes-frais" icon="recu" label="Notes de frais" pathname={pathname} />
                   <Onglet href="/pro/equipe-dirigeante" icon="users" label="Équipe dirigeante" pathname={pathname} />
                 </>
               ) : estMagasinier ? (
@@ -270,18 +259,15 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                   <Onglet href="/pro/magasin" icon="box" label="Magasin" pathname={pathname} />
                   <Onglet href="/pro/preparations" icon="prep" label="Préparations" pathname={pathname} />
                   <Onglet href="/pro/parc" icon="parc" label="Parc" pathname={pathname} badge={nbParc} />
-                  <Onglet href="/pro/notes-frais" icon="recu" label="Notes de frais" pathname={pathname} />
                 </>
               ) : estRh ? (
                 <>
                   <Onglet href="/pro/annuaire" icon="users" label="Personnel" pathname={pathname} />
                   <Onglet href="/pro/marketing" icon="megaphone" label="Marketing" pathname={pathname} />
-                  <Onglet href="/pro/notes-frais" icon="recu" label="Notes de frais" pathname={pathname} />
                   <Onglet href="/pro/messagerie" icon="message" label="Messagerie" pathname={pathname} badge={nbMessages} />
                 </>
               ) : estPersonnel ? (
                 <>
-                  <Onglet href="/pro/notes-frais" icon="recu" label="Notes de frais" pathname={pathname} />
                   <Onglet href="/pro/messagerie" icon="message" label="Messagerie" pathname={pathname} badge={nbMessages} />
                 </>
               ) : (
@@ -293,7 +279,6 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
                   {estChir && <Onglet href="/pro/a-signer" icon="document" label="À signer" pathname={pathname} badge={nbASigner} />}
                   {peutGerer && <Onglet href="/pro/equipe" icon="users" label="Équipe soignante" pathname={pathname} />}
                   {peutMkt && <Onglet href="/pro/marketing" icon="megaphone" label="Marketing" pathname={pathname} />}
-                  {peutNdf && <Onglet href="/pro/notes-frais" icon="recu" label="Notes de frais" pathname={pathname} />}
                   <Onglet href="/pro/messagerie" icon="message" label="Messagerie" pathname={pathname} badge={nbMessages} />
                   {peutPec && <Onglet href="/pro/pec" icon="chart" label="PEC" pathname={pathname} />}
                 </>
