@@ -12,17 +12,21 @@
    libérale, pharmacie (partenaires externes, ne déposent pas de notes de frais ;
    ils sont en revanche les **bénéficiaires** possibles côté DMOS).
 2. **Validation :** chacun dépose ses notes ; routage du validateur :
-   - personnel **dans la hiérarchie** (coordinatrice, délégué, livreur,
-     magasinier) → **manager** (de sa région) ;
-   - personnel **hors niveau d'accès** (rôle *personnel*) → **RH** ;
-   - une note de la **RH** → **dirigeant** ;
-   - *(par défaut, à confirmer)* note d'un **manager** → **dirigeant** ; note d'un
-     **dirigeant** → autre dirigeant / administration (niveau 0).
+   - hiérarchie (coordinatrice, délégué, livreur, magasinier) → **manager**
+     (de sa région) ;
+   - **personnel** (hors niveau d'accès) → **RH** ;
+   - **manager** → **RH** ;
+   - **dirigeant** → **RH** ;
+   - **RH** → **dirigeant**.
 3. **Conventions DMOS : barème/gestion globale** (cf. point 4) — module
    conventions traité en lot ultérieur.
 4. **Barème DMOS global** (plateforme, mêmes seuils pour tous), paramétrable.
 5. **Transparence Santé : oui**, intégrée.
 6. **Références/décisions EPS : saisie manuelle** acceptée (pas de dépôt auto).
+7. **Pas de plafond de remboursement interne** (seuls les seuils DMOS qualifient).
+8. **Export comptable par email** : à la validation/remboursement, un email est
+   envoyé à la comptabilité avec le **récap dans le corps du mail** (justificatifs
+   en pièces jointes).
 
 ## 1. Objectif & périmètre
 
@@ -69,9 +73,9 @@ libérale, ni pharmacie.)
 |---|---|
 | Coordinatrice, délégué, livreur, magasinier (hiérarchie, niv. 2/3) | **Manager** de sa région |
 | Personnel (hors niveau d'accès) | **RH** |
+| Manager | **RH** |
+| Dirigeant | **RH** |
 | RH | **Dirigeant** |
-| Manager *(défaut, à confirmer)* | **Dirigeant** |
-| Dirigeant *(défaut, à confirmer)* | Autre dirigeant / **Admin (niveau 0)** |
 
 - Un émetteur **ne valide jamais sa propre note**.
 - S'il y a plusieurs managers/RH/dirigeants dans le périmètre, **tous** sont
@@ -187,8 +191,11 @@ menu + lien depuis Marketing pour la partie DMOS) :
 - **EPS — déclaration par fichier** (schéma EPS) : déclarations + demandes
   d'autorisation ; **dépôt manuel** ; saisie des `reference_eps`/décisions au retour.
 - **Transparence Santé** : export au schéma de télétransmission (semestriel).
-- **Interne** : CSV/PDF (récap par période, par émetteur, par PS, par événement) ;
-  export comptable possible en option (remboursements).
+- **Interne** : CSV/PDF (récap par période, par émetteur, par PS, par événement).
+- **Export comptable par email** : à la validation (ou au passage « remboursée »),
+  envoi automatique d'un email à l'adresse **comptabilité** (paramétrable) avec le
+  **récap dans le corps du mail** (émetteur, lignes, total TTC/HT, période) et les
+  **justificatifs en pièces jointes**.
 
 ## 10. Intégrations avec l'app existante
 
@@ -211,7 +218,9 @@ menu + lien depuis Marketing pour la partie DMOS) :
 ## 12. Limites / hors‑périmètre
 
 - Pas de **dépôt automatique** EPS (export + dépôt humain, références saisies).
-- Pas de **conseil juridique** ni de **paie** (export comptable seulement).
+- Pas de **conseil juridique** ni de **paie** (l'export se limite à l'email
+  comptable + CSV/PDF).
+- **Pas de plafond de remboursement interne** (seuls les seuils DMOS qualifient).
 - **Conventions** DMOS : lot ultérieur (point 3).
 
 ## 13. Phasage proposé
@@ -226,10 +235,14 @@ menu + lien depuis Marketing pour la partie DMOS) :
 - **Lot 3 — Exports** : EPS (fichier) + **Transparence Santé** + récap PDF/CSV.
 - **Lot 4 — Compléments** : conventions, journal d'audit, export comptable.
 
-## 14. Points encore à confirmer
+## 14. Points résolus
 
-1. Validation des notes du **manager** (→ dirigeant ?) et du **dirigeant**
-   (→ autre dirigeant / admin ?).
-2. Y a‑t‑il un **plafond de remboursement** interne (politique entreprise)
-   distinct des seuils DMOS ?
-3. Faut‑il un **export comptable** (format ?) pour les remboursements.
+1. Validation : **manager** et **dirigeant** → validés par la **RH** ; **RH** →
+   validée par le **dirigeant** (cf. §0.2 et §3).
+2. **Aucun plafond** de remboursement interne.
+3. **Export comptable par email** (récap dans le corps + justificatifs en PJ) ;
+   adresse comptabilité **paramétrable**.
+
+### Reste à préciser au moment du build
+- **Adresse(s) email** de la comptabilité (et émetteur d'envoi / service mail).
+- Faut‑il aussi joindre un **PDF récap** à l'email (en plus du corps) ?
