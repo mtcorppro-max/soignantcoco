@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProSession } from "@/lib/hooks/useSession";
@@ -250,9 +251,10 @@ export default function OrganisationPage() {
 
   return (
     <div className="grid gap-4">
+      <Link href="/pro/agenda" prefetch className="text-sm text-slate-400 hover:text-brand">← Mon agenda</Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-slate-800">Organisation</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Organisation de l&apos;équipe</h1>
           {/* Bascule entre les deux calendriers séparés (caché pour le livreur). */}
           {!estLivreurMoi && (
             <div className="inline-flex rounded-xl border border-rose-200 bg-white p-0.5">
