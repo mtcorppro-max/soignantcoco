@@ -170,6 +170,53 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
 
+  // ── Nouvelles ordonnances (catégorie par défaut) — en-tête CERFA 14465 (BIZONE) ──
+  pharma_pac: {
+    template: "/Pharma%20PAC.pdf", ...BIZONE, date: { x: 442, y: 266 }, signature: { x: 925, y: 588 },
+    champs: [
+      { k: "txt", key: "poches_100", pos: { x: 156, y: 356 }, size: 11, centre: true },
+      { k: "txt", key: "poches_50", pos: { x: 150, y: 367 }, size: 11, centre: true },
+      { k: "txt", key: "qsp", pos: { x: 52, y: 493 }, size: 11 },
+    ],
+  },
+  idel_pca: {
+    template: "/IDEL%20PCA.pdf", ...BIZONE, date: { x: 442, y: 266 }, signature: { x: 400, y: 590 },
+    blancs: [[107, 528, 70, 12], [301, 528, 69, 12], [150, 555, 39, 12], [101, 600, 59, 12], [228, 600, 50, 12], [61, 628, 59, 12], [304, 628, 51, 12], [221, 648, 62, 12]],
+    champs: [
+      { k: "radio", key: "voie", map: { "Cathéter central": { x: 41, y: 346 }, "Picc line": { x: 41, y: 381 }, "Chambre Implantable": { x: 41, y: 411 }, "Voie veineuse périphérique ou sous cutanée": { x: 41, y: 441 } } },
+      { k: "radio", key: "produit", map: { "Chlorhydrate de morphine": { x: 171, y: 512 }, "Oxynorm": { x: 335, y: 512 }, "Fentanyl": { x: 414, y: 512 } } },
+      { k: "txt", key: "ampoule_mg", pos: { x: 142, y: 535 }, size: 11, centre: true },
+      { k: "txt", key: "reservoir_ml", pos: { x: 335, y: 535 }, size: 11, centre: true },
+      { k: "txt", key: "concentration", pos: { x: 168, y: 562 }, size: 11, centre: true },
+      { k: "txt", key: "debit_mg_heure", pos: { x: 130, y: 607 }, size: 11, centre: true },
+      { k: "txt", key: "debit_mg_24h", pos: { x: 252, y: 607 }, size: 11, centre: true },
+      { k: "txt", key: "bolus_mg", pos: { x: 90, y: 635 }, size: 11, centre: true },
+      { k: "txt", key: "interdiction_min", pos: { x: 329, y: 635 }, size: 11, centre: true },
+      { k: "txt", key: "dose_totale_24h", pos: { x: 251, y: 655 }, size: 11, centre: true },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 130, y: 705 }, size: 11 },
+      { k: "txt", key: "a_renouveler", pos: { x: 111, y: 733 }, size: 11 },
+    ],
+  },
+  idel_debranchement: {
+    template: "/IDEL%20DEBRANCHEMENT%20CHIMIO.pdf", ...BIZONE, date: { x: 422, y: 255 }, signature: { x: 500, y: 680 },
+    champs: [
+      { k: "checks", key: "actes", map: { "Surveillance de chimiothérapie IV continu sur diffuseur, pendant 48h": { x: 40, y: 429 }, "En fin de perfusion, rinçage pulsé de la chambre implantable avec 20ml de sérum physiologique à 0,9%": { x: 40, y: 460 }, "Ablation de l'aiguille de Huber": { x: 40, y: 490 } } },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 112, y: 610 }, size: 11 },
+      { k: "txt", key: "a_renouveler", pos: { x: 89, y: 637 }, size: 11 },
+    ],
+  },
+  radio_sng: {
+    template: "/Radio%20TX%20SNG.pdf", presc: { x: 155, y: 122 }, rpps: { x: 155, y: 140 }, patient: { x: 410, y: 140 }, date: { x: 458, y: 290 }, signature: { x: 155, y: 162 },
+    champs: [],
+  },
+  idel_piccline: {
+    template: "/IDEL%20ENTRETIEN%20PICCLINE.pdf", ...BIZONE, date: { x: 457, y: 266 }, signature: { x: 925, y: 618 },
+    champs: [
+      { k: "txt", key: "ordonnance_mois", pos: { x: 126, y: 491 }, size: 11, centre: true },
+      { k: "txt", key: "a_renouveler", pos: { x: 107, y: 520 }, size: 11, centre: true },
+    ],
+  },
+
   // ── Catégorie ALD — CERFA bizone 14465*01 (en-tête BIZONE partagé) ──────────
   // NB : positions des champs variables à affiner à la génération test (phase 2).
   ald_pst: {

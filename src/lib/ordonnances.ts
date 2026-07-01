@@ -193,6 +193,60 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
       { key: "duree_jours", label: "D'une durée de (jours)", type: "number" },
     ],
   },
+  {
+    id: "pharma_pac",
+    label: "Pharmacie PAC",
+    description: "Consommables PAC (bétadine, sérum physiologique, container…).",
+    champs: [
+      { key: "poches_100", label: "Sérum physiologique 100 mL (poche/jour)", type: "number" },
+      { key: "poches_50", label: "Sérum physiologique 50 mL (poche/jour)", type: "number" },
+      { key: "qsp", label: "QSP", type: "text" },
+    ],
+  },
+  {
+    id: "idel_pca",
+    label: "IDEL PCA",
+    description: "Mise en place et surveillance d'une PCA pour délivrance antalgique.",
+    champs: [
+      { key: "voie", label: "Voie d'abord", type: "radio", options: ["Cathéter central", "Picc line", "Chambre Implantable", "Voie veineuse périphérique ou sous cutanée"] },
+      { key: "produit", label: "Programmation de la PCA", type: "radio", options: ["Chlorhydrate de morphine", "Oxynorm", "Fentanyl"] },
+      { key: "ampoule_mg", label: "Type d'ampoules (mg)", type: "text" },
+      { key: "reservoir_ml", label: "Réservoir (mL)", type: "text" },
+      { key: "concentration", label: "Concentration (mg/mL)", type: "text" },
+      { key: "debit_mg_heure", label: "Débit continu (mg/heure)", type: "text" },
+      { key: "debit_mg_24h", label: "Débit (mg par 24 heures)", type: "text" },
+      { key: "bolus_mg", label: "Bolus (mg)", type: "text" },
+      { key: "interdiction_min", label: "Période d'interdiction (minutes)", type: "text" },
+      { key: "dose_totale_24h", label: "Dose totale sur 24 h bolus compris (mg)", type: "text" },
+      { key: "ordonnance_jours", label: "Ordonnance pour (durée)", type: "text" },
+      { key: "a_renouveler", label: "À renouveler (nombre)", type: "text" },
+    ],
+  },
+  {
+    id: "idel_debranchement",
+    label: "IDEL Débranchement chimio",
+    description: "Débranchement de chimiothérapie à domicile (1 passage/jour, 2 jours/15 jours).",
+    champs: [
+      { key: "actes", label: "Actes à réaliser", type: "checkboxes", options: ["Surveillance de chimiothérapie IV continu sur diffuseur, pendant 48h", "En fin de perfusion, rinçage pulsé de la chambre implantable avec 20ml de sérum physiologique à 0,9%", "Ablation de l'aiguille de Huber"] },
+      { key: "ordonnance_jours", label: "Ordonnance pour (jours)", type: "text" },
+      { key: "a_renouveler", label: "À renouveler (fois)", type: "text" },
+    ],
+  },
+  {
+    id: "radio_sng",
+    label: "Radiographie de contrôle (SNG)",
+    description: "Radiologie de contrôle après pose d'une sonde nasogastrique à domicile.",
+    champs: [],
+  },
+  {
+    id: "idel_piccline",
+    label: "IDEL Entretien PICC-line",
+    description: "Rinçage et réfection du pansement PICC-line (tous les 7 jours).",
+    champs: [
+      { key: "ordonnance_mois", label: "Ordonnance pour (nombre de mois)", type: "text" },
+      { key: "a_renouveler", label: "À renouveler (nombre de fois)", type: "text" },
+    ],
+  },
 
   // ── Catégorie ALD (Affection Longue Durée) — CERFA bizone 14465*01 ──────────
   // Contenu majoritairement pré-imprimé : on ne saisit que l'en-tête (auto) et
