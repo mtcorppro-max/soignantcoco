@@ -283,6 +283,7 @@ export const CONFIGS: Record<string, Conf> = {
     // masque « 1 MOIS » (on garde « ORDONNANCE POUR ») et « 2 FOIS » (on garde « A RENOUVELER » + le nombre)
     blancs: [[124, 459, 42, 11], [98, 483, 36, 10]],
     champs: [
+      { k: "txt", key: "ordonnance_jours", pos: { x: 127, y: 468 }, size: 11 },
       { k: "txt", key: "a_renouveler", pos: { x: 101, y: 491 }, size: 11 },
     ],
   },
