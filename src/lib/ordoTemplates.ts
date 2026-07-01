@@ -20,6 +20,7 @@ type Conf = {
   patientGauche?: boolean; // nom patient aligné à gauche (sinon centré sur patient.x)
   rppsBarres?: Rect; // zone des |__| de l'identifiant à masquer
   blancs?: Rect[];
+  blancsApres?: Rect[]; // masques appliqués APRÈS le déplacement des blocs (efface du texte déplacé)
   blocs?: { clip: Rect; dy: number }[]; // blocs du modèle déplacés vers le bas (embed)
   boites?: [number, number, number][]; // cases à cocher vides [x, yTop, côté]
   textes?: { s: string; pos: Pt; size?: number }[]; // textes statiques (re)dessinés
@@ -291,6 +292,9 @@ export const CONFIGS: Record<string, Conf> = {
     // ce bloc de 36 pt (rendu exact préservé) et on redessine 4 choix de voie d'abord.
     blancs: [[24, 372, 566, 126]],
     blocs: [{ clip: [24, 406, 566, 90], dy: 36 }],
+    // Efface (après déplacement +36) les 3 valeurs pré-imprimées de la ligne « Perfusion IV de … »
+    // — produit, volume, durée — remplacées par des champs à saisir (voir champs ci-dessous).
+    blancsApres: [[131, 475, 52, 13], [444, 475, 38, 13], [113, 488, 54, 13]],
     boites: [[31, 371, 9], [31, 389, 9], [31, 407, 9], [31, 425, 9]],
     textes: [
       { s: "Sur voie veineuse périphérique ou en sous cutanée", pos: { x: 61, y: 379 }, size: 11 },
@@ -305,6 +309,10 @@ export const CONFIGS: Record<string, Conf> = {
         "PICC-line": { x: 32, y: 415 },
         "Chambre implantable": { x: 32, y: 433 },
       } },
+      // Valeurs de la ligne « Perfusion IV de … » (comblent les blancs effacés ci-dessus).
+      { k: "txt", key: "perfusion_produit", pos: { x: 133, y: 485 }, size: 11, gras: true },
+      { k: "txt", key: "perfusion_volume", pos: { x: 446, y: 485 }, size: 11, gras: true },
+      { k: "txt", key: "perfusion_duree", pos: { x: 115, y: 498 }, size: 11, gras: true },
       { k: "txt", key: "ordonnance_jours", pos: { x: 116, y: 562 }, size: 11 },
       { k: "txt", key: "a_renouveler", pos: { x: 100, y: 591 }, size: 11 },
     ],
@@ -318,6 +326,7 @@ export async function genererPdfModele(type: string, d: DocOrdoData, mode: "down
   if (conf.rppsBarres) blanc(...conf.rppsBarres);
   (conf.blancs ?? []).forEach((b) => blanc(...b));
   for (const b of conf.blocs ?? []) await deplacerBloc(b.clip, b.dy);
+  (conf.blancsApres ?? []).forEach((b) => blanc(...b));
   (conf.boites ?? []).forEach((b) => boite(...b));
   (conf.textes ?? []).forEach((t) => txt(t.s, t.pos, t.size));
 

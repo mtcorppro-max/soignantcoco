@@ -308,6 +308,9 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     description: "Bizone ALD — soins infirmiers à domicile.",
     champs: [
       { key: "voie", label: "Voie d'abord", type: "radio", options: ["Voie veineuse périphérique ou sous-cutanée", "Cathéter central", "PICC-line", "Chambre implantable"] },
+      { key: "perfusion_produit", label: "Perfusion IV de (produit)", type: "text" },
+      { key: "perfusion_volume", label: "Volume total de remplissage du diffuseur", type: "text" },
+      { key: "perfusion_duree", label: "Durée de perfusion", type: "text" },
       { key: "ordonnance_jours", label: "Ordonnance pour (durée)", type: "text" },
       { key: "a_renouveler", label: "À renouveler (nombre)", type: "text" },
     ],
