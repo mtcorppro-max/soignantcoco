@@ -180,7 +180,7 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   idel_pca: {
-    template: "/IDEL%20PCA.pdf", ...BIZONE, date: { x: 442, y: 266 }, signature: { x: 400, y: 590 },
+    template: "/IDEL%20PCA.pdf", ...BIZONE, date: { x: 442, y: 258 }, signature: { x: 400, y: 590 },
     blancs: [[107, 532, 70, 12], [301, 532, 69, 12], [150, 561, 39, 12], [101, 590, 59, 12], [228, 590, 50, 12], [61, 620, 59, 12], [304, 620, 51, 12], [221, 649, 62, 12]],
     champs: [
       { k: "radio", key: "voie", map: { "Cathéter central": { x: 22, y: 342 }, "Picc line": { x: 22, y: 373 }, "Chambre Implantable": { x: 22, y: 403 }, "Voie veineuse périphérique ou sous cutanée": { x: 22, y: 433 } } },
@@ -193,8 +193,8 @@ export const CONFIGS: Record<string, Conf> = {
       { k: "txt", key: "bolus_mg", pos: { x: 90, y: 627 }, size: 11, centre: true },
       { k: "txt", key: "interdiction_min", pos: { x: 329, y: 627 }, size: 11, centre: true },
       { k: "txt", key: "dose_totale_24h", pos: { x: 251, y: 656 }, size: 11, centre: true },
-      { k: "txt", key: "ordonnance_jours", pos: { x: 130, y: 698 }, size: 11 },
-      { k: "txt", key: "a_renouveler", pos: { x: 111, y: 722 }, size: 11 },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 130, y: 702 }, size: 11 },
+      { k: "txt", key: "a_renouveler", pos: { x: 111, y: 715 }, size: 11 },
     ],
   },
   idel_debranchement: {
