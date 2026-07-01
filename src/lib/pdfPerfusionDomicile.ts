@@ -20,6 +20,7 @@ const POS = {
   initiation: { x: 25, y: 73 },
   renouvellement: { x: 25, y: 86 },
   presta_22: { x: 270, y: 203 },         // case 2.2 (Ville)
+  ald: { x: 438, y: 85 },                 // case « Soins en rapport avec une ALD » (petite case)
   patient_nom: { x: 300, y: 60 },
   presc_nom: { x: 55, y: 122 },
   presc_prenom: { x: 58, y: 134 },
@@ -78,7 +79,7 @@ export async function genererPdfPerfusionDomicile(d: PerfDomicileData, mode: "do
     if (!s) return;
     page.drawText(String(s), { x: p.x, y: H - p.y, size, font, color: rgb(0.1, 0.1, 0.12) });
   };
-  const coche = (p: { x: number; y: number }) => page.drawText("X", { x: p.x, y: H - p.y, size: 10, font, color: rgb(0.75, 0.1, 0.36) });
+  const coche = (p: { x: number; y: number }, size = 10) => page.drawText("X", { x: p.x, y: H - p.y, size, font, color: rgb(0, 0, 0) });
   const blanc = (z: { x: number; y: number; w: number }) => page.drawRectangle({ x: z.x, y: H - z.y - 2, width: z.w, height: 11, color: rgb(1, 1, 1) });
 
   const c = d.contenu;
@@ -90,6 +91,8 @@ export async function genererPdfPerfusionDomicile(d: PerfDomicileData, mode: "do
   // Patient : nom + date de naissance
   txt(d.patientNom, POS.patient_nom);
   if (d.patientNaissance) { blanc(BLANC.naissance); txt(frDate(d.patientNaissance), { x: BLANC.naissance.x + 2, y: BLANC.naissance.y }); }
+  // Soins en rapport avec une ALD (petite case → croix plus petite).
+  if (String(c.ald) === "Oui") coche(POS.ald, 8);
 
   // Prescripteur + structure
   txt(d.prescripteurNom ?? "", POS.presc_nom);

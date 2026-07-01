@@ -15,6 +15,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     label: "Perfadom",
     champs: [
       { key: "type_demande", label: "Type de demande", type: "radio", options: ["Initiation d'une perfusion à domicile", "Renouvellement ou modification"] },
+      { key: "ald", label: "Soin en rapport avec une ALD ?", type: "radio", options: ["Oui", "Non"] },
 
       { key: "_sec1", label: "Produit à perfuser n°1", type: "section" },
       { key: "produit", label: "Dénomination du produit (dosage, posologie, solvant…)", type: "textarea" },
