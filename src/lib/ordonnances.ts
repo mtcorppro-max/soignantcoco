@@ -200,6 +200,7 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     champs: [
       { key: "poches_100", label: "Sérum physiologique 100 mL (poche/jour)", type: "number" },
       { key: "poches_50", label: "Sérum physiologique 50 mL (poche/jour)", type: "number" },
+      { key: "prescription", label: "Prescription (une ligne par élément)", type: "textarea" },
       { key: "qsp", label: "QSP", type: "text" },
     ],
   },

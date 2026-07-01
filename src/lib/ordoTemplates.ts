@@ -176,6 +176,7 @@ export const CONFIGS: Record<string, Conf> = {
     champs: [
       { k: "txt", key: "poches_100", pos: { x: 156, y: 356 }, size: 11, centre: true },
       { k: "txt", key: "poches_50", pos: { x: 150, y: 367 }, size: 11, centre: true },
+      { k: "lignes", key: "prescription", pos: { x: 15, y: 407 }, lineH: 15, size: 11 },
       { k: "txt", key: "qsp", pos: { x: 52, y: 493 }, size: 11 },
     ],
   },
