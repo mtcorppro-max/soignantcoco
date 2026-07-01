@@ -268,11 +268,11 @@ export const CONFIGS: Record<string, Conf> = {
     ],
   },
   ald_idel_piccline: {
-    template: "/IDEL%20ENTRETIEN%20PICCLINE%20ALD.pdf", ...BIZONE, date: { x: 420, y: 313 }, signature: { x: 380, y: 590 },
-    blancs: [[114, 458, 14, 13], [101, 481, 13, 13]], // masque le « 1 » (MOIS) et le « 2 » (FOIS)
+    template: "/IDEL%20ENTRETIEN%20PICCLINE%20ALD.pdf", ...BIZONE, date: { x: 430, y: 316 }, signature: { x: 380, y: 590 },
+    // masque « 1 MOIS » (on garde « ORDONNANCE POUR ») et « 2 FOIS » (on garde « A RENOUVELER » + le nombre)
+    blancs: [[124, 459, 42, 11], [98, 483, 36, 10]],
     champs: [
-      { k: "txt", key: "ordonnance_jours", pos: { x: 116, y: 465 } },
-      { k: "txt", key: "a_renouveler", pos: { x: 103, y: 488 } },
+      { k: "txt", key: "a_renouveler", pos: { x: 101, y: 491 }, size: 11 },
     ],
   },
   ald_idel: {

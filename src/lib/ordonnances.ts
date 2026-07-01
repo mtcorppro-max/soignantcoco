@@ -300,7 +300,6 @@ export const MODELES_ORDONNANCE: ModeleOrdo[] = [
     id: "ald_idel_piccline", categorie: "ALD", label: "IDEL Entretien PICC-line ALD",
     description: "Bizone ALD — entretien PICC-line.",
     champs: [
-      { key: "ordonnance_jours", label: "Ordonnance pour (nombre de mois)", type: "text" },
       { key: "a_renouveler", label: "À renouveler (nombre de fois)", type: "text" },
     ],
   },
