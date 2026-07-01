@@ -6,6 +6,8 @@ type Champ =
   | { k: "date"; key: string; pos: Pt; size?: number }
   | { k: "lignes"; key: string; pos: Pt; lineH?: number }
   | { k: "radio" | "checks"; key: string; map: Record<string, Pt> }
+  // Coche une case automatiquement si le champ `key` est rempli (ex. « Autres »).
+  | { k: "cocheSi"; key: string; pos: Pt }
   // Phrase recomposée : {clé} remplacé par la valeur (sinon « ____ ») ;
   // suffixe ajouté seulement si la case suffixeSiCoche est cochée.
   | { k: "phrase"; modele: string; pos: Pt; size?: number; suffixe?: string; suffixeSiCoche?: { key: string; option: string } };
@@ -219,9 +221,10 @@ export const CONFIGS: Record<string, Conf> = {
   ald_bs: {
     template: "/ORDO%20BS%20ALD.pdf", ...BIZONE, date: { x: 460, y: 308 }, signature: { x: 380, y: 620 },
     champs: [
-      { k: "radio", key: "voie", map: { "VVP": { x: 281, y: 330 }, "PAC": { x: 345, y: 330 }, "VVC": { x: 404, y: 330 }, "PICCLINE": { x: 490, y: 330 } } },
+      { k: "radio", key: "voie", map: { "VVP": { x: 281, y: 331 }, "PAC": { x: 344, y: 331 }, "VVC": { x: 402, y: 331 }, "PICCLINE": { x: 489, y: 331 } } },
       { k: "checks", key: "analyses", map: { "NFS": { x: 22, y: 356 }, "Plaquettes": { x: 22, y: 369 }, "Ionogramme sanguin": { x: 22, y: 382 }, "Calcémie": { x: 22, y: 395 }, "Urée": { x: 22, y: 408 }, "Créatinémie": { x: 22, y: 422 }, "Albuminémie": { x: 22, y: 435 }, "Pré-albumine": { x: 22, y: 448 }, "VS": { x: 22, y: 461 }, "CRP + PCT": { x: 22, y: 474 }, "Transaminases SGOT SGPT": { x: 22, y: 487 }, "Gamma GT": { x: 22, y: 500 }, "Phosphatases alcalines": { x: 22, y: 513 }, "Bilirubine total": { x: 22, y: 526 } } },
-      { k: "txt", key: "autres", pos: { x: 60, y: 548 } },
+      { k: "cocheSi", key: "autres", pos: { x: 24, y: 549 } },
+      { k: "txt", key: "autres", pos: { x: 70, y: 549 } },
       { k: "txt", key: "ordonnance_jours", pos: { x: 130, y: 630 } },
       { k: "txt", key: "a_renouveler", pos: { x: 118, y: 645 } },
     ],
@@ -307,6 +310,9 @@ export async function genererPdfModele(type: string, d: DocOrdoData, mode: "down
     } else if (ch.k === "checks") {
       const arr = Array.isArray(c[ch.key]) ? (c[ch.key] as string[]) : [];
       arr.forEach((o) => { if (ch.map[o]) coche(ch.map[o]); });
+    } else if (ch.k === "cocheSi") {
+      const v = c[ch.key];
+      if (v != null && String(v).trim() !== "") coche(ch.pos);
     } else if (ch.k === "phrase") {
       let s = ch.modele.replace(/\{(\w+)\}/g, (_, k) => { const v = c[k]; return v == null || v === "" ? "____" : String(v); });
       if (ch.suffixe && ch.suffixeSiCoche) {
