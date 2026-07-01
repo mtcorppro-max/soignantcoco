@@ -109,7 +109,7 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
         {!lectureSeule && (
           <div className="flex flex-wrap items-center gap-2">
             <GenerateurOrdonnance patientId={patientId} patientChirurgien={patientChirurgien} onCreated={charger} />
-            <IntegrerOrdonnance patientId={patientId} onCreated={charger} />
+            <IntegrerOrdonnance patientId={patientId} patientChirurgien={patientChirurgien} onCreated={charger} />
           </div>
         )}
       </div>
@@ -125,13 +125,12 @@ export function OrdonnancesPatient({ patientId, patientNom, patientNaissance, pa
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-slate-800">{o.titre}</span>
-                    {o.type === "importee"
-                      ? <span className="badge bg-sky-100 text-sky-700">Importée</span>
-                      : o.statut === "signee"
-                        ? <span className="badge bg-green-100 text-ok">Signée</span>
-                        : o.statut === "refusee"
-                          ? <span className="badge bg-red-100 text-critique">Refusée</span>
-                          : <span className="badge bg-amber-100 text-attention">En attente de signature</span>}
+                    {o.type === "importee" && <span className="badge bg-sky-100 text-sky-700">Importée</span>}
+                    {o.statut === "signee"
+                      ? <span className="badge bg-green-100 text-ok">Signée</span>
+                      : o.statut === "refusee"
+                        ? <span className="badge bg-red-100 text-critique">Refusée</span>
+                        : <span className="badge bg-amber-100 text-attention">En attente de signature</span>}
                   </div>
                   <p className="text-xs text-slate-400">{new Date(o.created_at).toLocaleDateString("fr-FR")}</p>
                 </div>
@@ -245,6 +244,15 @@ export function SignatureModal({ ordo, patientNom, signataire, onClose, onSigned
   const up = () => { dessine.current = false; };
   const effacer = () => { const c = canvasRef.current!; c.getContext("2d")!.clearRect(0, 0, c.width, c.height); setVide(true); };
 
+  // Ordonnance importée : ouvre le fichier déposé (URL signée) pour le relire.
+  async function voirDocument() {
+    const win = window.open("", "_blank");
+    const res = await fetch(`/api/ordonnance-import?id=${ordo.id}`);
+    const { url } = await res.json().catch(() => ({ url: null }));
+    if (typeof url !== "string") { win?.close(); alert("Document introuvable."); return; }
+    if (win && !win.closed) win.location.href = url; else window.location.href = url;
+  }
+
   async function signerOrdo() {
     if (vide) return;
     setBusy(true);
@@ -266,13 +274,22 @@ export function SignatureModal({ ordo, patientNom, signataire, onClose, onSigned
         </div>
         <p className="text-xs text-slate-400">Patient : {patientNom}</p>
 
-        <div className="grid gap-2 rounded-xl border border-rose-100 bg-rose-50/40 p-3 text-sm">
-          {(modele?.champs ?? []).map((c) => {
-            const v = valeurLisible(c, ordo.contenu);
-            if (!v.trim()) return null;
-            return <p key={c.key}><span className="font-semibold text-slate-600">{c.label} : </span><span className="text-slate-800">{v}</span></p>;
-          })}
-        </div>
+        {ordo.type === "importee" ? (
+          <button onClick={voirDocument} className="btn-secondary inline-flex items-center justify-center gap-2 py-2.5 text-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+            </svg>
+            Voir le document à signer
+          </button>
+        ) : (
+          <div className="grid gap-2 rounded-xl border border-rose-100 bg-rose-50/40 p-3 text-sm">
+            {(modele?.champs ?? []).map((c) => {
+              const v = valeurLisible(c, ordo.contenu);
+              if (!v.trim()) return null;
+              return <p key={c.key}><span className="font-semibold text-slate-600">{c.label} : </span><span className="text-slate-800">{v}</span></p>;
+            })}
+          </div>
+        )}
 
         <div>
           <label className="label">Votre signature</label>

@@ -28,10 +28,14 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const fichier = form?.get("fichier");
   const patientId = form?.get("patient_id")?.toString() ?? "";
+  const signee = (form?.get("signee")?.toString() ?? "") === "oui";
+  const destinataireId = form?.get("destinataire_id")?.toString() || null;
   if (!(fichier instanceof File)) return NextResponse.json({ message: "Fichier manquant." }, { status: 400 });
   if (!TYPES_OK.includes(fichier.type)) return NextResponse.json({ message: "Format non supporté (PDF ou image)." }, { status: 400 });
   if (fichier.size > TAILLE_MAX) return NextResponse.json({ message: "Fichier trop volumineux (max 20 Mo)." }, { status: 400 });
   if (!patientId) return NextResponse.json({ message: "Patient manquant." }, { status: 400 });
+  // Non signée → il faut un médecin destinataire pour l'envoi à la signature.
+  if (!signee && !destinataireId) return NextResponse.json({ message: "Choisissez le médecin signataire." }, { status: 400 });
 
   // Accès au patient contrôlé par la RLS (client normal).
   const { data: pat } = await supabase.from("patient").select("id").eq("id", patientId).maybeSingle();
@@ -46,7 +50,8 @@ export async function POST(request: Request) {
   const { error: errUp } = await admin.storage.from(BUCKET).upload(chemin, fichier, { contentType: fichier.type, upsert: false });
   if (errUp) return NextResponse.json({ message: "Échec de l'envoi du fichier." }, { status: 500 });
 
-  // Ordonnance déjà remplie → statut « signée » (document externe complet).
+  // Déjà signée → stockage direct (statut « signée »). Sinon → envoi au médecin
+  // pour signature (statut « à signer » + destinataire).
   const { error: errRow } = await supabase.from("ordonnance").insert({
     patient_id: patientId,
     prestataire_id: pro.prestataire_id,
@@ -54,7 +59,8 @@ export async function POST(request: Request) {
     titre: fichier.name || "Ordonnance importée",
     contenu: { chemin, mime: fichier.type },
     cree_par: pro.id,
-    statut: "signee",
+    statut: signee ? "signee" : "a_signer",
+    destinataire_id: signee ? null : destinataireId,
   });
   if (errRow) {
     await admin.storage.from(BUCKET).remove([chemin]);
