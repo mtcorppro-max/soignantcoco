@@ -29,6 +29,7 @@ export const SERVICES: { value: string; label: string }[] = [
   { value: "comptabilite", label: "Service comptabilité" },
   { value: "logistique", label: "Service logistique" },
   { value: "informatique", label: "Service informatique" },
+  { value: "commercial", label: "Service commercial" },
 ];
 export const libService = (v: string | null | undefined) => SERVICES.find((s) => s.value === v)?.label ?? "";
 
