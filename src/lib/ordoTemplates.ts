@@ -200,9 +200,9 @@ export const CONFIGS: Record<string, Conf> = {
   idel_debranchement: {
     template: "/IDEL%20DEBRANCHEMENT%20CHIMIO.pdf", ...BIZONE, date: { x: 422, y: 255 }, signature: { x: 500, y: 680 },
     champs: [
-      { k: "checks", key: "actes", map: { "Surveillance de chimiothérapie IV continu sur diffuseur, pendant 48h": { x: 40, y: 429 }, "En fin de perfusion, rinçage pulsé de la chambre implantable avec 20ml de sérum physiologique à 0,9%": { x: 40, y: 460 }, "Ablation de l'aiguille de Huber": { x: 40, y: 490 } } },
-      { k: "txt", key: "ordonnance_jours", pos: { x: 112, y: 610 }, size: 11 },
-      { k: "txt", key: "a_renouveler", pos: { x: 89, y: 637 }, size: 11 },
+      { k: "checks", key: "actes", map: { "Surveillance de chimiothérapie IV continu sur diffuseur, pendant 48h": { x: 34, y: 427 }, "En fin de perfusion, rinçage pulsé de la chambre implantable avec 20ml de sérum physiologique à 0,9%": { x: 34, y: 457 }, "Ablation de l'aiguille de Huber": { x: 37, y: 487 } } },
+      { k: "txt", key: "ordonnance_jours", pos: { x: 120, y: 610 }, size: 11, centre: true },
+      { k: "txt", key: "a_renouveler", pos: { x: 88, y: 637 }, size: 11, centre: true },
     ],
   },
   radio_sng: {
