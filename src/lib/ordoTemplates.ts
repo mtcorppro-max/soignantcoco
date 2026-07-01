@@ -314,6 +314,10 @@ export const CONFIGS: Record<string, Conf> = {
       { k: "txt", key: "heure_matin", pos: { x: 133, y: 527 }, size: 11, centre: true },
       { k: "txt", key: "heure_midi", pos: { x: 282, y: 527 }, size: 11, centre: true },
       { k: "txt", key: "heure_soir", pos: { x: 426, y: 527 }, size: 11, centre: true },
+      // Coche automatiquement la case matin/midi/soir si l'heure correspondante est saisie.
+      { k: "cocheSi", key: "heure_matin", pos: { x: 38, y: 526 } },
+      { k: "cocheSi", key: "heure_midi", pos: { x: 203, y: 526 } },
+      { k: "cocheSi", key: "heure_soir", pos: { x: 355, y: 526 } },
       // Valeurs « Perfusion IV de … » : taille réduite et sans gras pour tenir dans les espaces.
       { k: "txt", key: "perfusion_produit", pos: { x: 133, y: 485 }, size: 9 },
       { k: "txt", key: "perfusion_volume", pos: { x: 446, y: 485 }, size: 9 },
