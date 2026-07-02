@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Le patient connecté met à jour ses propres coordonnées (champs whitelistés).
-const CHAMPS = ["telephone", "email", "adresse", "code_postal", "ville", "proche_nom", "proche_tel"] as const;
+const CHAMPS = ["telephone", "email", "adresse", "code_postal", "ville", "proche_nom", "proche_tel", "sexe"] as const;
 
 export async function PATCH(request: Request) {
   const supabase = createClient();
@@ -18,6 +18,8 @@ export async function PATCH(request: Request) {
   for (const k of CHAMPS) {
     if (body[k] !== undefined) maj[k] = typeof body[k] === "string" && body[k].trim() ? body[k].trim() : null;
   }
+  // Sexe : valeurs autorisées uniquement (contrainte en base, avatar-guide).
+  if (maj.sexe !== undefined && maj.sexe !== null && !["feminin", "masculin"].includes(maj.sexe)) maj.sexe = null;
   if (Object.keys(maj).length === 0) return NextResponse.json({ message: "Rien à modifier." }, { status: 400 });
 
   const admin = createAdminClient();

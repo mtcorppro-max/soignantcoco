@@ -5,9 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 import { usePatientSession } from "@/lib/hooks/useSession";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 import { ChangerMotDePasse } from "@/components/ChangerMotDePasse";
+import { Select } from "@/components/Select";
 
-type Form = { telephone: string; email: string; adresse: string; code_postal: string; ville: string; proche_nom: string; proche_tel: string };
-const VIDE: Form = { telephone: "", email: "", adresse: "", code_postal: "", ville: "", proche_nom: "", proche_tel: "" };
+type Form = { telephone: string; email: string; adresse: string; code_postal: string; ville: string; proche_nom: string; proche_tel: string; sexe: string };
+const VIDE: Form = { telephone: "", email: "", adresse: "", code_postal: "", ville: "", proche_nom: "", proche_tel: "", sexe: "" };
 
 export default function ProfilPatient() {
   const patient = usePatientSession();
@@ -21,7 +22,7 @@ export default function ProfilPatient() {
   async function charger(id: string) {
     const { data } = await createClient()
       .from("patient")
-      .select("telephone,email,adresse,code_postal,ville,proche_nom,proche_tel,carte_vitale_chemin,mutuelle_chemin")
+      .select("telephone,email,adresse,code_postal,ville,proche_nom,proche_tel,sexe,carte_vitale_chemin,mutuelle_chemin")
       .eq("id", id)
       .maybeSingle();
     if (data) {
@@ -71,6 +72,19 @@ export default function ProfilPatient() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label className="label">Proche à prévenir</label><input className="input" value={f.proche_nom} onChange={set("proche_nom")} /></div>
               <div><label className="label">Tél. du proche</label><input className="input" value={f.proche_tel} onChange={set("proche_tel")} inputMode="tel" /></div>
+            </div>
+            <div>
+              <label className="label">Sexe</label>
+              <Select
+                value={f.sexe}
+                onChange={(v) => setF((s) => ({ ...s, sexe: v }))}
+                placeholder="— Non renseigné —"
+                options={[
+                  { value: "feminin", label: "Féminin" },
+                  { value: "masculin", label: "Masculin" },
+                ]}
+              />
+              <p className="mt-1 text-xs text-slate-400">Permet d&apos;adapter votre personnage-guide dans l&apos;application.</p>
             </div>
             {msg && <p className={`rounded-lg px-3 py-2 text-sm ${msg.includes("✓") ? "bg-green-50 text-ok" : "bg-red-50 text-critique"}`}>{msg}</p>}
             <button onClick={sauver} disabled={busy} className="btn-primary py-3">{busy ? "Enregistrement…" : "Enregistrer mes coordonnées"}</button>
