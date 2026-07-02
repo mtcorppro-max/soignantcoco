@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { usePatientSession } from "@/lib/hooks/useSession";
 import { useData } from "@/lib/hooks/useData";
 import { MESURES, TYPES_MESURE } from "@/lib/constants";
-import { conseilDuJour, conseilMeteo, type ConseilMeteo } from "@/lib/conseils";
-import { ConseilCard } from "@/components/ConseilCard";
+import { conseilDuJour } from "@/lib/conseils";
 import { AvatarGuide } from "@/components/AvatarGuide";
 import { RappelDocuments } from "@/components/RappelDocuments";
 import { RappelBilanPatient } from "@/components/RappelBilanPatient";
@@ -42,14 +41,7 @@ export default function PatientAccueil() {
     [patient?.id],
     !!patient,
   );
-  const [meteo, setMeteo] = useState<ConseilMeteo | null>(null);
   const duJour = useMemo(() => conseilDuJour(), []);
-
-  useEffect(() => {
-    if (patient?.code_postal) {
-      conseilMeteo(patient.code_postal).then(setMeteo);
-    }
-  }, [patient?.code_postal]);
 
   const { dernieres, aujourdhui } = useMemo(() => (
     data ?? { dernieres: new Map<string, Mesure>(), aujourdhui: 0 }
@@ -83,8 +75,6 @@ export default function PatientAccueil() {
             </div>
           }
         />
-
-        {meteo && <ConseilCard conseil={meteo} highlight />}
 
         <CalendrierSuivi patientId={patient.id} />
 
