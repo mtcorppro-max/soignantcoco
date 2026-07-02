@@ -17,6 +17,13 @@ type ResSoignant = {
   protocoles: ProtocolePdf[] | null; texte: string;
 };
 type Resultat = ResPatient | ResSoignant;
+type ResAnnuaire = {
+  rpps: string; type: "medecin" | "infirmiere" | "pharmacie";
+  civilite: string | null; nom: string; prenom: string | null;
+  specialite: string | null; mode_exercice: string | null;
+  sites: { rs: string | null; commune: string | null; cp: string | null }[] | null;
+};
+const LIBELLE_ANNUAIRE = { medecin: "Médecin", infirmiere: "Infirmier(ère)", pharmacie: "Pharmacien(ne)" } as const;
 
 const nomComplet = (p: { titre: string | null; prenom: string | null; nom: string }) =>
   [p.titre, p.prenom, p.nom].filter(Boolean).join(" ");
@@ -28,6 +35,27 @@ export function RechercheSoignants() {
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Resultat[]>([]);
   const [charge, setCharge] = useState(false);
+  const [annuaire, setAnnuaire] = useState<ResAnnuaire[]>([]);
+
+  // Annuaire santé national (Open Data RPPS) : recherche serveur à la frappe.
+  // Chaque mot tapé doit matcher le nom OU le prénom (≥ 3 caractères).
+  useEffect(() => {
+    const t = q.trim().toLowerCase();
+    if (!ouvert || t.length < 3) { setAnnuaire([]); return; }
+    const timer = setTimeout(async () => {
+      let req = createClient()
+        .from("annuaire_sante")
+        .select("rpps,type,civilite,nom,prenom,specialite,mode_exercice,sites")
+        .order("nom")
+        .limit(15);
+      for (const mot of t.split(/\s+/).map((m) => m.replace(/[,()%.]/g, "")).filter(Boolean)) {
+        req = req.or(`nom.ilike.%${mot}%,prenom.ilike.%${mot}%`);
+      }
+      const { data } = await req;
+      setAnnuaire((data as ResAnnuaire[]) ?? []);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [q, ouvert]);
 
   useEffect(() => {
     if (!ouvert || charge) return;
@@ -119,7 +147,7 @@ export function RechercheSoignants() {
                 <p className="text-sm text-slate-400">Chargement…</p>
               ) : !q.trim() ? (
                 <p className="text-sm text-slate-400">Tapez un nom de patient, un médecin, une intervention…</p>
-              ) : filtres.length === 0 ? (
+              ) : filtres.length === 0 && annuaire.length === 0 ? (
                 <p className="text-sm text-slate-400">Aucun résultat.</p>
               ) : (
                 <>
@@ -177,6 +205,33 @@ export function RechercheSoignants() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {annuaire.length > 0 && (
+                    <div className="grid gap-2">
+                      <p className="text-xs font-bold uppercase tracking-widest text-rose-400">Annuaire santé (France)</p>
+                      {annuaire.map((a) => {
+                        const communes = [...new Set((a.sites ?? []).map((s) => s.commune).filter(Boolean))].slice(0, 3).join(" · ");
+                        return (
+                          <Link
+                            key={a.rpps}
+                            href={`/pro/annuaire-sante/${a.rpps}`}
+                            onClick={() => setOuvert(false)}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-rose-100 px-3 py-2 transition hover:border-rose-200 hover:bg-rose-50"
+                          >
+                            <div>
+                              <span className="font-semibold text-slate-800">
+                                {[a.civilite, a.prenom, a.nom].filter(Boolean).join(" ")}
+                              </span>
+                              <p className="text-xs text-slate-500">
+                                {[a.specialite, communes].filter(Boolean).join(" — ") || a.mode_exercice || ""}
+                              </p>
+                            </div>
+                            <span className="badge shrink-0 bg-slate-100 text-slate-600">{LIBELLE_ANNUAIRE[a.type]}</span>
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
                 </>

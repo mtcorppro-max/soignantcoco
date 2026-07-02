@@ -31,6 +31,10 @@ yarn-error.log*
 .branches
 .temp
 
+# annuaire santé RPPS (fichier source 771 Mo — jamais dans le repo ni déployé)
+/public/DOSOIGNANT.txt
+DOSOIGNANT.txt
+
 # PWA — fichiers générés au build
 /public/sw.js
 /public/sw.js.map

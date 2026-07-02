@@ -61,7 +61,7 @@ const VIDE = {
 // Si `prestataires` est fourni (contexte admin), un sélecteur de prestataire
 // est affiché et envoyé ; sinon le compte est rattaché au prestataire de la
 // coordinatrice connectée (géré côté API).
-export function SoignantForm({ prestataires, categorie = "tous" }: { prestataires?: Prestataire[]; categorie?: "soignant" | "personnel" | "tous" }) {
+export function SoignantForm({ prestataires, categorie = "tous", prefill }: { prestataires?: Prestataire[]; categorie?: "soignant" | "personnel" | "tous"; prefill?: Partial<typeof VIDE> }) {
   const pro = useProSession();
   // Contexte admin (prestataires fournis) = super-admin niveau 0 ; sinon le
   // niveau du créateur connecté. On ne peut octroyer qu'un niveau ≥ au sien.
@@ -92,7 +92,7 @@ export function SoignantForm({ prestataires, categorie = "tous" }: { prestataire
     : [...rolesSoignant, ...rolesPersonnel];
   const roleDefaut = categorie === "personnel" ? "coordinatrice" : "chirurgien";
 
-  const [form, setForm] = useState({ ...VIDE, role: roleDefaut });
+  const [form, setForm] = useState({ ...VIDE, role: roleDefaut, ...prefill });
   const [recevoirAlertes, setRecevoirAlertes] = useState(false);
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
   const [agenceId, setAgenceId] = useState("");
@@ -264,7 +264,11 @@ export function SoignantForm({ prestataires, categorie = "tous" }: { prestataire
               value={form.specialite}
               onChange={(v) => setForm((f) => ({ ...f, specialite: v }))}
               placeholder="— Choisir une spécialité —"
-              options={SPECIALITES.map((s) => ({ value: s, label: s }))}
+              options={[
+                // Spécialité pré-remplie depuis l'annuaire RPPS, hors liste interne.
+                ...(form.specialite && !SPECIALITES.includes(form.specialite) ? [form.specialite] : []),
+                ...SPECIALITES,
+              ].map((s) => ({ value: s, label: s }))}
             />
           </div>
         )}
