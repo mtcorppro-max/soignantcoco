@@ -38,7 +38,21 @@ export default function NouveauHub() {
             href="/pro/nouveau-soignant"
             icon="✚"
             titre="Nouveau compte soignant"
-            desc="Créer un compte coordinatrice, médecin ou délégué."
+            desc="Médecin, infirmière libérale ou pharmacie."
+          />
+        )}
+        {peutSoignant && (
+          <Choix
+            href="/pro/nouveau-personnel"
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20" />
+                <circle cx="11" cy="7.5" r="3.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 20v-1.5a3.5 3.5 0 0 0-2.5-3.35M15.5 4.2a3.5 3.5 0 0 1 0 6.6" />
+              </svg>
+            }
+            titre="Nouveau compte personnel"
+            desc="Coordinatrice, délégué, livreur, magasinier…"
           />
         )}
         {peutSoignantExterne && (

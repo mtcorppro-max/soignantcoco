@@ -61,14 +61,38 @@ const VIDE = {
 // Si `prestataires` est fourni (contexte admin), un sélecteur de prestataire
 // est affiché et envoyé ; sinon le compte est rattaché au prestataire de la
 // coordinatrice connectée (géré côté API).
-export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] }) {
+export function SoignantForm({ prestataires, categorie = "tous" }: { prestataires?: Prestataire[]; categorie?: "soignant" | "personnel" | "tous" }) {
   const pro = useProSession();
   // Contexte admin (prestataires fournis) = super-admin niveau 0 ; sinon le
   // niveau du créateur connecté. On ne peut octroyer qu'un niveau ≥ au sien.
   const niveauCreateur = prestataires ? 0 : (pro?.niveau ?? 3);
   const niveauxDispo = optionsNiveau(niveauCreateur);
 
-  const [form, setForm] = useState({ ...VIDE });
+  // Rôles proposés selon la catégorie de compte :
+  // « soignant » = intervenants de soin (médecin, infirmière libérale, pharmacie) ;
+  // « personnel » = tout le reste (coordinatrice, délégué, livreur, magasinier…).
+  const rolesSoignant = [
+    { value: "chirurgien", label: "Médecin" },
+    { value: "infirmiere_liberale", label: "Infirmière libérale" },
+    { value: "pharmacie", label: "Pharmacie" },
+  ];
+  const rolesPersonnel = [
+    { value: "coordinatrice", label: "Infirmière coordinatrice" },
+    ...(niveauCreateur === 0 ? [{ value: "manager", label: "Manager (région)" }] : []),
+    { value: "delegue", label: "Délégué médical" },
+    { value: "livreur", label: "Livreur" },
+    { value: "magasinier", label: "Magasinier" },
+    { value: "personnel", label: "Personnel (autre fonction)" },
+    ...(niveauCreateur === 0 ? [{ value: "dirigeant", label: "Dirigeant" }] : []),
+    ...(niveauCreateur === 0 ? [{ value: "rh", label: "RH (ressources humaines)" }] : []),
+  ];
+  const optionsRole =
+    categorie === "soignant" ? rolesSoignant
+    : categorie === "personnel" ? rolesPersonnel
+    : [...rolesSoignant, ...rolesPersonnel];
+  const roleDefaut = categorie === "personnel" ? "coordinatrice" : "chirurgien";
+
+  const [form, setForm] = useState({ ...VIDE, role: roleDefaut });
   const [recevoirAlertes, setRecevoirAlertes] = useState(false);
   const [protocoles, setProtocoles] = useState<Protocole[]>([protocoleVide()]);
   const [agenceId, setAgenceId] = useState("");
@@ -108,7 +132,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const reset = () => {
-    setForm({ ...VIDE });
+    setForm({ ...VIDE, role: roleDefaut });
     setRecevoirAlertes(false);
     setProtocoles([protocoleVide()]);
     setAgenceId("");
@@ -230,19 +254,7 @@ export function SoignantForm({ prestataires }: { prestataires?: Prestataire[] })
           <Select
             value={form.role}
             onChange={(v) => setForm((f) => ({ ...f, role: v, niveau: v === "manager" ? "1" : v === "livreur" ? "2" : (v === "rh" || v === "personnel") ? "5" : (v === "infirmiere_liberale" || v === "pharmacie" || v === "chirurgien" || v === "dirigeant" || v === "magasinier") ? "3" : f.niveau }))}
-            options={[
-              { value: "chirurgien", label: "Médecin" },
-              { value: "coordinatrice", label: "Infirmière coordinatrice" },
-              ...(niveauCreateur === 0 ? [{ value: "manager", label: "Manager (région)" }] : []),
-              { value: "infirmiere_liberale", label: "Infirmière libérale" },
-              { value: "delegue", label: "Délégué médical" },
-              { value: "livreur", label: "Livreur" },
-              { value: "magasinier", label: "Magasinier" },
-              { value: "pharmacie", label: "Pharmacie" },
-              { value: "personnel", label: "Personnel (autre fonction)" },
-              ...(niveauCreateur === 0 ? [{ value: "dirigeant", label: "Dirigeant" }] : []),
-              ...(niveauCreateur === 0 ? [{ value: "rh", label: "RH (ressources humaines)" }] : []),
-            ]}
+            options={optionsRole}
           />
         </div>
         {estChirurgien && (

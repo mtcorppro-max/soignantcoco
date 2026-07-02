@@ -5,7 +5,7 @@ import { SoignantForm } from "@/components/SoignantForm";
 import { RetourNouveau } from "@/components/RetourNouveau";
 import { estRoleService } from "@/lib/roles";
 
-export default function NouveauSoignant() {
+export default function NouveauPersonnel() {
   const pro = useProSession();
 
   // Réservé aux comptes gestionnaires (niveau 0/1/2, hors médecins / chirurgiens
@@ -14,7 +14,7 @@ export default function NouveauSoignant() {
   if (pro && pro.niveau !== 0 && (pro.niveau > 2 || pro.role === "chirurgien" || estRoleService(pro.role))) {
     return (
       <div className="card text-sm text-slate-500">
-        La création de comptes soignants n&apos;est pas accessible à ce compte.
+        La création de comptes personnel n&apos;est pas accessible à ce compte.
       </div>
     );
   }
@@ -22,9 +22,11 @@ export default function NouveauSoignant() {
   return (
     <div className="mx-auto max-w-2xl">
       <RetourNouveau />
-      <h1 className="mb-1 text-2xl font-bold text-slate-800">Nouveau compte soignant</h1>
-      <p className="mb-5 text-sm text-slate-500">Médecin, infirmière libérale ou pharmacie.</p>
-      <SoignantForm categorie="soignant" />
+      <h1 className="mb-1 text-2xl font-bold text-slate-800">Nouveau compte personnel</h1>
+      <p className="mb-5 text-sm text-slate-500">
+        Coordinatrice, délégué médical, livreur, magasinier… et autres fonctions internes.
+      </p>
+      <SoignantForm categorie="personnel" />
     </div>
   );
 }
