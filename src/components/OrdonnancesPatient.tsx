@@ -257,6 +257,28 @@ export function SignatureModal({ ordo, patientNom, signataire, onClose, onSigned
     if (vide) return;
     setBusy(true);
     const signature = canvasRef.current!.toDataURL("image/png");
+    // Ordonnance importée : on incruste la signature sur le fichier puis on le ré-enregistre.
+    if (ordo.type === "importee") {
+      try {
+        const rep = await fetch(`/api/ordonnance-import?id=${ordo.id}`);
+        const { url } = await rep.json().catch(() => ({ url: null }));
+        if (typeof url !== "string") throw new Error("Fichier introuvable.");
+        const src = await fetch(url);
+        const bytes = await src.arrayBuffer();
+        const mime = (ordo.contenu as { mime?: string })?.mime || src.headers.get("content-type") || "";
+        const { signerFichierImporte } = await import("@/lib/signerImporte");
+        const signe = await signerFichierImporte(bytes, mime, signature, signataire, new Date().toLocaleDateString("fr-FR"));
+        const fd = new FormData();
+        fd.append("id", ordo.id);
+        fd.append("signataire", signataire);
+        fd.append("fichier", new Blob([signe as unknown as BlobPart], { type: "application/pdf" }), "ordonnance-signee.pdf");
+        const put = await fetch("/api/ordonnance-import", { method: "PUT", body: fd });
+        setBusy(false);
+        if (!put.ok) { const { message } = await put.json().catch(() => ({ message: "" })); alert(message || "Échec de la signature."); return; }
+        onSigned();
+      } catch (e) { setBusy(false); alert("Échec de la signature.\n" + (e instanceof Error ? e.message : "")); }
+      return;
+    }
     const { error } = await createClient().from("ordonnance").update({
       statut: "signee", signature, signataire_nom: signataire, signee_le: new Date().toISOString(),
     }).eq("id", ordo.id);

@@ -69,6 +69,43 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
+// Signature du médecin : on reçoit le fichier signé (PDF), on remplace le fichier
+// stocké et on finalise l'ordonnance (statut « signée »).
+export async function PUT(request: Request) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
+
+  const form = await request.formData().catch(() => null);
+  const fichier = form?.get("fichier");
+  const id = form?.get("id")?.toString() ?? "";
+  const signataire = form?.get("signataire")?.toString() ?? "";
+  if (!(fichier instanceof File) || !id) return NextResponse.json({ message: "Paramètres manquants." }, { status: 400 });
+  if (fichier.size > TAILLE_MAX) return NextResponse.json({ message: "Fichier trop volumineux." }, { status: 400 });
+
+  // Accès + chemin actuel via la RLS (le médecin destinataire peut lire/mettre à jour).
+  const { data: o } = await supabase.from("ordonnance").select("patient_id,contenu").eq("id", id).maybeSingle();
+  if (!o) return NextResponse.json({ message: "Ordonnance introuvable." }, { status: 403 });
+  const ancien = (o.contenu as { chemin?: string } | null)?.chemin;
+
+  const admin = createAdminClient();
+  await assurerBucket(admin);
+  const chemin = `${o.patient_id}/${crypto.randomUUID()}-signe.pdf`;
+  const { error: errUp } = await admin.storage.from(BUCKET).upload(chemin, fichier, { contentType: "application/pdf", upsert: false });
+  if (errUp) return NextResponse.json({ message: "Échec de l'enregistrement du fichier signé." }, { status: 500 });
+
+  const { error: errRow } = await supabase.from("ordonnance").update({
+    statut: "signee",
+    signataire_nom: signataire || null,
+    signee_le: new Date().toISOString(),
+    contenu: { chemin, mime: "application/pdf", signe: true },
+  }).eq("id", id);
+  if (errRow) { await admin.storage.from(BUCKET).remove([chemin]); return NextResponse.json({ message: "Échec : " + errRow.message }, { status: 500 }); }
+
+  if (ancien && ancien !== chemin) await admin.storage.from(BUCKET).remove([ancien]); // on retire l'original non signé
+  return NextResponse.json({ ok: true });
+}
+
 // URL signée pour consulter le fichier importé (accès contrôlé par la RLS).
 export async function GET(request: Request) {
   const supabase = createClient();
