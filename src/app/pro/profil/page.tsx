@@ -128,15 +128,15 @@ export default function MonProfil() {
       ) : (
         <div className="grid gap-4">
           {/* ── Hero profil (panneau blanc, à gauche) ── */}
-          <div className="grid gap-4 rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
+          <div className="relative grid gap-4 rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
+            {!edition && (
+              <button onClick={() => { setEdition(true); setMsg(null); }} title="Modifier mon profil" aria-label="Modifier" className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-brand text-white shadow transition hover:bg-brand-dark">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              </button>
+            )}
             <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
+              <div className="shrink-0">
                 <Avatar url={photoUrl} prenom={f.prenom} nom={f.nom} taille="lg" />
-                {!edition && (
-                  <button onClick={() => { setEdition(true); setMsg(null); }} title="Modifier mon profil" aria-label="Modifier" className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full bg-brand text-white shadow ring-2 ring-white transition hover:bg-brand-dark">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                  </button>
-                )}
               </div>
               <div className="min-w-0">
                 <p className="text-xl font-bold text-slate-800">Bonjour, {f.prenom || f.nom || "vous"} 👋</p>
