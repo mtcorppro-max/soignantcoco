@@ -9,13 +9,23 @@ import { LIBELLE_ROLE } from "@/lib/roles";
 // Recherche globale : patients, soignants (comptes + externes), interventions / PDF.
 // Réservée aux équipes internes (peutGerer).
 
-type ResPatient = { kind: "patient"; key: string; id: string; nom: string; sous: string | null; texte: string };
+type ResPatient = { kind: "patient"; key: string; id: string; nom: string; sous: string | null; cp: string | null; texte: string };
 type ResSoignant = {
   kind: "soignant"; key: string; id: string | null; nom: string; role: string; compte: boolean;
   detail: string | null; rpps: string | null; telephone: string | null; email: string | null;
   cabinets: string | null; secretariat_nom: string | null; secretariat_email: string | null; secretariat_tel: string | null;
-  protocoles: ProtocolePdf[] | null; texte: string;
+  protocoles: ProtocolePdf[] | null; depts: string[]; texte: string;
 };
+type Filtre = "tous" | "patients" | "soignants" | "annuaire";
+const FILTRES: { value: Filtre; label: string }[] = [
+  { value: "tous", label: "Tous" },
+  { value: "patients", label: "Patients" },
+  { value: "soignants", label: "Soignants" },
+  { value: "annuaire", label: "Annuaire santé" },
+];
+// Départements repérés dans une adresse via les codes postaux (best effort).
+const deptsDe = (...textes: (string | null | undefined)[]) =>
+  [...new Set((textes.filter(Boolean).join(" ").match(/\b\d{5}\b/g) ?? []).map((cp) => cp.slice(0, 2)))];
 type Resultat = ResPatient | ResSoignant;
 type ResAnnuaire = {
   rpps: string; type: "medecin" | "infirmiere" | "pharmacie";
@@ -36,12 +46,17 @@ export function RechercheSoignants() {
   const [items, setItems] = useState<Resultat[]>([]);
   const [charge, setCharge] = useState(false);
   const [annuaire, setAnnuaire] = useState<ResAnnuaire[]>([]);
+  const [filtre, setFiltre] = useState<Filtre>("tous");
+  const [dept, setDept] = useState("");
+
+  const deptActif = dept.trim().length >= 2 ? dept.trim().slice(0, 2) : "";
 
   // Annuaire santé national (Open Data RPPS) : recherche serveur à la frappe.
   // Chaque mot tapé doit matcher le nom OU le prénom (≥ 3 caractères).
   useEffect(() => {
     const t = q.trim().toLowerCase();
-    if (!ouvert || t.length < 3) { setAnnuaire([]); return; }
+    const exclu = filtre === "patients" || filtre === "soignants";
+    if (!ouvert || t.length < 3 || exclu) { setAnnuaire([]); return; }
     const timer = setTimeout(async () => {
       let req = createClient()
         .from("annuaire_sante")
@@ -51,37 +66,38 @@ export function RechercheSoignants() {
       for (const mot of t.split(/\s+/).map((m) => m.replace(/[,()%.]/g, "")).filter(Boolean)) {
         req = req.or(`nom.ilike.%${mot}%,prenom.ilike.%${mot}%`);
       }
+      if (deptActif) req = req.contains("depts", [deptActif]);
       const { data } = await req;
       setAnnuaire((data as ResAnnuaire[]) ?? []);
     }, 300);
     return () => clearTimeout(timer);
-  }, [q, ouvert]);
+  }, [q, ouvert, filtre, deptActif]);
 
   useEffect(() => {
     if (!ouvert || charge) return;
     const supabase = createClient();
     Promise.all([
-      supabase.from("patient").select("id,nom,operation,chirurgien,traitement,ville,date_operation"),
+      supabase.from("patient").select("id,nom,operation,chirurgien,traitement,ville,code_postal,date_operation"),
       supabase.from("professionnel").select("id,nom,prenom,titre,role,niveau,telephone,email,specialite,rpps,cabinets,secretariat_nom,secretariat_email,secretariat_tel,protocoles").neq("niveau", 0),
       supabase.from("soignant_externe").select("id,type,nom,prenom,titre,telephone,email,specialite,rpps,zone_exercice,cabinets,secretariat_nom,secretariat_tel,protocoles"),
     ]).then(([{ data: pts }, { data: pros }, { data: exts }]) => {
       const rP: Resultat[] = (pts ?? []).map((p) => {
-        const x = p as { id: string; nom: string; operation: string | null; chirurgien: string | null; traitement: string | null; ville: string | null };
+        const x = p as { id: string; nom: string; operation: string | null; chirurgien: string | null; traitement: string | null; ville: string | null; code_postal: string | null };
         const sous = [x.operation, x.chirurgien].filter(Boolean).join(" · ") || x.traitement || null;
-        return { kind: "patient", key: `p${x.id}`, id: x.id, nom: x.nom, sous, texte: `${x.nom} ${x.operation ?? ""} ${x.chirurgien ?? ""} ${x.traitement ?? ""} ${x.ville ?? ""}`.toLowerCase() };
+        return { kind: "patient", key: `p${x.id}`, id: x.id, nom: x.nom, sous, cp: x.code_postal, texte: `${x.nom} ${x.operation ?? ""} ${x.chirurgien ?? ""} ${x.traitement ?? ""} ${x.ville ?? ""}`.toLowerCase() };
       });
       const rS: Resultat[] = (pros ?? []).map((p, i) => {
         const x = p as { id: string; role: string; specialite: string | null; rpps: string | null; telephone: string | null; email: string | null; cabinets: string | null; secretariat_nom: string | null; secretariat_email: string | null; secretariat_tel: string | null; protocoles: ProtocolePdf[] | null };
         const role = x.role === "chirurgien" ? labelMedecin(x.specialite) : LIBELLE_ROLE[x.role as keyof typeof LIBELLE_ROLE];
         const nom = nomComplet(p as never);
-        return { kind: "soignant", key: `c${i}`, id: x.id, nom, role, compte: true, detail: x.specialite, rpps: x.rpps, telephone: x.telephone, email: x.email, cabinets: x.cabinets, secretariat_nom: x.secretariat_nom, secretariat_email: x.secretariat_email, secretariat_tel: x.secretariat_tel, protocoles: x.protocoles, texte: `${nom} ${role} ${x.specialite ?? ""} ${interventions(x.protocoles)}`.toLowerCase() };
+        return { kind: "soignant", key: `c${i}`, id: x.id, nom, role, compte: true, detail: x.specialite, rpps: x.rpps, telephone: x.telephone, email: x.email, cabinets: x.cabinets, secretariat_nom: x.secretariat_nom, secretariat_email: x.secretariat_email, secretariat_tel: x.secretariat_tel, protocoles: x.protocoles, depts: deptsDe(x.cabinets), texte: `${nom} ${role} ${x.specialite ?? ""} ${interventions(x.protocoles)}`.toLowerCase() };
       });
       const rE: Resultat[] = (exts ?? []).map((e) => {
         const x = e as { id: string; type: "medecin" | "infirmiere" | "pharmacie"; specialite: string | null; rpps: string | null; zone_exercice: string | null; telephone: string | null; email: string | null; cabinets: string | null; secretariat_nom: string | null; secretariat_tel: string | null; protocoles: ProtocolePdf[] | null };
         const role = x.type === "medecin" ? labelMedecin(x.specialite) : x.type === "pharmacie" ? "Pharmacie" : "Infirmière libérale";
         const nom = nomComplet(e as never);
         const detail = x.type === "medecin" ? x.specialite : x.type === "pharmacie" ? x.cabinets : x.zone_exercice;
-        return { kind: "soignant", key: `e${x.id}`, id: null, nom, role, compte: false, detail, rpps: x.rpps, telephone: x.telephone, email: x.email, cabinets: x.cabinets, secretariat_nom: x.secretariat_nom, secretariat_email: null, secretariat_tel: x.secretariat_tel, protocoles: x.protocoles, texte: `${nom} ${role} ${detail ?? ""} ${interventions(x.protocoles)}`.toLowerCase() };
+        return { kind: "soignant", key: `e${x.id}`, id: null, nom, role, compte: false, detail, rpps: x.rpps, telephone: x.telephone, email: x.email, cabinets: x.cabinets, secretariat_nom: x.secretariat_nom, secretariat_email: null, secretariat_tel: x.secretariat_tel, protocoles: x.protocoles, depts: deptsDe(x.cabinets, x.zone_exercice), texte: `${nom} ${role} ${detail ?? ""} ${interventions(x.protocoles)}`.toLowerCase() };
       });
       setItems([...rP, ...rS, ...rE]);
       setCharge(true);
@@ -97,8 +113,21 @@ export function RechercheSoignants() {
   const filtres = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return [];
-    return items.filter((r) => r.texte.includes(t)).slice(0, 40);
-  }, [q, items]);
+    return items
+      .filter((r) => r.texte.includes(t))
+      .filter((r) => {
+        if (filtre === "annuaire") return false;
+        if (filtre === "patients" && r.kind !== "patient") return false;
+        if (filtre === "soignants" && r.kind !== "soignant") return false;
+        // Filtre département : CP du patient, CP repérés dans les adresses du soignant.
+        if (deptActif) {
+          if (r.kind === "patient") return (r.cp ?? "").startsWith(deptActif);
+          return r.depts.includes(deptActif);
+        }
+        return true;
+      })
+      .slice(0, 40);
+  }, [q, items, filtre, deptActif]);
 
   const patients = filtres.filter((r): r is ResPatient => r.kind === "patient");
   const soignants = filtres.filter((r): r is ResSoignant => r.kind === "soignant");
@@ -140,6 +169,31 @@ export function RechercheSoignants() {
                 className="input flex-1 border-0 px-0 focus:ring-0"
               />
               <button onClick={() => setOuvert(false)} className="text-slate-400 hover:text-critique">✕</button>
+            </div>
+
+            {/* ── Filtres : type de résultat + département ── */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {FILTRES.map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => setFiltre(o.value)}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                    filtre === o.value
+                      ? "border-brand bg-brand text-white"
+                      : "border-rose-200 text-slate-600 hover:bg-rose-50"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+              <input
+                value={dept}
+                onChange={(e) => setDept(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                placeholder="Dépt"
+                inputMode="numeric"
+                title="Filtrer par département (ex. 34)"
+                className="ml-auto w-16 rounded-full border border-rose-200 px-3 py-1 text-center text-xs font-semibold text-slate-700 focus:border-brand focus:outline-none"
+              />
             </div>
 
             <div className="grid gap-3 overflow-auto">

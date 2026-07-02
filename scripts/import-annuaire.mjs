@@ -93,9 +93,13 @@ for await (const ligne of rl) {
       specialite: (c[16] ?? "").trim() || null,
       mode_exercice: MODE((c[18] ?? "").trim()),
       sites: [],
+      depts: [],
     };
     fiches.set(rpps, f);
   }
+  // Départements d'exercice (filtre de recherche par département).
+  const dept = cp.slice(0, 2);
+  if (dept && !f.depts.includes(dept)) f.depts.push(dept);
   // Complète les champs vides avec les lignes suivantes (multi-activités).
   if (!f.specialite && (c[16] ?? "").trim()) f.specialite = c[16].trim();
   if (f.mode_exercice !== "Libéral" && (c[18] ?? "").startsWith("Lib")) f.mode_exercice = "Libéral";
