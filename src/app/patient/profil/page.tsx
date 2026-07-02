@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { usePatientSession } from "@/lib/hooks/useSession";
+import { usePatientSession, patchPatientSession } from "@/lib/hooks/useSession";
 import { AdresseAutocomplete } from "@/components/AdresseAutocomplete";
 import { ChangerMotDePasse } from "@/components/ChangerMotDePasse";
 import { Select } from "@/components/Select";
@@ -47,6 +47,8 @@ export default function ProfilPatient() {
     const res = await fetch("/api/patient/profil", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
     setBusy(false);
     setMsg(res.ok ? "Profil enregistré ✓" : "Échec de l'enregistrement.");
+    // L'avatar-guide s'adapte sans attendre l'expiration du cache de session.
+    if (res.ok) patchPatientSession({ sexe: f.sexe || null });
   }
 
   return (

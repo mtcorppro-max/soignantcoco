@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 export type SessionPatient = { id: string; nom: string; code_postal: string | null; user_id: string; date_naissance: string | null; sexe: string | null };
 export type SessionPro = { id: string; nom: string; prenom: string | null; titre: string | null; role: string; niveau: number; agence_id: string | null; region_id: string | null; prestataire_id: string; user_id: string; recevoir_alertes: boolean; photo_url: string | null };
 
-const LS_PATIENT = "sc_patient";
+const LS_PATIENT = "sc_patient2"; // bump : ajout date_naissance + sexe (avatar-guide)
 const LS_PRO = "sc_pro7"; // bump : ajout photo_url
 const TTL = 15 * 60 * 1000; // 15 min
 
@@ -98,6 +98,14 @@ export function usePatientSession() {
   }, []);
 
   return patient;
+}
+
+// Mise à jour locale de la session patient après modification du profil
+// (ex. sexe → avatar-guide) : cache mémoire + localStorage, sans refetch.
+export function patchPatientSession(patch: Partial<SessionPatient>) {
+  if (!memPatient) return;
+  memPatient = { ...memPatient, ...patch };
+  lsSet(LS_PATIENT, memPatient);
 }
 
 async function fetchPatient(): Promise<SessionPatient | null> {
